@@ -211,7 +211,12 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
 test("criar de uma vez as cadeiras propostas", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
-  await page.getByRole("link", { name: /A rever/ }).click();
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page
+    .getByRole("link", { name: /A rever/ })
+    .first()
+    .click();
+  await expect(page.getByText(/Cadeira em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
   await expect(
     page.getByText(/Criar Universidade Fictícia de Exemplo com as cadeiras/),
   ).toBeVisible();
