@@ -72,6 +72,7 @@ export class PublicDataSource implements DataSource {
 
   upload = readOnly;
   patchDocument = readOnly;
+  patchDocuments = readOnly;
   patchUser = readOnly;
   catalogRequest = readOnly;
   scaffold = readOnly;

@@ -106,7 +106,7 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   await page.getByRole("link", { name: /A rever/ }).click();
   await expect(page.getByText(/Cadeira em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
   await page.getByRole("button", { name: "grafos_ficha2.pdf" }).click();
-  await page.getByLabel("Cadeira").selectOption("ufe/fg");
+  await page.getByLabel("Cadeira", { exact: true }).selectOption("ufe/fg");
   await page.getByLabel("Tipo").selectOption("fichas-exercicios");
   await page.getByRole("button", { name: "Confirmar e arrumar" }).click();
   await expect(page.getByText("Correcção enviada.")).toBeVisible();
@@ -228,4 +228,29 @@ test("criar de uma vez as cadeiras propostas", async ({ page }) => {
   expect(request.institutions[0].slug).toBe("ufe");
   expect(request.institutions[0].units[0].name).toBe("Teoria dos Grafos Imaginários");
   expect(request.proposals.accept).toContain("unit-teoria-dos-grafos-imaginarios");
+});
+
+test("confirmar vários documentos de uma vez em «A rever»", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page
+    .getByRole("link", { name: /A rever/ })
+    .first()
+    .click();
+  const boxes = page.locator("ul input[type=checkbox]");
+  await expect(boxes).toHaveCount(2);
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await expect(page.getByText("Confirmar 2 documentos de uma vez")).toBeVisible();
+  await page.getByLabel("Cadeira", { exact: true }).selectOption("ufe/fg");
+  await page.getByRole("button", { name: "Confirmar 2 documentos" }).click();
+  await expect(page.getByText(/2 documentos confirmados/)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.paths).toHaveLength(2);
+  for (const path of commit.paths) {
+    const record = YAML.parse(fake.text(REPO, path)!);
+    expect(record.classification.unit).toMatchObject({ value: "ufe/fg", method: "user" });
+    expect(record.review.status).toBe("resolved");
+  }
 });

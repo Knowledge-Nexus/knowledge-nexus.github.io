@@ -9,7 +9,7 @@ import { nowIso } from "../../data/source";
 import type { ClassificationField, DocumentRow } from "../../data/types";
 import { academicYears, FIELD_VOCAB, type Labels } from "../../lib/labels";
 
-const EDITABLE: ClassificationField[] = [
+export const EDITABLE: ClassificationField[] = [
   "unit",
   "document_type",
   "academic_year",
@@ -20,7 +20,7 @@ const EDITABLE: ClassificationField[] = [
   "solution_origin",
 ];
 
-type Draft = Partial<Record<ClassificationField, string>>;
+export type Draft = Partial<Record<ClassificationField, string>>;
 
 export function initialDraft(doc: DocumentRow): Draft {
   const draft: Draft = {};

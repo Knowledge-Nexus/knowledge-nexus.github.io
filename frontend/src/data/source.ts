@@ -63,6 +63,11 @@ export interface DataSource {
     patch: (doc: Record<string, unknown>) => void,
     message: string,
   ): Promise<string>;
+  /** Vários documentos num só commit (ex.: confirmar um grupo em "A rever"). */
+  patchDocuments(
+    patches: { id: string; patch: (doc: Record<string, unknown>) => void }[],
+    message: string,
+  ): Promise<string>;
   patchUser(update: (user: Record<string, unknown>) => void): Promise<string>;
   catalogRequest(bundle: CatalogBundle, message: string): Promise<string>;
   runs(): Promise<WorkflowRun[]>;
@@ -172,6 +177,18 @@ export class GitHubDataSource implements DataSource {
       this.client,
       this.repo,
       [{ path: `documentos/${id}.yaml`, update: yamlUpdate(patch) }],
+      message,
+    );
+  }
+
+  patchDocuments(
+    patches: { id: string; patch: (doc: Record<string, unknown>) => void }[],
+    message: string,
+  ): Promise<string> {
+    return commitChanges(
+      this.client,
+      this.repo,
+      patches.map((p) => ({ path: `documentos/${p.id}.yaml`, update: yamlUpdate(p.patch) })),
       message,
     );
   }

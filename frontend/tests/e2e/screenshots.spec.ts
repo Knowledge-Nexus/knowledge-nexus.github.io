@@ -67,6 +67,12 @@ test("capturas", async ({ page }) => {
   await page.getByText(/Cadeira em falta/).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/4-a-rever.png`, fullPage: true });
+  const boxes = page.locator("ul input[type=checkbox]");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/4b-a-rever-grupo.png`, fullPage: true });
+  await boxes.nth(1).uncheck();
   await page.getByRole("link", { name: "Pesquisa" }).click();
   await page.getByLabel("Procura em todo o teu material…").fill("limite sucessao");
   await page.locator("mark").first().waitFor();

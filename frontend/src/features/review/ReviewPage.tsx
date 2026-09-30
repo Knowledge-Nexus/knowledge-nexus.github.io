@@ -16,6 +16,7 @@ import { useApp } from "../../data/context";
 import type { CatalogBundle, ProposalRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
+import { BulkReview } from "./BulkReview";
 import { ReviewForm } from "./ReviewForm";
 
 function Preview(props: { sha256: string }) {
@@ -308,11 +309,38 @@ export function ReviewPage() {
   const { meta, login, indexLoading, indexError } = useApp();
   const labels = useLabels(meta);
   const [params, setParams] = useSearchParams();
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   if (indexError) return <ErrorBox error={indexError} />;
   if (indexLoading) return <Spinner />;
   if (!meta) return <Empty>{t("pipeline.no_indices")}</Empty>;
 
   const queue = meta.reviewQueue(login);
+  // Grupos de documentos "idênticos": mesma sugestão de cadeira, tipo e papel.
+  const groupMap = new Map<string, { key: string; label: string; docs: typeof queue }>();
+  for (const doc of queue) {
+    const c = doc.classification;
+    const key = [c.unit?.value, c.document_type?.value, c.role?.value].join("|");
+    const label = [
+      c.unit?.value ? labels.unit(String(c.unit.value)) : t("library.no_unit"),
+      c.document_type?.value ? labels.term("document_types", String(c.document_type.value)) : null,
+      c.role?.value ? labels.term("roles", String(c.role.value)) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const group = groupMap.get(key) ?? { key, label, docs: [] };
+    group.docs.push(doc);
+    groupMap.set(key, group);
+  }
+  const groups = [...groupMap.values()].sort((a, b) => b.docs.length - a.docs.length);
+  const toggle = (ids: string[], on: boolean) =>
+    setChecked((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
   const proposals = meta.proposals("open");
   const choices = institutionChoices(meta.institutions(), proposals);
   const selectedId = params.get("doc") ?? queue[0]?.id;
@@ -335,21 +363,58 @@ export function ReviewPage() {
       {queue.length === 0 && !selected ? (
         <Empty>{t("review.empty")}</Empty>
       ) : (
-        <div className="grid gap-4 md:grid-cols-[18rem_1fr]">
-          <ul className="space-y-1">
-            {queue.map((doc) => (
-              <li key={doc.id}>
-                <button
-                  type="button"
-                  onClick={() => setParams({ doc: doc.id })}
-                  className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${doc.id === selected?.id ? "bg-pen text-white" : "hover:bg-paper"}`}
-                >
-                  <span className="block truncate">{doc.source_path ?? doc.display_name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {selected && (
+        <div className="grid gap-4 md:grid-cols-[20rem_1fr]">
+          <div className="space-y-3">
+            {groups.map((group) => {
+              const ids = group.docs.map((d) => d.id);
+              const all = ids.every((id) => checked.has(id));
+              return (
+                <div key={group.key} className="rounded-xl border border-line bg-sheet/60 p-2">
+                  <label className="flex items-center gap-2 px-1 pb-1 text-xs font-semibold text-muted">
+                    <input
+                      type="checkbox"
+                      checked={all}
+                      onChange={() => toggle(ids, !all)}
+                      aria-label={t("review.select_group", { label: group.label })}
+                    />
+                    <span className="flex-1 truncate" title={group.label}>
+                      {group.label}
+                    </span>
+                    <span>{group.docs.length}</span>
+                  </label>
+                  <ul className="space-y-0.5">
+                    {group.docs.map((doc) => (
+                      <li key={doc.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked.has(doc.id)}
+                          onChange={() => toggle([doc.id], !checked.has(doc.id))}
+                          aria-label={doc.source_path ?? doc.display_name}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setParams({ doc: doc.id })}
+                          className={`min-w-0 flex-1 rounded-lg px-2 py-1 text-left text-sm ${doc.id === selected?.id && checked.size < 2 ? "bg-pen text-white" : "hover:bg-paper"}`}
+                        >
+                          <span className="block truncate">
+                            {doc.source_path?.split("/").pop() ?? doc.display_name}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          {checked.size >= 2 ? (
+            <BulkReview
+              key={[...checked].sort().join(",")}
+              docs={queue.filter((d) => checked.has(d.id))}
+              labels={labels}
+            />
+          ) : null}
+          {checked.size < 2 && selected && (
             <Card
               key={selected.id}
               title={

@@ -227,7 +227,14 @@
     "evidence_count": "Encontrado em {{count}} documento(s)",
     "accept_all": "Criar tudo",
     "accept_all_text": "Criar {{institution}} com as cadeiras {{units}} e arrumar o que estava à espera?",
-    "accept_all_done": "Pedido enviado. O material é reclassificado na próxima execução (1–3 minutos)."
+    "accept_all_done": "Pedido enviado. O material é reclassificado na próxima execução (1–3 minutos).",
+    "select_group": "Seleccionar o grupo {{label}}",
+    "bulk_title": "Confirmar {{count}} documentos de uma vez",
+    "bulk_intro": "Cada campo mantém a sugestão de cada documento, a não ser que escolhas um valor para aplicar a todos.",
+    "bulk_keep": "Manter a sugestão de cada um",
+    "bulk_confirm": "Confirmar {{count}} documentos",
+    "bulk_done": "{{count}} documentos confirmados.",
+    "bulk_missing_unit": "{{count}} documento(s) sem cadeira: escolhe a cadeira para os confirmar."
   },
   "search": {
     "title": "Pesquisa",
