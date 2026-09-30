@@ -1,0 +1,70 @@
+# Catálogo FICTÍCIO de exemplo, no formato de importação `nexus-catalogo`.
+# Importa com: nexus catalogo importar config/catalogo/exemplo.yaml
+# (ou no assistente inicial da interface).
+format: nexus-catalogo
+version: 1
+institutions:
+  - slug: ufe
+    name: Universidade Fictícia de Exemplo
+    acronym: UFE
+    aliases: [Univ. Fictícia]
+    courses:
+      - slug: lei
+        name: Licenciatura em Engenharia Informática
+        degree: licenciatura
+        units:
+          - { unit: am1, curricular_year: 1, semester: 1 }
+          - { unit: alga, curricular_year: 1, semester: 1 }
+          - { unit: p1, curricular_year: 1, semester: 1 }
+          - { unit: fg, curricular_year: 1, semester: 2 }
+          - { unit: bd, curricular_year: 2, semester: 1 }
+    units:
+      - slug: am1
+        code: "10101"
+        name: Análise Matemática I
+        acronym: AM1
+        aliases: [Cálculo I, Analise I]
+        keywords: [limites, derivadas, primitivas, integrais, sucessões]
+        ects: 6
+        lecturers: [Ana Exemplo]
+        topics:
+          - { slug: limites, name: Limites e continuidade }
+          - { slug: derivadas, name: Derivadas }
+          - { slug: integrais, name: Integrais, children: [{ slug: primitivas, name: Primitivas }] }
+        editions:
+          - academic_year: 2025-2026
+            lecturers: [Ana Exemplo, Bruno Fictício]
+            assessment_method: "2 testes (50% cada) ou exame final; mínimo de 9,5."
+            assessments:
+              - { assessment_type: teste, number: 1, weight: 0.5 }
+              - { assessment_type: teste, number: 2, weight: 0.5 }
+              - { assessment_type: exame, exam_season: normal }
+              - { assessment_type: exame, exam_season: recurso }
+      - slug: alga
+        code: "10102"
+        name: Álgebra Linear e Geometria Analítica
+        acronym: ALGA
+        keywords: [matrizes, determinantes, espaços vectoriais, valores próprios]
+        ects: 6
+        lecturers: [Carla Modelo]
+      - slug: p1
+        code: "10103"
+        name: Programação I
+        acronym: P1
+        keywords: [python, algoritmos, funções, ciclos, recursividade]
+        ects: 6
+        lecturers: [Duarte Teste]
+      - slug: fg
+        code: "10201"
+        name: Física Geral
+        acronym: FG
+        keywords: [cinemática, dinâmica, energia, momento linear]
+        ects: 6
+        lecturers: [Eva Amostra]
+      - slug: bd
+        code: "20101"
+        name: Bases de Dados
+        acronym: BD
+        keywords: [sql, modelo relacional, normalização, álgebra relacional]
+        ects: 6
+        lecturers: [Filipe Simulado]

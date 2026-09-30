@@ -1,0 +1,58 @@
+"""PDF: texto nativo por página (PyMuPDF); páginas sem texto passam por OCR."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pymupdf
+
+from nexus.config import ExtractionSettings
+from nexus.pipeline.extract.base import (
+    ExtractionError,
+    ExtractionResult,
+    PageText,
+    clean_text,
+    looks_mathematical,
+)
+from nexus.pipeline.extract.ocr import ocr_image
+
+VERSION = 1
+_META_KEYS = ("title", "author", "subject", "keywords", "creator", "producer", "creationDate")
+
+
+def pdf_pages(
+    path: Path, settings: ExtractionSettings, workdir: Path, allow_ocr: bool = True
+) -> tuple[list[PageText], dict[str, str]]:
+    try:
+        doc = pymupdf.open(path)
+    except Exception as exc:  # PyMuPDF lança vários tipos
+        raise ExtractionError(f"PDF ilegível: {exc}") from exc
+    if doc.needs_pass:
+        raise ExtractionError("PDF protegido por palavra-passe")
+    metadata = {k: str(v).strip() for k, v in (doc.metadata or {}).items()
+                if k in _META_KEYS and v and str(v).strip()}
+    pages: list[PageText] = []
+    with doc:
+        for index in range(doc.page_count):
+            page = doc[index]
+            native = clean_text(page.get_text("text", sort=True))
+            if len(native) >= settings.min_native_chars_per_page or not allow_ocr:
+                pages.append(PageText(native, "native" if native else "none"))
+                continue
+            image = workdir / f"page-{index + 1:04d}.png"
+            page.get_pixmap(dpi=settings.ocr_dpi).save(image)
+            result = ocr_image(image, settings.ocr_languages, settings.ocr_timeout_seconds)
+            image.unlink(missing_ok=True)
+            text = clean_text(result.text)
+            needs_ai = (
+                result.confidence < settings.ai_transcription_confidence
+                or result.words < 5
+                or looks_mathematical(text)
+            )
+            pages.append(PageText(text, "ocr", result.confidence, needs_ai))
+    return pages, metadata
+
+
+def extract_pdf(path: Path, settings: ExtractionSettings, workdir: Path) -> ExtractionResult:
+    pages, metadata = pdf_pages(path, settings, workdir)
+    return ExtractionResult("pdf", VERSION, pages, metadata)

@@ -1,0 +1,61 @@
+# Este repositório é PÚBLICO: nunca guardar aqui material de estudo real.
+# Os dados vivem no repositório de dados privado (ver docs/repo-dados.md).
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/public/contrato/
+
+# Dados e segredos locais
+.env
+.env.*
+!.env.example
+storage/
+dados/
+estudo-dados/
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentos: as amostras de teste são geradas em tempo de execução
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.odt
+*.odp
+*.ods
+*.rtf
+*.zip
+*.rar
+*.7z
+*.heic
+*.jpg
+*.jpeg
+*.png
+!frontend/public/*.png
+
+# Editores / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

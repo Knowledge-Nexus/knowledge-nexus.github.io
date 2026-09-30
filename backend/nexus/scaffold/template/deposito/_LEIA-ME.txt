@@ -1,0 +1,3 @@
+Pasta de depósito. Larga aqui tudo, sem organizar, dentro de deposito/<o-teu-login>/.
+Cada ficheiro é processado e sai daqui depois de guardado em originais/.
+Os que falharem vão para deposito/<login>/_erros/ com um ficheiro .log.

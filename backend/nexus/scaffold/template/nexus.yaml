@@ -1,0 +1,10 @@
+# Definições do repositório de dados do Knowledge Nexus.
+# Qualquer chave de config/predefinicoes.yaml (no repositório da aplicação) pode ser
+# sobreposta aqui. Este repositório TEM de ser privado.
+format_version: 1
+owner: __OWNER__
+app:
+  repository: __APP_REPOSITORY__
+  ref: __APP_REF__
+classification:
+  auto_file_threshold: 0.7

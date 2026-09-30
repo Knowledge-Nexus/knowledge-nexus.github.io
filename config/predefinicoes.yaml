@@ -1,0 +1,64 @@
+# Predefinições do motor. O `nexus.yaml` do repositório de dados pode sobrepor
+# qualquer chave (fusão profunda).
+classification:
+  # Abaixo deste valor, o documento vai para "A rever" em vez de ser arrumado.
+  auto_file_threshold: 0.7
+  # Constante da fórmula de confiança: melhor / (melhor + segundo + prior).
+  prior: 0.6
+  # Peso de cada fonte de sinais.
+  source_weights:
+    filename: 1.0
+    path: 0.8
+    archive: 0.6
+    header: 1.0
+    body: 0.35
+    metadata: 0.7
+  # Multiplicador para UCs em que o utilizador está inscrito.
+  enrollment_boost: 1.25
+  # Mês em que começa o ano lectivo (9 = Setembro).
+  academic_year_start_month: 9
+  header_chars: 1500
+  body_pages: 3
+  # Campos que têm de atingir o limiar para o documento ser arrumado automaticamente.
+  required_fields: [unit, document_type]
+  # Campos adicionais exigidos quando o tipo de documento é de avaliação.
+  required_for_assessments: [academic_year, assessment_type]
+
+extraction:
+  ocr_languages: por+eng
+  ocr_dpi: 300
+  # Uma página PDF com menos caracteres nativos do que isto é tratada como digitalizada.
+  min_native_chars_per_page: 25
+  # Confiança média do OCR (0-100) abaixo da qual a página fica para transcrição por IA.
+  ai_transcription_confidence: 60
+  max_xlsx_rows: 200
+  max_xlsx_cols: 30
+  office_timeout_seconds: 180
+  ocr_timeout_seconds: 120
+
+archives:
+  max_depth: 3
+  max_entries: 5000
+  max_total_bytes: 2147483648
+  max_ratio: 200
+
+code_projects:
+  markers: [pyproject.toml, setup.py, requirements.txt, package.json, pom.xml,
+            build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, Cargo.toml, go.mod,
+            composer.json, Gemfile, "*.sln", "*.csproj", "*.vcxproj", .git, .project]
+  min_code_files: 3
+  code_ratio: 0.6
+  ignored_dirs: [node_modules, .git, __pycache__, .venv, venv, env, build, dist, target,
+                 .idea, .vscode, bin, obj, .gradle, .next, .mypy_cache, .pytest_cache]
+  code_extensions: [py, ipynb, js, jsx, ts, tsx, java, kt, c, h, cpp, hpp, cc, cs, go, rs,
+                    rb, php, swift, m, r, jl, scala, hs, sql, sh, ps1, bat, html, css,
+                    scss, vue, svelte, asm, s, vhd, vhdl, v, pl, lua, dart, f90, mat]
+
+dedup:
+  # Distância de Hamming máxima (simhash de 64 bits) para marcar quase-duplicados.
+  near_duplicate_max_hamming: 6
+  min_words: 40
+
+limits:
+  # O GitHub recusa ficheiros com mais de 100 MB.
+  max_file_bytes: 99614720

@@ -1,0 +1,34 @@
+# Processa o depósito a cada envio. A lógica vive no workflow reutilizável do repositório
+# da aplicação (código público); os dados nunca saem deste repositório privado.
+name: nexus
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deposito/**"
+      - "documentos/**"
+      - "catalogo/**"
+      - "utilizadores/**"
+      - "revisao/**"
+      - "nexus.yaml"
+  workflow_dispatch:
+    inputs:
+      reclassificar:
+        description: "Reclassificar tudo o que não foi revisto por ti"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nexus-pipeline
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    uses: __APP_REPOSITORY__/.github/workflows/pipeline.yml@__APP_REF__
+    with:
+      app-ref: __APP_REF__
+      reclassify: ${{ inputs.reclassificar || false }}

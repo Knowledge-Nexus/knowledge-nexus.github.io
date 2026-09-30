@@ -1,0 +1,6 @@
+# Originais e versões PDF são binários imutáveis: sem diffs nem conversões de fim de linha.
+originais/** binary -diff
+texto/**/render.pdf binary -diff
+*.yaml text eol=lf
+*.md text eol=lf
+*.json text eol=lf

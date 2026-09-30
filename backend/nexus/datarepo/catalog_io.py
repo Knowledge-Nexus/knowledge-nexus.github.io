@@ -1,0 +1,147 @@
+"""Catálogo em ficheiros: leitura, importação e exportação do formato `nexus-catalogo`."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from nexus.datarepo.layout import Layout
+from nexus.datarepo.yamlio import model_to_data, read_yaml, write_yaml_if_changed
+from nexus.domain.catalog import (
+    Catalog,
+    CatalogBundle,
+    Course,
+    CurricularUnit,
+    Institution,
+    InstitutionBundle,
+    unit_key,
+)
+
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+INSTITUTION_FILE = "instituicao.yaml"
+COURSES_DIR = "cursos"
+UNITS_DIR = "ucs"
+
+
+class CatalogError(ValueError):
+    pass
+
+
+def load_catalog(layout: Layout) -> Catalog:
+    catalog = Catalog()
+    if not layout.catalog_dir.is_dir():
+        return catalog
+    for inst_dir in sorted(p for p in layout.catalog_dir.iterdir() if p.is_dir()):
+        inst_file = inst_dir / INSTITUTION_FILE
+        if not inst_file.exists():
+            continue
+        institution = Institution.model_validate(read_yaml(inst_file))
+        catalog.institutions[institution.slug] = institution
+        for course_file in sorted((inst_dir / COURSES_DIR).glob("*.yaml")):
+            course = Course.model_validate(read_yaml(course_file))
+            course.institution = institution.slug
+            catalog.courses[course.key] = course
+        for unit_file in sorted((inst_dir / UNITS_DIR).glob("*.yaml")):
+            unit = CurricularUnit.model_validate(read_yaml(unit_file))
+            unit.institution = institution.slug
+            catalog.units[unit.key] = unit
+    return catalog
+
+
+def _check_slug(kind: str, slug: str) -> None:
+    if not SLUG_RE.match(slug):
+        raise CatalogError(f"slug inválido para {kind}: {slug!r} (usa a-z, 0-9 e '-')")
+
+
+def _merge(existing: dict[str, Any] | None, incoming: dict[str, Any]) -> dict[str, Any]:
+    if existing is None:
+        return incoming
+    merged = dict(existing)
+    merged.update(incoming)
+    return merged
+
+
+@dataclass
+class ImportReport:
+    created: list[str] = field(default_factory=list)
+    updated: list[str] = field(default_factory=list)
+    unchanged: list[str] = field(default_factory=list)
+
+    def record(self, label: str, existed: bool, changed: bool) -> None:
+        if not existed:
+            self.created.append(label)
+        elif changed:
+            self.updated.append(label)
+        else:
+            self.unchanged.append(label)
+
+
+def _write_entity(path: Path, data: dict[str, Any], label: str, report: ImportReport) -> None:
+    existed = path.exists()
+    merged = _merge(read_yaml(path) if existed else None, data)
+    changed = write_yaml_if_changed(path, merged)
+    report.record(label, existed, changed)
+
+
+def import_bundle(layout: Layout, raw: Any) -> ImportReport:
+    """Importa (funde) um catálogo `nexus-catalogo`. Idempotente."""
+    bundle = CatalogBundle.model_validate(raw)
+    if bundle.format != "nexus-catalogo":
+        raise CatalogError(f"formato desconhecido: {bundle.format}")
+    current = load_catalog(layout)
+    report = ImportReport()
+    for inst in bundle.institutions:
+        _check_slug("instituição", inst.slug)
+        known_units = {u.slug for u in inst.units} | {
+            u.slug for u in current.units.values() if u.institution == inst.slug
+        }
+        for course in inst.courses:
+            _check_slug("curso", course.slug)
+            missing = [link.unit for link in course.units if link.unit not in known_units]
+            if missing:
+                raise CatalogError(
+                    f"o curso {course.slug} refere UCs inexistentes: {', '.join(missing)}"
+                )
+        inst_dir = layout.catalog_dir / inst.slug
+        inst_data = model_to_data(Institution.model_validate(
+            inst.model_dump(exclude={"courses", "units"})
+        ))
+        _write_entity(inst_dir / INSTITUTION_FILE, inst_data, inst.slug, report)
+        for unit in inst.units:
+            _check_slug("UC", unit.slug)
+            _write_entity(
+                inst_dir / UNITS_DIR / f"{unit.slug}.yaml",
+                model_to_data(unit),
+                unit_key(inst.slug, unit.slug),
+                report,
+            )
+        for course in inst.courses:
+            _write_entity(
+                inst_dir / COURSES_DIR / f"{course.slug}.yaml",
+                model_to_data(course),
+                unit_key(inst.slug, course.slug),
+                report,
+            )
+    return report
+
+
+def export_bundle(layout: Layout) -> dict[str, Any]:
+    catalog = load_catalog(layout)
+    bundle = CatalogBundle()
+    for slug, institution in catalog.institutions.items():
+        bundle.institutions.append(
+            InstitutionBundle(
+                **institution.model_dump(),
+                courses=[c for c in catalog.courses.values() if c.institution == slug],
+                units=[u for u in catalog.units.values() if u.institution == slug],
+            )
+        )
+    return model_to_data(bundle)
+
+
+def write_unit(layout: Layout, unit: CurricularUnit) -> bool:
+    _check_slug("UC", unit.slug)
+    path = layout.catalog_dir / unit.institution / UNITS_DIR / f"{unit.slug}.yaml"
+    return write_yaml_if_changed(path, unit)
