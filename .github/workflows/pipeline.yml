@@ -120,6 +120,9 @@ jobs:
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
 
       - name: Guarda — os originais nunca são alterados nem apagados
+        # Um force push é uma reescrita deliberada do histórico (ex.: limpar dados de teste),
+        # que nem a interface nem o pipeline fazem; nesse caso a guarda não se aplica.
+        if: ${{ github.event.forced != true }}
         run: |
           before="${{ github.event.before }}"
           if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
