@@ -16,7 +16,15 @@ from dataclasses import dataclass
 
 from nexus.domain.catalog import Catalog
 from nexus.domain.proposals import ProposalKind
-from nexus.domain.text import contains_phrase, fix_spacing_accents, normalize
+from nexus.domain.text import (
+    contains_phrase,
+    contains_unit_phrase,
+    fix_spacing_accents,
+    normalize,
+    roman,
+    sequel_after,
+    series_number,
+)
 
 _SEP = r"\s*[:\-–—]\s*"
 _UNIT_RE = re.compile(
@@ -132,11 +140,47 @@ def _known(catalog: Catalog, kind: ProposalKind, name: str) -> bool:
     else:
         names = [n for i in catalog.institutions.values()
                  for n in (i.name, i.acronym or "", *i.aliases)]
+    match = contains_unit_phrase if kind == "unit" else contains_phrase
     for known in names:
         known_norm = normalize(known)
-        if known_norm and (contains_phrase(norm, known_norm) or contains_phrase(known_norm, norm)):
+        if known_norm and (match(norm, known_norm) or match(known_norm, norm)):
             return True
     return False
+
+
+_TRAILING_NUMBER = re.compile(r"[\s_.-]*(?:[0-9]+|[IVXivx]+)$")
+
+
+def _without_number(value: str) -> str:
+    """"Análise Matemática II" → "Análise Matemática"; "AM1" → "AM" (só se tiver número)."""
+    if series_number(normalize(value)) is None:
+        return value
+    return _TRAILING_NUMBER.sub("", value).strip() or value
+
+
+def _sequels(texts: list[str], catalog: Catalog) -> list[ProposalCandidate]:
+    """Outra cadeira da mesma série: "Análise Matemática II" (ou "AM_II", "AM2") quando o
+    catálogo só tem "Análise Matemática" ou "Análise Matemática I". Mesmo nome, outro
+    número; é o próprio material que o diz."""
+    out: list[ProposalCandidate] = []
+    for unit in catalog.units.values():
+        own = series_number(normalize(unit.name)) or 1
+        base = _without_number(unit.name)
+        acronym = _without_number(unit.acronym) if unit.acronym else None
+        forms = [f for f in (base, *map(_without_number, unit.aliases), acronym) if f]
+        for original in texts:
+            text = normalize(original)
+            number = next((n for f in forms if (n := sequel_after(text, normalize(f)))), None)
+            if number is None or number == own:
+                continue
+            name = f"{base} {roman(number)}"
+            if _known(catalog, "unit", name):
+                continue
+            out.append(ProposalCandidate(
+                "unit", name, " ".join(original.split())[:160], None,
+                f"{acronym} {roman(number)}" if acronym else None))
+            break
+    return out
 
 
 def _known_acronym(catalog: Catalog, kind: ProposalKind, acronym: str) -> bool:
@@ -152,6 +196,8 @@ def detect(pages: list[str], catalog: Catalog, max_pages: int = 2,
     found: dict[tuple[str, str], ProposalCandidate] = {}
     pages = [fix_spacing_accents(p) for p in pages[:max_pages]]
     header = pages[0][:1500] if pages else ""
+    for candidate in _sequels([*(paths or []), header], catalog):
+        found.setdefault(("unit", normalize(candidate.name)), candidate)
     for acronym in path_acronyms(paths or []):
         for phrase, start, end in _phrases_with_initials(header, acronym):
             name = _title(phrase)

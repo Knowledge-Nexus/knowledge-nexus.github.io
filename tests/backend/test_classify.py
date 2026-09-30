@@ -199,3 +199,32 @@ def test_unique_name() -> None:
     taken = {"a.pdf", "a-2.pdf"}
     assert unique_name("b.pdf", taken) == "b.pdf"
     assert unique_name("a.pdf", taken) == "a-3.pdf"
+
+
+def test_numbered_units_are_different_units() -> None:
+    from nexus.domain.text import contains_unit_phrase, normalize
+
+    def match(text: str, name: str) -> bool:
+        return contains_unit_phrase(normalize(text), normalize(name))
+
+    assert not match("Sebenta_AM_II_2526.pdf", "AM")
+    assert not match("Análise Matemática II", "Análise Matemática")
+    assert match("Análise Matemática I: exame", "Análise Matemática")
+    assert match("AM 2.º ano", "AM"), "2.º ano é o ano do curso, não o número da cadeira"
+    for text in ("AM_II", "AM2", "AMII", "Análise Matemática 2"):
+        assert match(text, "AM II") or match(text, "Análise Matemática II"), text
+    assert not match("Análise Matemática III", "Análise Matemática II")
+    assert match("fre1_ED-24AA.pdf", "ED")
+
+
+def test_sequel_unit_is_not_filed_in_the_first_and_is_proposed(catalog_root: Path) -> None:
+    classifier, repo = _classifier(catalog_root)
+    pages = ["Análise Matemática II\nSebenta, Parte I\n2025/2026\nCapítulo 1: séries"]
+    doc = _doc("1º Ano/Análise Matemática II/Sebenta_AM_II_2526_Parte_I.pdf")
+    c = classifier.classify(doc, None, pages, None, []).classification
+    assert c.value("unit") != "ufe/am1"
+    found = detect(pages, repo.catalog, paths=[doc.sources[0].path])
+    assert ("unit", "Análise Matemática II", "AM II") in {
+        (p.kind, p.name, p.acronym) for p in found}
+    # A primeira continua a ser reconhecida, e não se propõe a si própria.
+    assert detect(["Análise Matemática I\nExame"], repo.catalog, paths=["AM1/exame.pdf"]) == []

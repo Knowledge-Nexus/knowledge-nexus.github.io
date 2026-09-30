@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from nexus.domain.catalog import CurricularUnit
 from nexus.domain.documents import Reason
-from nexus.domain.text import contains_phrase, normalize
+from nexus.domain.text import contains_phrase, contains_unit_phrase, normalize
 from nexus.pipeline.classify.scoring import Candidate, rank
 from nexus.pipeline.classify.signals import Signal
 
@@ -19,6 +19,8 @@ FEATURE_POINTS = {
     "keyword": 0.4,
     "lecturer": 0.8,
 }
+# Identificam a cadeira pelo nome: "Análise Matemática" não é "Análise Matemática II".
+IDENTITY = {"code", "acronym", "name", "alias"}
 # Palavras-chave e docentes somam, mas com tecto por fonte (são sinais fracos).
 CAPPED = {"keyword": 1.2, "lecturer": 1.2}
 
@@ -56,7 +58,8 @@ def score_unit(features: UnitFeatures, signals: list[Signal], boost: float) -> C
     for signal in signals:
         capped: dict[str, float] = {}
         for kind, norm, original in features.features:
-            if not contains_phrase(signal.norm, norm):
+            match = contains_unit_phrase if kind in IDENTITY else contains_phrase
+            if not match(signal.norm, norm):
                 continue
             points = FEATURE_POINTS[kind]
             if kind in CAPPED:

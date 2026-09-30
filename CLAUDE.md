@@ -169,6 +169,10 @@ Dependências de sistema (Ubuntu/WSL2):
   sem código.
 - **Novo extractor ou alteração de um:** subir a versão desse extractor (provoca nova
   extracção) e acrescentar um teste com uma amostra gerada.
+- **Cadeiras numeradas são cadeiras diferentes:** "Análise Matemática" não corresponde a
+  "Análise Matemática II" (nem "AM" a "AM_II"/"AM2"); os nomes das cadeiras comparam-se com
+  `contains_unit_phrase` (`domain/text.py`), e uma continuação que ainda não existe gera
+  uma proposta ("Análise Matemática II", sigla "AM II").
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso
   reclassifica o que não foi revisto pelo utilizador.
 - **Testes:**

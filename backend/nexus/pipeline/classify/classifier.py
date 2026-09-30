@@ -44,7 +44,7 @@ from nexus.pipeline.classify.years import score_dates, score_years
 # 2: enunciado/resolução decidido só pelo nome, pastas, metadados e título (as primeiras
 #    palavras da página 1); abreviaturas nos vocabulários (res_, corr_, fre1…).
 # 3: data e versão (A/B…) das provas; "Primeira Frequência" → número 1.
-CLASSIFIER_VERSION = 3
+CLASSIFIER_VERSION = 4
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
