@@ -94,12 +94,13 @@ jobs:
           args=(processar --json)
           if [ "${{ inputs.reclassify }}" = "true" ]; then args+=(--reclassificar); fi
           set +e
-          nexus "${args[@]}" > resultado.json
+          nexus "${args[@]}" > "$RUNNER_TEMP/resultado.json"
           status=$?
           set -e
           python3 - <<'PY'
           import json
-          r = json.load(open("resultado.json"))["report"]
+          import os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "resultado.json")))["report"]
           lines = [
               "## Resultado do processamento",
               f"- documentos novos: **{len(r['new_documents'])}**",
@@ -111,11 +112,9 @@ jobs:
           ]
           lines += [f"  - `{label}`: {msg}" for label, msg in r["errors"]]
           lines += [f"- adiado `{label}`: {msg}" for label, msg in r["skipped"]]
-          import os
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write("\n".join(lines) + "\n")
           PY
-          rm -f resultado.json
           # Erros de ficheiros individuais (status 2) não falham o workflow: estão em _erros/.
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
 
