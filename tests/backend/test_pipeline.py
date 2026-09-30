@@ -277,3 +277,27 @@ def test_os_junk_is_removed(catalog_root: Path, name: str) -> None:
     junk.write_bytes(b"lixo")
     run(catalog_root)
     assert not junk.exists() and docs(catalog_root) == []
+
+
+def test_catalog_request_from_interface(catalog_root: Path) -> None:
+    gerar.pdf_nativo(deposit(catalog_root, "grafos_ficha2.pdf"), gerar.FICHA_DESCONHECIDA)
+    run(catalog_root)
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "20251001T120000Z-ui.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\ninstitutions:\n"
+        "  - slug: ufe\n    name: Universidade Fictícia de Exemplo\n"
+        "    units:\n      - slug: tgi\n        name: Teoria dos Grafos Imaginários\n"
+        "proposals:\n  accept: [unit-teoria-dos-grafos-imaginarios]\n")
+    (requests / "mau.yaml").write_text("format: outra-coisa\ninstitutions: [{slug: x}]\n")
+    report = run(catalog_root).report
+    assert not (requests / "20251001T120000Z-ui.yaml").exists()
+    assert (requests / "_erros" / "mau.yaml").exists()
+    assert (requests / "_erros" / "mau.yaml.log").exists()
+    assert any("mau.yaml" in label for label, _ in report.errors)
+    [doc] = docs(catalog_root)
+    assert doc["classification"]["unit"]["value"] == "ufe/tgi"
+    assert "review" not in doc or doc["review"]["status"] == "resolved"
+    proposal = read_yaml(catalog_root / "revisao" / "propostas"
+                         / "unit-teoria-dos-grafos-imaginarios.yaml")
+    assert proposal["status"] == "accepted"

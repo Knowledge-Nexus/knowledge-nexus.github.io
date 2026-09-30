@@ -27,6 +27,11 @@ class Layout:
         return self.catalog_dir / "vocabularios.yaml"
 
     @property
+    def requests_dir(self) -> Path:
+        """Pedidos de alteração ao catálogo feitos pela interface (processados e apagados)."""
+        return self.catalog_dir / "_importar"
+
+    @property
     def users_dir(self) -> Path:
         return self.root / "utilizadores"
 

@@ -1,0 +1,130 @@
+# Workflow REUTILIZÁVEL: corre no contexto do repositório de dados privado que o chama
+# (.github/workflows/nexus.yml gerado por `nexus scaffold`). Os dados nunca saem desse
+# repositório; daqui só vem o código do motor.
+name: pipeline (reutilizável)
+
+on:
+  workflow_call:
+    inputs:
+      app-ref:
+        description: "Ramo/tag deste repositório com a versão do motor a usar"
+        type: string
+        default: main
+      reclassify:
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  processar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Recusar repositórios públicos
+        if: ${{ github.event.repository.private != true }}
+        run: |
+          echo "::error::O repositório de dados tem de ser PRIVADO (material com direitos de autor)."
+          exit 1
+
+      - name: Checkout dos dados (sem descarregar os originais)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/originais/
+
+      - name: Ferramentas necessárias para este lote
+        id: tools
+        run: |
+          set -euo pipefail
+          office=false; archives=false
+          if find deposito -type f \( -iname '*.doc' -o -iname '*.docx' -o -iname '*.ppt' \
+               -o -iname '*.pptx' -o -iname '*.pps' -o -iname '*.xls' -o -iname '*.odt' \
+               -o -iname '*.odp' -o -iname '*.ods' -o -iname '*.rtf' -o -iname '*.zip' \
+               -o -iname '*.rar' -o -iname '*.7z' \) 2>/dev/null | grep -q .; then
+            office=true
+          fi
+          if find deposito -type f -iname '*.rar' 2>/dev/null | grep -q .; then archives=true; fi
+          echo "office=$office" >> "$GITHUB_OUTPUT"
+          echo "archives=$archives" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar OCR e Pandoc
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            tesseract-ocr tesseract-ocr-por tesseract-ocr-eng pandoc
+
+      - name: Instalar LibreOffice (só se houver documentos Office no depósito)
+        if: steps.tools.outputs.office == 'true'
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            libreoffice-writer-nogui libreoffice-impress-nogui libreoffice-calc-nogui
+
+      - name: Instalar suporte a .rar
+        if: steps.tools.outputs.archives == 'true'
+        run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libarchive-tools
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Instalar o motor nexus
+        run: |
+          uv tool install --python 3.12 \
+            "nexus @ git+https://github.com/Knowledge-Nexus/knowledge-nexus.github.io@${{ inputs.app-ref }}"
+
+      - name: Cache de extracção
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/nexus
+          key: nexus-extract-${{ github.run_id }}
+          restore-keys: nexus-extract-
+
+      - name: Processar
+        env:
+          GIT_AUTHOR_NAME: nexus-bot
+          GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
+          GIT_COMMITTER_NAME: nexus-bot
+          GIT_COMMITTER_EMAIL: nexus-bot@users.noreply.github.com
+        run: |
+          nexus verificar --rapido || true
+          args=(processar --json)
+          if [ "${{ inputs.reclassify }}" = "true" ]; then args+=(--reclassificar); fi
+          set +e
+          nexus "${args[@]}" > resultado.json
+          status=$?
+          set -e
+          python3 - <<'PY'
+          import json
+          r = json.load(open("resultado.json"))["report"]
+          lines = [
+              "## Resultado do processamento",
+              f"- documentos novos: **{len(r['new_documents'])}**",
+              f"- reenvios deduplicados: {len(r['new_sources'])}",
+              f"- arrumados: **{len(r['filed'])}**",
+              f"- a rever: **{len(r['review'])}**",
+              f"- propostas de catálogo: {len(r['proposals'])}",
+              f"- erros: {len(r['errors'])}",
+          ]
+          lines += [f"  - `{label}`: {msg}" for label, msg in r["errors"]]
+          lines += [f"- adiado `{label}`: {msg}" for label, msg in r["skipped"]]
+          import os
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+              fh.write("\n".join(lines) + "\n")
+          PY
+          rm -f resultado.json
+          # Erros de ficheiros individuais (status 2) não falham o workflow: estão em _erros/.
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
+
+      - name: Guarda — os originais nunca são alterados nem apagados
+        run: |
+          before="${{ github.event.before }}"
+          if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
+            if git diff --name-status --no-renames "$before" HEAD -- originais | grep -v '^A'; then
+              echo "::error::Há alterações ou remoções em originais/ — proibido."
+              exit 1
+            fi
+          fi

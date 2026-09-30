@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nexus import clock
+from nexus.datarepo.catalog_io import import_bundle
 from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX
 from nexus.datarepo.store import DataRepo
 from nexus.datarepo.yamlio import read_yaml, write_text_if_changed
@@ -64,6 +65,7 @@ from nexus.pipeline.filing import filed_name
 from nexus.pipeline.hashing import sha256_file
 from nexus.pipeline.intake import DepositItem, scan_deposit
 from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
+from nexus.review import set_proposal_status
 from nexus.storage.blobstore import GitRepoBlobStore
 
 log = logging.getLogger("nexus.pipeline")
@@ -155,6 +157,7 @@ class Pipeline:
             self.workdir = Path(tmp)
             scan = scan_deposit(self.layout.deposit_root, set(self.repo.users),
                                 self.default_owner, self.settings.code_projects)
+            self._catalog_requests()
             for junk in scan.junk:
                 junk.unlink(missing_ok=True)
             for item in scan.items:
@@ -162,6 +165,38 @@ class Pipeline:
             self._remove_empty_dirs()
             self._reconcile_all()
         return self.report
+
+    # --- pedidos da interface (catálogo) ----------------------------------------------
+
+    def _catalog_requests(self) -> None:
+        """Aplica `catalogo/_importar/*.yaml` (formato nexus-catalogo + `proposals`).
+
+        A interface não reimplementa a lógica de fusão do catálogo: grava um pedido e o
+        motor aplica-o. Pedidos inválidos vão para `_importar/_erros/` com um `.log`.
+        """
+        folder = self.layout.requests_dir
+        if not folder.is_dir():
+            return
+        for request in sorted(folder.glob("*.yaml")):
+            try:
+                raw = read_yaml(request) or {}
+                if raw.get("institutions"):
+                    import_bundle(self.layout, raw)
+                decisions = raw.get("proposals") or {}
+                for pid in decisions.get("accept", []):
+                    set_proposal_status(self.repo, str(pid), "accepted")
+                for pid in decisions.get("reject", []):
+                    set_proposal_status(self.repo, str(pid), "rejected")
+                request.unlink()
+                self.report.warnings.append(f"pedido de catálogo aplicado: {request.name}")
+            except Exception as exc:
+                errors = folder / ERRORS_DIR
+                errors.mkdir(parents=True, exist_ok=True)
+                shutil.move(request, errors / request.name)
+                write_text_if_changed(errors / f"{request.name}{LOG_SUFFIX}",
+                                      f"{type(exc).__name__}: {exc}\n")
+                self.report.errors.append((f"catalogo/{request.name}", str(exc)))
+        self.repo.reload_catalog()
 
     # --- recepção -------------------------------------------------------------------
 

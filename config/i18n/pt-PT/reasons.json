@@ -1,0 +1,60 @@
+{
+  "unit": {
+    "code": "Código da UC «{{value}}» em {{source}}",
+    "acronym": "Sigla «{{value}}» em {{source}}",
+    "name": "Nome da UC «{{value}}» em {{source}}",
+    "alias": "Nome alternativo «{{value}}» em {{source}}",
+    "keyword": "Palavra-chave da UC «{{value}}» em {{source}}",
+    "lecturer": "Docente «{{value}}» em {{source}}",
+    "enrolled": "Estás inscrito nesta UC",
+    "not_enrolled": "Não estás inscrito nesta UC"
+  },
+  "term": {
+    "keyword": "Expressões «{{keywords}}» em {{source}}"
+  },
+  "type": {
+    "assessment_signals": "Há indícios de avaliação (tipo ou época)",
+    "code_project": "É um projecto de código",
+    "format": "O formato .{{ext}} é típico deste tipo",
+    "role_solution": "Tem indícios de ser uma resolução",
+    "role_statement": "Sem indícios de resolução: assumido enunciado",
+    "no_signal": "Nenhum indício do tipo de documento"
+  },
+  "role": {
+    "default_statement": "Sem indícios de resolução"
+  },
+  "origin": {
+    "unknown": "Origem da resolução desconhecida"
+  },
+  "year": {
+    "academic": "Ano lectivo «{{text}}» em {{source}}",
+    "date": "Data «{{text}}» em {{source}}",
+    "lone": "Ano «{{text}}» (ambíguo) em {{source}}"
+  },
+  "number": {
+    "pattern": "Número «{{text}}» em {{source}}"
+  },
+  "topic": {
+    "name": "Tópico «{{value}}» em {{source}}"
+  },
+  "review": {
+    "missing": "Falta: {{field}}",
+    "low_confidence": "Pouca confiança em {{field}} ({{confidence}})",
+    "unit_proposed": "Parece ser uma UC que ainda não está no catálogo",
+    "extraction_failed": "Não foi possível ler o conteúdo: {{error}}"
+  },
+  "ai": {
+    "justification": "IA: {{text}}"
+  },
+  "user": {
+    "set": "Definido por {{login}}"
+  },
+  "source": {
+    "filename": "nome do ficheiro",
+    "path": "pastas",
+    "archive": "arquivo de origem",
+    "header": "cabeçalho",
+    "body": "texto",
+    "metadata": "metadados"
+  }
+}

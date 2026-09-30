@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guarda:
+    name: Guarda (nada de material real neste repositório público)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/guarda-binarios.sh
+
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ferramentas de extracção
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            tesseract-ocr tesseract-ocr-por tesseract-ocr-eng pandoc libarchive-tools \
+            libreoffice-writer-nogui libreoffice-impress-nogui libreoffice-calc-nogui
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.12
+      - run: uv run ruff check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm -C frontend install --frozen-lockfile
+      - name: Índice de contrato (gerado pelo motor Python)
+        run: |
+          uv sync --python 3.12
+          uv run python tests/contrato/gerar_indice.py frontend/test-fixtures/contrato
+          uv run python tests/e2e/gerar_repo.py frontend/test-fixtures/e2e/repo.json
+      - run: pnpm -C frontend lint
+      - run: pnpm -C frontend typecheck
+      - run: pnpm -C frontend test
+      - run: pnpm -C frontend build
+      - name: E2E (API do GitHub simulada sobre um repositório de dados fictício)
+        run: |
+          pnpm -C frontend exec playwright install --with-deps chromium
+          pnpm -C frontend e2e

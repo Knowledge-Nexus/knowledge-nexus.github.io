@@ -20,7 +20,7 @@ frontend/dist/
 frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
-frontend/public/contrato/
+frontend/test-fixtures/
 
 # Dados e segredos locais
 .env
