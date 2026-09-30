@@ -182,7 +182,7 @@ export interface UserRow {
   name: string | null;
   preferences: { locale?: string; tutor_mode?: boolean };
   enrollments: { courses?: string[]; units?: { unit: string; academic_year?: string }[] };
-  sharing: { units?: Record<string, string> };
+  sharing: { units?: Record<string, string>; types?: Record<string, string> };
 }
 
 export interface NearDuplicate {

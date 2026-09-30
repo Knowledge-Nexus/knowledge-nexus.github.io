@@ -479,3 +479,28 @@ def visibilidade_cadeira(
         _fail(str(exc))
         return
     typer.echo(f"{cadeira}: {user.sharing.units.get(cadeira, 'private')}")
+
+
+@sharing_app.command("tipo")
+def visibilidade_tipo(
+    cadeira: Annotated[str, typer.Argument(help="Chave da cadeira, ex.: ufe/am1.")],
+    tipo: Annotated[str, typer.Argument(help="Tipo de documento, ex.: fichas.")],
+    valor: VisibilityArg,
+    repo: RepoOption = Path("."),
+    login: Annotated[str | None, typer.Option(help="Dono (por defeito, o do nexus.yaml).")]
+    = None,
+) -> None:
+    """Define a visibilidade de um tipo de material dentro de uma cadeira."""
+    from nexus.domain.visibility import type_key
+    from nexus.sharing import SharingError, set_type_visibility
+
+    data = _repo(repo)
+    owner = login or str(data.raw_settings.get("owner", ""))
+    try:
+        user = set_type_visibility(data, owner, cadeira, tipo,
+                                   None if valor == "cadeira" else valor)
+    except SharingError as exc:
+        _fail(str(exc))
+        return
+    typer.echo(f"{cadeira} ({tipo}): "
+               f"{user.sharing.types.get(type_key(cadeira, tipo), 'segue a cadeira')}")

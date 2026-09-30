@@ -148,14 +148,97 @@ export function UnitVisibility(props: { unitKey: string }) {
 
 type DocChoice = "inherit" | Choice;
 
+export function typeKey(unit: string, documentType: string): string {
+  return `${unit}::${documentType}`;
+}
+
+/** O que um documento herda: a escolha do tipo dentro da cadeira, senão a da cadeira. */
+function inheritedValue(
+  meta: ReturnType<typeof useApp>["meta"],
+  login: string,
+  unit: string | null,
+  documentType: string | null,
+): Choice {
+  if (!unit || !meta) return "private";
+  const byType = documentType ? meta.typeVisibility(login)[typeKey(unit, documentType)] : undefined;
+  return isPublic(byType ?? meta.unitVisibility(login)[unit]) ? "public" : "private";
+}
+
+/** Visibilidade de um tipo de material dentro de uma cadeira (ex.: só as fichas). */
+export function TypeVisibility(props: { unitKey: string; documentType: string }) {
+  const { t } = useTranslation();
+  const { meta, login, source, notifyCommit, readOnly } = useApp();
+  const key = typeKey(props.unitKey, props.documentType);
+  const stored = meta?.typeVisibility(login)[key];
+  const [value, setValue] = useState<DocChoice>(
+    stored === undefined ? "inherit" : isPublic(stored) ? "public" : "private",
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (readOnly) return null;
+  const unitValue: Choice = isPublic(meta?.unitVisibility(login)[props.unitKey])
+    ? "public"
+    : "private";
+  const effective = value === "inherit" ? unitValue : value;
+
+  async function choose(next: DocChoice) {
+    if (next === value) return;
+    const becomes = next === "inherit" ? unitValue : next;
+    if (
+      becomes === "public" &&
+      effective !== "public" &&
+      !window.confirm(t("visibility.confirm_text"))
+    )
+      return;
+    setBusy(true);
+    setError(null);
+    try {
+      await source.patchUser((user) => {
+        const sharing = (user.sharing as Record<string, unknown> | undefined) ?? {};
+        const types = { ...((sharing.types as Record<string, string> | undefined) ?? {}) };
+        if (next === "inherit") delete types[key];
+        else types[key] = next;
+        user.sharing = { ...sharing, types };
+      });
+      setValue(next);
+      notifyCommit();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs">
+      <span className={effective === "public" ? "text-pen" : "text-muted"} aria-hidden>
+        {effective === "public" ? <IconGlobe size={14} /> : <IconLock size={14} />}
+      </span>
+      <select
+        aria-label={t("visibility.type_label")}
+        title={t("visibility.type_hint")}
+        className="rounded-full border border-line bg-sheet px-2 py-1 text-xs"
+        value={value}
+        disabled={busy}
+        onChange={(e) => void choose(e.target.value as DocChoice)}
+      >
+        <option value="inherit">
+          {t("visibility.type_inherit", { value: t(`visibility.${unitValue}`).toLowerCase() })}
+        </option>
+        <option value="private">{t("visibility.type_private")}</option>
+        <option value="public">{t("visibility.type_public")}</option>
+      </select>
+      {error ? <span className="text-clay">{t("visibility.type_error")}</span> : null}
+    </span>
+  );
+}
+
 /** Visibilidade de um documento: segue a cadeira ou é uma excepção. */
 export function DocumentVisibility(props: { doc: DocumentRow }) {
   const { t } = useTranslation();
   const { meta, login, source, notifyCommit, readOnly } = useApp();
   const { doc } = props;
-  const unitValue: Choice = isPublic(doc.unit ? meta?.unitVisibility(login)[doc.unit] : null)
-    ? "public"
-    : "private";
+  const unitValue = inheritedValue(meta, login, doc.unit, doc.document_type);
   const initial: DocChoice = doc.visibility_inherited
     ? "inherit"
     : isPublic(doc.visibility)

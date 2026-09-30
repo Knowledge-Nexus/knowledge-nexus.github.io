@@ -46,9 +46,14 @@ Só é preciso se quiseres tornar algum material público. Por defeito tudo é p
    publishing:
      public_repo: Knowledge-Nexus/estudo-publico
    ```
-6. Escolhe o que é público: na **Biblioteca**, em cada cadeira ("Visibilidade da
-   cadeira"), ou em cada documento (excepções). Também dá com o Claude Code:
-   `nexus visibilidade cadeira <inst>/<cadeira> publico`.
+6. Escolhe o que é público, na **Biblioteca**:
+   - em cada cadeira ("Visibilidade da cadeira");
+   - em cada tipo de material dentro da cadeira (ex.: só as fichas), no cartão do tipo;
+   - em documentos escolhidos: marca-os e usa "Tornar públicos" ou "Tornar privados";
+   - em cada documento, na página dele (excepções).
+
+   Também dá com o Claude Code: `nexus visibilidade cadeira <inst>/<cadeira> publico` ou
+   `nexus visibilidade tipo <inst>/<cadeira> <tipo> publico`.
 
 A página pública é `https://knowledge-nexus.github.io/#/publico`. Não aparece nos motores
 de pesquisa (`noindex`), mas qualquer pessoa com a ligação a vê.

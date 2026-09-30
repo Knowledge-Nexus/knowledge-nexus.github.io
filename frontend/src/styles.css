@@ -31,6 +31,15 @@
   --color-sage-soft: #e2ede1;
   --color-clay: #b35d3d;
   --color-clay-soft: #f6e3d9;
+  /* Formatos de ficheiro (etiquetas dos ícones). */
+  --color-file-pdf: #b3413a;
+  --color-file-doc: #2b5797;
+  --color-file-xls: #217346;
+  --color-file-ppt: #c25a2c;
+  --color-file-img: #7a5ea8;
+  --color-file-code: #2f6f78;
+  --color-file-zip: #8a6d3b;
+  --color-file-txt: #5f6673;
   /* Azul-marinho do banner (barra lateral, página de entrada). */
   --color-navy: #0b1a31;
   --color-navy-soft: #16294a;

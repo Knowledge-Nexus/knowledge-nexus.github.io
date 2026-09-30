@@ -56,11 +56,11 @@ test("capturas", async ({ page }) => {
     .getByRole("link", { name: /Análise Matemática I/ })
     .first()
     .click();
-  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").waitFor();
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").waitFor();
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByRole("button", { name: "Pública" }).waitFor();
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
-  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
   await page.locator("canvas").waitFor();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${out}/3-documento.png` });

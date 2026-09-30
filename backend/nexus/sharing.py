@@ -48,3 +48,24 @@ def set_unit_visibility(repo: DataRepo, login: str, unit: str, value: str | None
     user = user.model_copy(update={"sharing": user.sharing.model_copy(update={"units": units})})
     write_yaml_if_changed(repo.layout.user_path(login), user)
     return user
+
+
+def set_type_visibility(repo: DataRepo, login: str, unit: str, document_type: str,
+                        value: str | None) -> User:
+    """Visibilidade de um tipo de documento dentro de uma cadeira (ex.: só as fichas)."""
+    from nexus.domain.visibility import type_key
+
+    if unit not in repo.catalog.units:
+        raise SharingError(f"cadeira inexistente no catálogo: {unit}")
+    if repo.vocabularies.get("document_types", document_type) is None:
+        raise SharingError(f"tipo de documento inexistente: {document_type}")
+    user = repo.users.get(login) or User(login=login)
+    types = dict(user.sharing.types)
+    parsed = parse_visibility(value)
+    if parsed is None:
+        types.pop(type_key(unit, document_type), None)
+    else:
+        types[type_key(unit, document_type)] = parsed
+    user = user.model_copy(update={"sharing": user.sharing.model_copy(update={"types": types})})
+    write_yaml_if_changed(repo.layout.user_path(login), user)
+    return user

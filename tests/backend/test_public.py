@@ -192,3 +192,35 @@ def test_push_to_public_repo_carries_the_token(git_root: Path, tmp_path: Path,
     monkeypatch.setattr(Git, "run", spy)
     assert publish_public(git_root, token="segredo", remote_url=str(remote)).published
     assert seen and "AUTHORIZATION: basic" in seen[0].get("GIT_CONFIG_VALUE_0", "")
+
+
+def test_type_visibility_is_more_specific_than_unit(catalog_root: Path) -> None:
+    from nexus.sharing import set_type_visibility
+
+    repo = _prepare(catalog_root)
+    am1 = _doc_of(repo, "ufe/am1")
+    doc_type = repo.documents[am1].classification.value("document_type")
+    set_type_visibility(repo, OWNER, "ufe/am1", doc_type, "public")
+    repo = DataRepo(catalog_root)
+    assert effective_visibility(repo.documents[am1], repo.users) == ("public", True)
+    # a cadeira privada não anula a escolha do tipo; o documento anula as duas
+    set_unit_visibility(repo, OWNER, "ufe/am1", "private")
+    repo = DataRepo(catalog_root)
+    assert effective_visibility(repo.documents[am1], repo.users).value == "public"
+    set_document_visibility(repo, am1, "private")
+    repo = DataRepo(catalog_root)
+    assert effective_visibility(repo.documents[am1], repo.users) == ("private", False)
+
+
+def test_cli_type_visibility(catalog_root: Path) -> None:
+    repo = _prepare(catalog_root)
+    doc_type = repo.documents[_doc_of(repo, "ufe/am1")].classification.value("document_type")
+    runner = CliRunner()
+    out = runner.invoke(app, ["visibilidade", "tipo", "ufe/am1", str(doc_type), "publico",
+                              "--repo", str(catalog_root)])
+    assert out.exit_code == 0, out.output
+    assert read_yaml(Layout(catalog_root).user_path(OWNER))["sharing"]["types"] == {
+        f"ufe/am1::{doc_type}": "public"}
+    bad = runner.invoke(app, ["visibilidade", "tipo", "ufe/am1", "nao-existe", "publico",
+                              "--repo", str(catalog_root)])
+    assert bad.exit_code == 1

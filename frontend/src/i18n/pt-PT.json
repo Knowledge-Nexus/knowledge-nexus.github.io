@@ -171,7 +171,18 @@
     "year_group": "{{year}}.º ano",
     "semester": "{{semester}}.º semestre",
     "back": "Todas as cadeiras",
-    "by_type": "Por tipo de material"
+    "by_type": "Por tipo de material",
+    "variant": "versão {{value}}",
+    "select_doc": "Seleccionar {{name}}",
+    "select_type": "Seleccionar todos: {{type}}",
+    "download_all": "Descarregar tudo ({{count}})",
+    "download_type": "Descarregar {{type}} (zip)",
+    "download_selected": "Descarregar",
+    "zipping": "A preparar o zip… {{done}} de {{total}}",
+    "selected": "{{count}} seleccionado(s)",
+    "make_public": "Tornar públicos",
+    "make_private": "Tornar privados",
+    "clear_selection": "Limpar selecção"
   },
   "document": {
     "not_found": "Documento não encontrado.",
@@ -294,7 +305,7 @@
     "unit_private_hint": "Só tu vês o material desta cadeira.",
     "unit_public_hint": "Qualquer pessoa com a ligação da página pública vê e descarrega o material desta cadeira (excepto documentos que marques como privados).",
     "document_label": "Visibilidade",
-    "inherit": "Seguir a cadeira ({{value}})",
+    "inherit": "Seguir a cadeira ou o tipo ({{value}})",
     "private_only": "Privado (só eu)",
     "public_everyone": "Público (qualquer pessoa com a ligação)",
     "users_soon": "Pessoas específicas (quando houver contas)",
@@ -304,7 +315,14 @@
     "confirm_text": "Vais tornar isto público: qualquer pessoa com a ligação da página pública pode ver e descarregar. Não aparece nos motores de pesquisa e podes voltar a torná-lo privado quando quiseres (sai da página pública na próxima actualização). Se um docente pediu que o material fique só para os alunos, mantém-no privado.",
     "confirm": "Tornar público",
     "saved": "Guardado. A página pública é actualizada quando o processamento terminar (1–3 minutos).",
-    "badge": "Público"
+    "badge": "Público",
+    "type_label": "Visibilidade deste tipo de material",
+    "type_hint": "Escolhe se este tipo de material (ex.: só as fichas) fica público ou privado, independentemente da cadeira. Os documentos com escolha própria mantêm-na.",
+    "type_inherit": "Como a cadeira ({{value}})",
+    "type_private": "Privado",
+    "type_public": "Público",
+    "type_error": "Não foi possível guardar.",
+    "type_row": "Visibilidade deste tipo:"
   },
   "public": {
     "title": "Material partilhado",

@@ -9,7 +9,7 @@
 | Unidade curricular | `catalogo/<inst>/ucs/*.yaml` | código, sigla, aliases, palavras-chave, docentes, ECTS, tópicos hierárquicos |
 | Edição da cadeira | dentro da cadeira (`editions`) | ano lectivo, docentes, método de avaliação, avaliações (tipo, época, número, data, peso, folha de consulta) |
 | Vocabulários | `catalogo/vocabularios.yaml` | tipos de documento, papéis, origens de resolução, tipos de avaliação, épocas; com rótulos i18n e âmbito opcional por instituição |
-| Utilizador | `utilizadores/<login>.yaml` | login GitHub, preferências (modo tutor), inscrições em cursos e em edições de cadeira, `sharing.units` (visibilidade escolhida por cadeira) |
+| Utilizador | `utilizadores/<login>.yaml` | login GitHub, preferências (modo tutor), inscrições em cursos e em edições de cadeira, `sharing.units` e `sharing.types` (visibilidade escolhida por cadeira e por tipo de material) |
 | Grupo | `grupos/<slug>.yaml` | membros e papéis (usado na fase 5) |
 | Blob | `originais/` + `blob` no documento | SHA-256, tamanho, extensão, mime; único por repositório |
 | Documento | `documentos/<uuid7>.yaml` | cópia lógica por utilizador: origens, `parent` (arquivo), `kind`, visibilidade, estado + histórico, classificação por campo, revisão, nome arrumado, notas, manifesto de projecto de código |
@@ -31,7 +31,11 @@
 - Tudo o que é pessoal (classificação da cópia lógica, notas, progresso) fica por utilizador.
 - Visibilidade (formato 2):
   - por cadeira, em `utilizadores/<login>.yaml` → `sharing.units: {<cadeira>: public}`;
-  - por documento, em `documentos/<id>.yaml` → `visibility` (sem campo = segue a cadeira);
+  - por tipo de material dentro de uma cadeira, no mesmo ficheiro →
+    `sharing.types: {"<cadeira>::<tipo>": public}` (mais específico do que a cadeira);
+  - por documento, em `documentos/<id>.yaml` → `visibility` (sem campo = segue o tipo ou a
+    cadeira);
+  - ordem: documento → tipo na cadeira → cadeira → privado;
   - sem escolha nenhuma, é **privado**. A visibilidade efectiva vai para o índice
     (`visibility`, `visibility_inherited`);
   - valores: `private`, `public`; reservados para a fase 5 (contam como privados):

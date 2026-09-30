@@ -119,19 +119,6 @@ export const IconPen = (p: IconProps) => (
   </Svg>
 );
 
-export function FileGlyph(props: { ext: string; kind: string; size?: number }) {
-  const { ext, kind, size = 18 } = props;
-  if (kind === "code_project" || ["py", "js", "ts", "java", "c", "cpp", "ipynb"].includes(ext)) {
-    return <IconCode size={size} />;
-  }
-  if (kind === "archive") return <IconArchive size={size} />;
-  if (["ppt", "pptx", "odp", "pps", "key"].includes(ext)) return <IconSlides size={size} />;
-  if (["png", "jpg", "jpeg", "heic", "webp", "gif", "tif", "tiff"].includes(ext)) {
-    return <IconImage size={size} />;
-  }
-  return <IconFile size={size} />;
-}
-
 export const IconGlobe = (p: IconProps) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="8" />
@@ -152,5 +139,13 @@ export const IconHelp = (p: IconProps) => (
     <circle cx="12" cy="12" r="8.5" />
     <path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6" />
     <path d="M12 16.9v.2" />
+  </Svg>
+);
+
+export const IconDownload = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 4v11" />
+    <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+    <path d="M5 19h14" />
   </Svg>
 );

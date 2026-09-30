@@ -35,8 +35,10 @@ class Sharing(Record):
 
     # {chave da cadeira: visibilidade}: os documentos sem escolha própria seguem isto.
     units: dict[str, str] = Field(default_factory=dict)
+    # {"<cadeira>::<tipo de documento>": visibilidade}: ex. só as fichas de uma cadeira.
+    types: dict[str, str] = Field(default_factory=dict)
 
-    @field_validator("units")
+    @field_validator("units", "types")
     @classmethod
     def _check_units(cls, value: dict[str, str]) -> dict[str, str]:
         for key, visibility in value.items():

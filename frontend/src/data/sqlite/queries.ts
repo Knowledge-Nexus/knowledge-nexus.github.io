@@ -130,6 +130,11 @@ export class MetaIndex {
       .map(toDocument);
   }
 
+  /** Escolhas por tipo dentro de uma cadeira ({"<cadeira>::<tipo>": visibilidade}). */
+  typeVisibility(owner: string): Record<string, string> {
+    return this.users().find((u) => u.login === owner)?.sharing.types ?? {};
+  }
+
   /** Escolhas de visibilidade por cadeira feitas pelo dono ({chave: visibilidade}). */
   unitVisibility(owner: string): Record<string, string> {
     return this.users().find((u) => u.login === owner)?.sharing.units ?? {};

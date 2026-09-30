@@ -18,7 +18,8 @@ convenções ou comandos.
 - **Material público (opcional):** o que o dono marca como público (por cadeira ou por
   documento) é publicado por `nexus publicar` num repositório PÚBLICO à parte
   (`publishing.public_repo`, ex.: `estudo-publico`), servido pelo Pages em `/<nome>/` e
-  lido pela interface em `#/publico` sem token (`data/public.ts`). Um só commit,
+  lido pela interface em `#/publico` sem token (`data/public.ts`). Ordem da visibilidade:
+  documento → tipo na cadeira (`sharing.types["<cadeira>::<tipo>"]`) → cadeira → privado. Um só commit,
   reescrito a cada vez; sem nada pessoal. Código: `nexus/public.py`, `domain/visibility.py`.
 - **A interface fala directamente com a API do GitHub**, com um token fine-grained que fica
   só no browser.
@@ -99,6 +100,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |
 | Exportar árvore | `uv run nexus exportar-arvore <destino> --repo <pasta>` |
 | Visibilidade | `uv run nexus visibilidade cadeira <inst>/<cadeira> publico\|privado --repo <pasta>` |
+| Visibilidade de um tipo | `uv run nexus visibilidade tipo <inst>/<cadeira> <tipo> publico\|privado\|cadeira --repo <pasta>` |
 | Publicar o material público | `NEXUS_PUBLICO_TOKEN=… uv run nexus publicar --repo <pasta>` |
 
 Dependências de sistema (Ubuntu/WSL2):
@@ -134,6 +136,10 @@ Dependências de sistema (Ubuntu/WSL2):
     "Como funciona" (`/ajuda`, textos em `guide.*`).
   - Sem sessão, a entrada do site é a biblioteca pública (`#/publico`); o ecrã de
     ligação está em `#/entrar` (botão "Entrar" no menu).
+  - Nas listas, o título vem da classificação (`lib/titles.ts`: "Exame · Época de recurso")
+    e a data e o nome original ficam na linha secundária; o formato aparece em
+    `FileBadge` (cores `--color-file-*`). Descarga em zip no browser: `lib/download.ts`
+    (fflate, sem compressão).
   - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
     `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.
   - Marca: ficheiros em `frontend/public/brand/`, configurados em `BRAND` (`components/Brand.tsx`).

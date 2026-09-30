@@ -85,8 +85,8 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
     .getByRole("link", { name: /Análise Matemática I/ })
     .first()
     .click();
-  await expect(page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf")).toBeVisible();
-  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await expect(page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf")).toBeVisible();
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
 
   // Documento: classificação explicada + PDF renderizado pelo pdf.js
   await expect(page.getByText("Enunciados de avaliação")).toBeVisible();
@@ -159,8 +159,8 @@ test("escolher a visibilidade de uma cadeira e de um documento", async ({ page }
     .getByRole("link", { name: /Análise Matemática I/ })
     .first()
     .click();
-  await page.getByText("2023-2024_exame-recurso-resolucao.pdf").click();
-  const select = page.getByRole("combobox", { name: "Visibilidade" });
+  await page.getByTitle("2023-2024_exame-recurso-resolucao.pdf").click();
+  const select = page.getByRole("combobox", { name: "Visibilidade", exact: true });
   await expect(select).toHaveValue("inherit");
   for (const future of ["users", "link"])
     await expect(select.locator(`option[value="${future}"]`)).toHaveAttribute("disabled", "");
@@ -197,7 +197,7 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Análise Matemática I/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Álgebra Linear/ })).toHaveCount(0);
   await page.getByRole("link", { name: /Análise Matemática I/ }).click();
-  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.getByRole("link", { name: "Corrigir classificação" })).toHaveCount(0);
   await expect(page.getByText("Notas pessoais")).toHaveCount(0);
@@ -255,4 +255,42 @@ test("confirmar vários documentos de uma vez em «A rever»", async ({ page }) 
     expect(record.classification.unit).toMatchObject({ value: "ufe/fg", method: "user" });
     expect(record.review.status).toBe("resolved");
   }
+});
+
+test("tipo de material público, selecção e descarga em zip", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await expect(page.getByRole("button", { name: /Descarregar tudo/ })).toBeVisible();
+
+  // Um tipo de material inteiro fica público, com confirmação.
+  page.once("dialog", (dialog) => void dialog.accept());
+  const typeSelect = page.getByRole("combobox", { name: "Visibilidade deste tipo de material" });
+  await typeSelect.first().selectOption("public");
+  await expect
+    .poll(
+      () =>
+        Object.keys(YAML.parse(fake.text(REPO, "utilizadores/aluna.yaml")!).sharing?.types ?? {})
+          .length,
+    )
+    .toBe(1);
+  const types = YAML.parse(fake.text(REPO, "utilizadores/aluna.yaml")!).sharing.types;
+  expect(Object.keys(types)[0]).toMatch(/^ufe\/am1::/);
+  expect(Object.values(types)).toEqual(["public"]);
+
+  // Selecção de documentos e descarga num zip.
+  await page
+    .getByRole("checkbox", { name: /^Seleccionar todos/ })
+    .first()
+    .check();
+  await expect(page.getByText(/seleccionado\(s\)/)).toBeVisible();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Descarregar", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.zip$/);
 });
