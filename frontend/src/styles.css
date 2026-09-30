@@ -24,6 +24,8 @@
   --color-sage-soft: #e2ede1;
   --color-clay: #b35d3d;
   --color-clay-soft: #f6e3d9;
+  /* Azul-marinho do banner (fundo à volta dele). */
+  --color-navy: #09182b;
 }
 
 :root {

@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Brand, BrandBanner } from "../../components/Brand";
+import { BrandBanner } from "../../components/Brand";
 import { IconGlobe } from "../../components/icons";
 import { Button, Card, ErrorBox } from "../../components/ui";
 import { type FetchLike, GitHubClient, GitHubError } from "../../data/github/client";
@@ -73,16 +73,13 @@ export function ConnectPage(props: {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <div className="hidden lg:block">
+    <div className="min-h-screen">
+      <div className="bg-navy">
         <BrandBanner />
       </div>
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="flex justify-center px-6 py-10 sm:px-10">
         <div className="w-full max-w-md space-y-6">
-          <div className="space-y-2">
-            <Brand size={36} />
-            <p className="text-sm text-ink-soft">{t("app.tagline")}</p>
-          </div>
+          <p className="text-center text-sm text-ink-soft">{t("app.tagline")}</p>
           <Card title={t("connect.title")}>
             <p className="mb-4 text-sm text-ink-soft">{t("connect.intro")}</p>
             <form className="space-y-4" onSubmit={submit}>

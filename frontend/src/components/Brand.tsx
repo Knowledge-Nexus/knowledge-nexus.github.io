@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/** Para usar o teu banner: coloca-o em public/brand/ e indica aqui o caminho. */
+/**
+ * Ficheiros da marca em public/brand/. Os originais (icon.jpg, banner.jpg) ficam lá como
+ * fonte; o site usa versões optimizadas (ícone recortado em círculo, banner em WebP).
+ */
 export const BRAND = {
-  icon: "/brand/icon.svg",
-  banner: null as string | null,
+  icon: "/brand/icon-64.png",
+  banner: "/brand/banner.webp" as string | null,
 };
 
 function DefaultMark(props: { size: number }) {
@@ -28,7 +31,7 @@ export function BrandIcon(props: { size?: number }) {
       width={size}
       height={size}
       alt=""
-      className="rounded-lg"
+      className="rounded-full"
       onError={() => setFailed(true)}
     />
   );
@@ -54,8 +57,10 @@ export function BrandBanner() {
     return (
       <img
         src={BRAND.banner}
-        alt=""
-        className="h-full w-full object-cover"
+        alt={t("app.name")}
+        width={1584}
+        height={672}
+        className="mx-auto block h-auto w-full max-w-5xl"
         onError={() => setFailed(true)}
       />
     );
