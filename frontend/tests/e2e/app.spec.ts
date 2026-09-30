@@ -10,7 +10,12 @@ import { FakeGitHub } from "../../src/data/github/fake";
 const REPO = "aluna/estudo-dados";
 const snapshot = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "../../test-fixtures/e2e/repo.json"), "utf-8"),
-) as { owner: string; main: Record<string, string>; indices: Record<string, string> };
+) as {
+  owner: string;
+  main: Record<string, string>;
+  indices: Record<string, string>;
+  publico: Record<string, string>;
+};
 
 const decode = (files: Record<string, string>) =>
   Object.fromEntries(Object.entries(files).map(([p, b64]) => [p, Buffer.from(b64, "base64")]));
@@ -72,7 +77,7 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
 
-  // Biblioteca → UC → exame arrumado
+  // Biblioteca → cadeira → exame arrumado
   await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
   await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Biblioteca" })).toBeVisible();
@@ -97,11 +102,11 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   await page.getByLabel("Procura em todo o teu material…").fill("ano letivo");
   await expect(page.locator("mark").first()).toBeVisible();
 
-  // A rever: proposta de UC em falta e correcção de um documento
+  // A rever: proposta de cadeira em falta e correcção de um documento
   await page.getByRole("link", { name: /A rever/ }).click();
-  await expect(page.getByText(/UC em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
+  await expect(page.getByText(/Cadeira em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
   await page.getByRole("button", { name: "grafos_ficha2.pdf" }).click();
-  await page.getByLabel("UC").selectOption("ufe/fg");
+  await page.getByLabel("Cadeira").selectOption("ufe/fg");
   await page.getByLabel("Tipo").selectOption("fichas-exercicios");
   await page.getByRole("button", { name: "Confirmar e arrumar" }).click();
   await expect(page.getByText("Correcção enviada.")).toBeVisible();
@@ -130,4 +135,74 @@ test("depositar ficheiros cria um único commit no depósito", async ({ page }) 
   const commit = fake.repos.get(REPO)!.commits.at(-1)!;
   expect(commit.paths).toHaveLength(1);
   expect(commit.paths[0]).toMatch(/^deposito\/aluna\/\d{8}T\d{6}Z-[a-z0-9]{4}\/resumo_fg\.txt$/);
+});
+
+test("escolher a visibilidade de uma cadeira e de um documento", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Física Geral/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Pública" }).click();
+  await expect(page.getByText(/Vais tornar isto público/)).toBeVisible();
+  await page.getByRole("button", { name: "Tornar público" }).click();
+  await expect(page.getByText(/A página pública é actualizada/)).toBeVisible();
+  const user = YAML.parse(fake.text(REPO, "utilizadores/aluna.yaml")!);
+  expect(user.sharing.units).toEqual({ "ufe/am1": "public", "ufe/fg": "public" });
+  expect(user.preferences.tutor_mode).toBe(true);
+
+  // Documento de uma cadeira pública (AM1): excepção "só eu"
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page.getByText("2023-2024_exame-recurso-resolucao.pdf").click();
+  const select = page.getByRole("combobox", { name: "Visibilidade" });
+  await expect(select).toHaveValue("inherit");
+  for (const future of ["users", "link"])
+    await expect(select.locator(`option[value="${future}"]`)).toHaveAttribute("disabled", "");
+  await select.selectOption("private");
+  await expect(page.getByText(/A página pública é actualizada/)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  const record = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(record.visibility).toBe("private");
+});
+
+test("visitante vê só o material público, sem token", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const files = decode(snapshot.publico);
+  let apiCalls = 0;
+  await page.route("https://api.github.com/**", (route) => {
+    apiCalls += 1;
+    return route.abort();
+  });
+  await page.route("**/estudo-publico/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/estudo-publico\//, "");
+    const body = files[path];
+    if (!body) return route.fulfill({ status: 404, body: "" });
+    await route.fulfill({ status: 200, body });
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Ver o material público" }).click();
+  await expect(page.getByRole("heading", { name: "Material partilhado" })).toBeVisible();
+  await expect(page.getByText("Página pública").first()).toBeVisible();
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Análise Matemática I/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Álgebra Linear/ })).toHaveCount(0);
+  await page.getByRole("link", { name: /Análise Matemática I/ }).click();
+  await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Corrigir classificação" })).toHaveCount(0);
+  await expect(page.getByText("Notas pessoais")).toHaveCount(0);
+  await page.getByRole("link", { name: "Pesquisa" }).click();
+  await page.getByLabel("Procura em todo o material partilhado…").fill("sucessao");
+  await expect(page.locator("mark").first()).toBeVisible();
+  await page.getByLabel("Procura em todo o material partilhado…").fill("matrizes");
+  await expect(page.getByText(/0 resultado\(s\)|Sem resultados/)).toBeVisible();
+  expect(apiCalls).toBe(0);
+  expect(errors).toEqual([]);
 });

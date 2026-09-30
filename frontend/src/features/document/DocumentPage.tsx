@@ -15,6 +15,7 @@ import {
   ReasonList,
   Spinner,
 } from "../../components/ui";
+import { DocumentVisibility, PublicBadge } from "../../components/Visibility";
 import { useApp } from "../../data/context";
 import { CLASSIFICATION_FIELDS, type DocumentRow } from "../../data/types";
 import { formatBytes } from "../../lib/files";
@@ -95,7 +96,7 @@ export function DocumentPage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
-  const { meta, source, login, notifyCommit, indexLoading } = useApp();
+  const { meta, source, login, notifyCommit, indexLoading, readOnly, to } = useApp();
   const labels = useLabels(meta);
   const doc = id ? meta?.document(id) : undefined;
   const page = Number(params.get("pagina") ?? 1) || 1;
@@ -135,7 +136,7 @@ export function DocumentPage() {
 
   const duplicates = meta?.nearDuplicates(doc.id) ?? [];
   const children = doc.kind === "archive" ? (meta?.children(doc.id) ?? []) : [];
-  const isOwner = doc.owner === login;
+  const isOwner = doc.owner === login && !readOnly;
 
   return (
     <div className="space-y-4">
@@ -147,6 +148,7 @@ export function DocumentPage() {
           <div className="mt-1 flex flex-wrap gap-1">
             <Badge>{t(`status.${doc.status}`)}</Badge>
             {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
+            {isOwner && <PublicBadge value={doc.visibility} />}
             <Badge>{formatBytes(doc.size)}</Badge>
             {doc.pages_needing_transcription > 0 && (
               <Badge tone="info">
@@ -160,7 +162,7 @@ export function DocumentPage() {
             {t("document.download")}
           </Button>
           {isOwner && (
-            <Link to={`/rever?doc=${doc.id}`} className={buttonClass("primary")}>
+            <Link to={to(`/rever?doc=${doc.id}`)} className={buttonClass("primary")}>
               {t("document.correct")}
             </Link>
           )}
@@ -180,15 +182,22 @@ export function DocumentPage() {
                       {t(`fields.${field}`)} <ConfidenceBadge field={value} />
                     </dt>
                     <dd className="font-medium">{labels.value(field, value.value)}</dd>
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-muted">{t("document.why")}</summary>
-                      <ReasonList reasons={value.reasons} />
-                    </details>
+                    {value.reasons?.length ? (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted">{t("document.why")}</summary>
+                        <ReasonList reasons={value.reasons} />
+                      </details>
+                    ) : null}
                   </div>
                 );
               })}
             </dl>
           </Card>
+          {isOwner && (
+            <Card title={t("visibility.document_label")}>
+              <DocumentVisibility key={doc.id} doc={doc} />
+            </Card>
+          )}
           {isOwner && (
             <Card title={t("document.notes")}>
               <textarea
@@ -214,7 +223,7 @@ export function DocumentPage() {
               <ul className="space-y-1 text-sm">
                 {duplicates.map((d) => (
                   <li key={d.other} className="flex items-center justify-between gap-2">
-                    <Link className="truncate underline" to={`/documento/${d.other}`}>
+                    <Link className="truncate underline" to={to(`/documento/${d.other}`)}>
                       {meta?.document(d.other)?.display_name ?? d.other} (
                       {Math.round(d.score * 100)}%)
                     </Link>
@@ -238,18 +247,20 @@ export function DocumentPage() {
               </ul>
             </Card>
           )}
-          <Card title={t("document.sources")}>
-            <ul className="space-y-1 text-xs">
-              {doc.sources.map((s) => (
-                <li key={`${s.via}-${s.path}-${s.batch ?? ""}`} className="font-mono break-all">
-                  {s.path}{" "}
-                  <span className="text-muted">
-                    ({s.via}, {formatWhen(s.received_at)})
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {doc.sources.length > 0 && (
+            <Card title={t("document.sources")}>
+              <ul className="space-y-1 text-xs">
+                {doc.sources.map((s) => (
+                  <li key={`${s.via}-${s.path}-${s.batch ?? ""}`} className="font-mono break-all">
+                    {s.path}{" "}
+                    <span className="text-muted">
+                      ({s.via}, {formatWhen(s.received_at)})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
         <Card
           actions={
@@ -292,7 +303,7 @@ export function DocumentPage() {
               <ul className="text-sm">
                 {children.map((c) => (
                   <li key={c.id}>
-                    <Link className="underline" to={`/documento/${c.id}`}>
+                    <Link className="underline" to={to(`/documento/${c.id}`)}>
                       {c.source_path?.split("!/").pop() ?? c.display_name}
                     </Link>
                   </li>

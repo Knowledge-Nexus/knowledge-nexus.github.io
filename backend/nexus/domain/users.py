@@ -5,9 +5,10 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from nexus.domain.common import Record
+from nexus.domain.documents import VISIBILITY_RE
 
 
 class Preferences(Record):
@@ -29,12 +30,28 @@ class Enrollments(Record):
         return {u.unit for u in self.units}
 
 
+class Sharing(Record):
+    """Escolhas de partilha do utilizador para o seu material."""
+
+    # {chave da cadeira: visibilidade} — os documentos sem escolha própria seguem isto.
+    units: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("units")
+    @classmethod
+    def _check_units(cls, value: dict[str, str]) -> dict[str, str]:
+        for key, visibility in value.items():
+            if not VISIBILITY_RE.match(visibility):
+                raise ValueError(f"visibilidade inválida para {key}: {visibility}")
+        return value
+
+
 class User(Record):
     login: str
     name: str | None = None
     created_at: dt.datetime | None = None
     preferences: Preferences = Field(default_factory=Preferences)
     enrollments: Enrollments = Field(default_factory=Enrollments)
+    sharing: Sharing = Field(default_factory=Sharing)
 
 
 class GroupMember(Record):

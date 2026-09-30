@@ -12,6 +12,11 @@ import type { IndexManifest } from "./types";
 interface AppData {
   source: DataSource;
   login: string;
+  /** Modo de visitante (material público): nada se edita. */
+  readOnly: boolean;
+  /** Prefixo das rotas ("" ou "/publico"); usar `to()` nos links internos. */
+  base: string;
+  to: (path: string) => string;
   manifest: IndexManifest | null | undefined;
   meta: MetaIndex | null;
   indexLoading: boolean;
@@ -37,15 +42,20 @@ const ACTIVE = new Set(["queued", "in_progress", "waiting", "requested", "pendin
 export function DataProvider(props: {
   source: DataSource;
   onLogout: () => void;
+  readOnly?: boolean;
+  base?: string;
   children: ReactNode;
 }) {
   const { source } = props;
+  const readOnly = props.readOnly ?? false;
+  const base = props.base ?? "";
   const queryClient = useQueryClient();
   const [pendingSince, setPendingSince] = useState<number | null>(null);
 
   const runsQuery = useQuery({
     queryKey: ["runs", source.repo],
     queryFn: () => source.runs(),
+    enabled: !readOnly,
     refetchInterval: (query) => {
       const runs = query.state.data ?? [];
       return runs.some((r) => ACTIVE.has(r.status)) || pendingSince ? 8000 : 60000;
@@ -97,6 +107,9 @@ export function DataProvider(props: {
     () => ({
       source,
       login: source.login,
+      readOnly,
+      base,
+      to: (path: string) => `${base}${path}`,
       manifest,
       meta: metaQuery.data ?? null,
       indexLoading: manifestQuery.isLoading || metaQuery.isLoading,
@@ -110,6 +123,8 @@ export function DataProvider(props: {
     }),
     [
       source,
+      readOnly,
+      base,
       manifest,
       metaQuery.data,
       metaQuery.isLoading,

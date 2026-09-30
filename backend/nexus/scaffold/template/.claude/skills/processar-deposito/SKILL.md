@@ -18,7 +18,7 @@ registos à mão (usa sempre a CLI `nexus`).
 4. Lê o JSON devolvido e resume ao utilizador, em pt-PT:
    - quantos documentos novos, quantos reenvios do mesmo ficheiro (deduplicados);
    - quantos foram arrumados e quantos ficaram "A rever" (com o motivo principal);
-   - propostas de catálogo novas (UCs, cursos, instituições em falta);
+   - propostas de catálogo novas (cadeiras, cursos, instituições em falta);
    - erros (o ficheiro foi para `deposito/<login>/_erros/` com um `.log`) e itens adiados.
 5. Se houver documentos "A rever", sugere correr `/rever-classificacoes`.
 

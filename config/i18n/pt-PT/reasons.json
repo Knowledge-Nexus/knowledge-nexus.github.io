@@ -1,13 +1,13 @@
 {
   "unit": {
-    "code": "Código da UC «{{value}}» em {{source}}",
+    "code": "Código da cadeira «{{value}}» em {{source}}",
     "acronym": "Sigla «{{value}}» em {{source}}",
-    "name": "Nome da UC «{{value}}» em {{source}}",
+    "name": "Nome da cadeira «{{value}}» em {{source}}",
     "alias": "Nome alternativo «{{value}}» em {{source}}",
-    "keyword": "Palavra-chave da UC «{{value}}» em {{source}}",
+    "keyword": "Palavra-chave da cadeira «{{value}}» em {{source}}",
     "lecturer": "Docente «{{value}}» em {{source}}",
-    "enrolled": "Estás inscrito nesta UC",
-    "not_enrolled": "Não estás inscrito nesta UC"
+    "enrolled": "Estás inscrito nesta cadeira",
+    "not_enrolled": "Não estás inscrito nesta cadeira"
   },
   "term": {
     "keyword": "Expressões «{{keywords}}» em {{source}}"
@@ -40,7 +40,7 @@
   "review": {
     "missing": "Falta: {{field}}",
     "low_confidence": "Pouca confiança em {{field}} ({{confidence}})",
-    "unit_proposed": "Parece ser uma UC que ainda não está no catálogo",
+    "unit_proposed": "Parece ser uma cadeira que ainda não está no catálogo",
     "extraction_failed": "Não foi possível ler o conteúdo: {{error}}"
   },
   "ai": {

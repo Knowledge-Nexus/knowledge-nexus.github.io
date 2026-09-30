@@ -72,7 +72,10 @@ export interface DocumentRow {
   mime: string;
   original_path: string;
   parent: string | null;
+  /** Visibilidade efectiva: private | public | (reservadas) link | user:<login> | group:… */
   visibility: string;
+  /** true = segue a escolha feita para a cadeira (ou a predefinição, privado). */
+  visibility_inherited: boolean;
   status: Status;
   display_name: string;
   source_path: string | null;
@@ -175,6 +178,7 @@ export interface UserRow {
   name: string | null;
   preferences: { locale?: string; tutor_mode?: boolean };
   enrollments: { courses?: string[]; units?: { unit: string; academic_year?: string }[] };
+  sharing: { units?: Record<string, string> };
 }
 
 export interface NearDuplicate {
@@ -207,10 +211,14 @@ export interface IndexManifest {
   search_schema_version: number;
   built_at: string;
   built_from: string | null;
+  /** "public" nos índices do material público (modo de visitante). */
+  scope?: "private" | "public";
+  owner?: string;
+  documents?: number;
   files: Record<string, { size: number; sha256: string }>;
 }
 
-// Estrutura de uma UC no formato de importação `nexus-catalogo`.
+// Estrutura de uma cadeira no formato de importação `nexus-catalogo`.
 export interface CatalogUnitInput {
   slug: string;
   name: string;

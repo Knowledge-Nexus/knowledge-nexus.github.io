@@ -16,8 +16,19 @@ from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed
 
 Migration = Callable[[Path], None]
 
+
+
+def _v1_visibility_inherits(root: Path) -> None:
+    """1 → 2: `visibility: private` era só a predefinição; passa a "seguir a cadeira"."""
+    for path in sorted(Layout(root).documents_dir.glob("*.yaml")):
+        data = read_yaml(path)
+        if isinstance(data, dict) and data.get("visibility") == "private":
+            del data["visibility"]
+            write_yaml_if_changed(path, data)
+
+
 # {versão de origem: função que migra para a versão seguinte}
-MIGRATIONS: dict[int, Migration] = {}
+MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits}
 
 
 def current_version(root: Path) -> int:

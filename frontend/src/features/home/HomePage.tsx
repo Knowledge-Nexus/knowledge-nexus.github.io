@@ -24,7 +24,7 @@ function Stat(props: { value: number; label: string }) {
 
 export function HomePage() {
   const { t } = useTranslation();
-  const { meta, login, indexLoading, indexError } = useApp();
+  const { meta, login, indexLoading, indexError, readOnly, to } = useApp();
   const labels = useLabels(meta);
   if (indexError) return <ErrorBox error={indexError} />;
   if (indexLoading) return <Spinner />;
@@ -36,17 +36,21 @@ export function HomePage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={t(`home.${greeting()}`)} subtitle={t("home.subtitle")} />
+      {readOnly ? (
+        <PageHeader title={t("public.title")} subtitle={t("public.subtitle", { owner: login })} />
+      ) : (
+        <PageHeader title={t(`home.${greeting()}`)} subtitle={t("home.subtitle")} />
+      )}
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className={`grid gap-2 sm:gap-3 ${readOnly ? "grid-cols-2" : "grid-cols-3"}`}>
         <Stat value={counts.total} label={t("home.documents")} />
         <Stat value={labels.units.length} label={t("home.units")} />
-        <Stat value={counts.review} label={t("home.to_review")} />
+        {!readOnly && <Stat value={counts.review} label={t("home.to_review")} />}
       </div>
 
-      {counts.review > 0 && (
+      {counts.review > 0 && !readOnly && (
         <Link
-          to="/rever"
+          to={to("/rever")}
           className="flex items-center gap-3 rounded-2xl border border-marker/60 bg-marker-soft px-5 py-4 text-sm text-ink transition hover:bg-marker/40"
         >
           <IconCheckList />
@@ -57,7 +61,9 @@ export function HomePage() {
         </Link>
       )}
 
-      {noCatalog ? (
+      {noCatalog && readOnly ? (
+        <Empty>{t("public.unavailable")}</Empty>
+      ) : noCatalog ? (
         <Empty
           action={
             <Link to="/configuracao" className={buttonClass("primary")}>
@@ -70,8 +76,10 @@ export function HomePage() {
       ) : (
         <section>
           <div className="mb-3 flex items-baseline justify-between gap-3">
-            <h2 className="font-serif text-xl font-semibold">{t("home.your_units")}</h2>
-            <Link to="/biblioteca" className="shrink-0 text-sm text-pen hover:underline">
+            <h2 className="font-serif text-xl font-semibold">
+              {t(readOnly ? "home.units_shared" : "home.your_units")}
+            </h2>
+            <Link to={to("/biblioteca")} className="shrink-0 text-sm text-pen hover:underline">
               {t("home.all_library")}
             </Link>
           </div>
@@ -83,14 +91,16 @@ export function HomePage() {
         </section>
       )}
 
-      {recent.length > 0 ? (
-        <Card title={t("home.recent")}>
-          <div className="divide-y divide-line">
-            {recent.map((doc) => (
-              <DocumentLink key={doc.id} doc={doc} showUnit />
-            ))}
-          </div>
-        </Card>
+      {recent.length > 0 || readOnly ? (
+        recent.length > 0 && (
+          <Card title={t("home.recent")}>
+            <div className="divide-y divide-line">
+              {recent.map((doc) => (
+                <DocumentLink key={doc.id} doc={doc} showUnit />
+              ))}
+            </div>
+          </Card>
+        )
       ) : (
         <Empty
           action={

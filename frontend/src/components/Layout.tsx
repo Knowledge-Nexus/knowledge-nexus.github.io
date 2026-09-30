@@ -4,7 +4,15 @@ import { NavLink } from "react-router";
 import { useApp } from "../data/context";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { Brand } from "./Brand";
-import { IconBooks, IconCheckList, IconHome, IconInbox, IconSearch, IconSettings } from "./icons";
+import {
+  IconBooks,
+  IconCheckList,
+  IconGlobe,
+  IconHome,
+  IconInbox,
+  IconSearch,
+  IconSettings,
+} from "./icons";
 
 function NavItem(props: {
   to: string;
@@ -36,9 +44,55 @@ function NavItem(props: {
   );
 }
 
+/** Moldura da página pública (visitantes): só biblioteca e pesquisa. */
+function PublicLayout(props: { children: ReactNode }) {
+  const { t } = useTranslation();
+  const { to } = useApp();
+  const items = (
+    <>
+      <NavItem to={to("")} end icon={<IconHome />} label={t("nav.home")} />
+      <NavItem to={to("/biblioteca")} icon={<IconBooks />} label={t("nav.library")} />
+      <NavItem to={to("/pesquisa")} icon={<IconSearch />} label={t("nav.search")} />
+    </>
+  );
+  return (
+    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
+      <aside className="hidden border-r border-line bg-paper/80 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
+        <div className="px-2">
+          <Brand />
+        </div>
+        <nav className="flex flex-col gap-1" aria-label="principal">
+          {items}
+        </nav>
+        <div className="mt-auto rounded-xl border border-line bg-sheet/70 px-3 py-2.5 text-xs text-ink-soft">
+          <p className="flex items-center gap-1.5 font-medium text-pen">
+            <IconGlobe size={14} /> {t("public.badge")}
+          </p>
+          <a className="mt-1 block text-muted underline" href="#/">
+            {t("public.enter")}
+          </a>
+        </div>
+      </aside>
+      <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur lg:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <Brand size={28} />
+          <span className="flex items-center gap-1 text-xs text-pen">
+            <IconGlobe size={14} /> {t("public.badge")}
+          </span>
+        </div>
+        <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
+          {items}
+        </nav>
+      </header>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">{props.children}</main>
+    </div>
+  );
+}
+
 export function Layout(props: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { meta, login, source } = useApp();
+  const { meta, login, source, readOnly } = useApp();
+  if (readOnly) return <PublicLayout>{props.children}</PublicLayout>;
   const review = meta?.counts(login).review ?? 0;
   const items = (
     <>

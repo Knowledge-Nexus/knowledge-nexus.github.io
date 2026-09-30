@@ -53,7 +53,7 @@ def _validate(repo: DataRepo, name: str, value: Any) -> None:
              "exam_season": "exam_seasons", "solution_origin": "solution_origins",
              "role": "roles"}
     if name == "unit" and value not in repo.catalog.units:
-        raise ReviewError(f"UC inexistente no catálogo: {value}")
+        raise ReviewError(f"cadeira inexistente no catálogo: {value}")
     if name in kinds and vocab.get(kinds[name], str(value)) is None:  # type: ignore[arg-type]
         raise ReviewError(f"valor inexistente em {kinds[name]}: {value}")
     if name == "academic_year":
@@ -106,7 +106,7 @@ def accept_unit_proposal(repo: DataRepo, proposal_id: str, slug: str | None = No
                          acronym: str | None = None) -> CurricularUnit:
     proposal = repo.proposals.get(proposal_id)
     if proposal is None or proposal.kind != "unit":
-        raise ReviewError(f"proposta de UC inexistente: {proposal_id}")
+        raise ReviewError(f"proposta de cadeira inexistente: {proposal_id}")
     inst = institution or proposal.data.get("institution")
     if not inst or inst not in repo.catalog.institutions:
         raise ReviewError("indica a instituição (--instituicao) existente no catálogo")
@@ -115,7 +115,7 @@ def accept_unit_proposal(repo: DataRepo, proposal_id: str, slug: str | None = No
                           acronym=acronym)
     unit.institution = inst
     if unit.key in repo.catalog.units:
-        raise ReviewError(f"a UC {unit.key} já existe")
+        raise ReviewError(f"a cadeira {unit.key} já existe")
     write_unit(repo.layout, unit)
     updated = proposal.model_copy(update={"status": "accepted"})
     repo.save_proposal(updated)

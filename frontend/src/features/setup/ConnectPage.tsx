@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Brand, BrandBanner } from "../../components/Brand";
+import { IconGlobe } from "../../components/icons";
 import { Button, Card, ErrorBox } from "../../components/ui";
 import { type FetchLike, GitHubClient, GitHubError } from "../../data/github/client";
 import { parseRepo, type StoredSession } from "../../data/session";
@@ -133,6 +134,9 @@ export function ConnectPage(props: {
               </Button>
             </form>
           </Card>
+          <a href="#/publico" className="flex items-center gap-2 text-sm text-pen hover:underline">
+            <IconGlobe size={16} /> {t("public.view")}
+          </a>
         </div>
       </div>
     </div>

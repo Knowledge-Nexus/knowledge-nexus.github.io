@@ -96,7 +96,8 @@ class Git:
         self.run("reset", "-q", "--hard", f"{remote}/{branch}")
 
     def publish_directory(
-        self, directory: Path, branch: str, message: str, remote: str | None = "origin"
+        self, directory: Path, branch: str, message: str, remote: str | None = "origin",
+        env: dict[str, str] | None = None,
     ) -> str:
         """Publica `directory` como um ramo órfão de um só commit (reescrito a cada vez).
 
@@ -109,8 +110,11 @@ class Git:
         commit = self.run(*self._identity(), "commit-tree", tree, "-m", message)
         self.run("update-ref", f"refs/heads/{branch}", commit)
         if remote:
-            self.run("push", "-q", "--force", remote, f"{commit}:refs/heads/{branch}")
+            self.run("push", "-q", "--force", remote, f"{commit}:refs/heads/{branch}", env=env)
         return commit
+
+    def remote_url(self, remote: str = "origin") -> str | None:
+        return self.run("remote", "get-url", remote, check=False) or None
 
     def show(self, rev: str, path: str) -> bytes:
         proc = subprocess.run(

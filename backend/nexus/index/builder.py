@@ -14,6 +14,7 @@ from nexus import FORMAT_VERSION, __version__, clock
 from nexus.datarepo.store import DataRepo
 from nexus.domain.catalog import Topic
 from nexus.domain.documents import Document, DocumentKind
+from nexus.domain.visibility import effective_visibility
 from nexus.domain.vocab import VOCAB_KINDS
 from nexus.index import schema
 from nexus.index.search import SEARCH_SCHEMA_VERSION, PageRow, create_search_db
@@ -61,11 +62,12 @@ def _required_confidence(doc: Document, repo: DataRepo) -> float | None:
     return min(confidences) if confidences else None
 
 
-def near_duplicate_pairs(repo: DataRepo) -> list[tuple[str, str, int, float]]:
+def near_duplicate_pairs(repo: DataRepo, only: set[str] | None = None
+                         ) -> list[tuple[str, str, int, float]]:
     settings = repo.settings.dedup
     hashes: list[tuple[str, str, str]] = []
     for doc in sorted(repo.documents.values(), key=lambda d: d.id):
-        if doc.kind is DocumentKind.ARCHIVE:
+        if doc.kind is DocumentKind.ARCHIVE or (only is not None and doc.id not in only):
             continue
         meta = repo.extraction_meta(doc.blob.sha256)
         if meta and meta.simhash and meta.words >= settings.min_words:
@@ -88,18 +90,51 @@ def _file_info(path: Path) -> dict[str, Any]:
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
-def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> BuildResult:
+def _strip_reasons(classification: dict[str, Any]) -> dict[str, Any]:
+    """Versão pública da classificação: sem justificações nem alternativas (podem citar
+    caminhos e nomes de pastas do dono)."""
+    return {name: {k: v for k, v in field.items() if k not in ("reasons", "alternatives")}
+            if isinstance(field, dict) else field for name, field in classification.items()}
+
+
+def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
+                  public: bool = False) -> BuildResult:
+    """Constrói os índices. Com `public=True`, só entra o que o dono marcou como público,
+    sem nada pessoal (notas, caminhos de origem, histórico, revisões, propostas) e de forma
+    determinística (a data vai só no `manifest.json`), para a publicação ser idempotente."""
     out.mkdir(parents=True, exist_ok=True)
     catalog = repo.catalog
     vocab = repo.vocabularies
+    users = repo.users
     built_at = clock.now().isoformat()
+    visibility = {doc.id: effective_visibility(doc, users) for doc in repo.documents.values()}
+    documents = sorted(repo.documents.values(), key=lambda d: d.id)
+    if public:
+        documents = [d for d in documents
+                     if d.kind is not DocumentKind.ARCHIVE and visibility[d.id].value == "public"]
+    included = {d.id for d in documents}
+    units = dict(catalog.units)
+    courses = dict(catalog.courses)
+    institutions = dict(catalog.institutions)
+    if public:
+        used = {str(d.classification.value("unit")) for d in documents
+                if d.classification.value("unit")}
+        units = {k: u for k, u in units.items() if k in used}
+        courses = {k: c for k, c in courses.items()
+                   if any(f"{c.institution}/{link.unit}" in used for link in c.units)}
+        wanted = {u.institution for u in units.values()} | {c.institution
+                                                            for c in courses.values()}
+        institutions = {k: i for k, i in institutions.items() if k in wanted}
+        users = {login: u for login, u in users.items()
+                 if any(d.owner == login for d in documents)}
     meta_values = {
         "schema_version": str(schema.SCHEMA_VERSION),
         "search_schema_version": str(SEARCH_SCHEMA_VERSION),
         "format_version": str(FORMAT_VERSION),
         "app_version": __version__,
-        "built_at": built_at,
-        "built_from": built_from or "",
+        "built_at": "" if public else built_at,
+        "built_from": "" if public else built_from or "",
+        "scope": "public" if public else "private",
         "default_owner": str(repo.raw_settings.get("owner", "")),
         "auto_file_threshold": str(repo.settings.classification.auto_file_threshold),
     }
@@ -109,18 +144,20 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
     engine = create_engine(f"sqlite:///{meta_path}")
     schema.metadata.create_all(engine)
     topic_rows: list[dict[str, Any]] = []
-    for unit in catalog.units.values():
+    for unit in units.values():
         _flatten_topics(unit.key, unit.topics, None, topic_rows)
     unit_course = {
-        u.key: min((c.key for c in catalog.courses_of_unit(u.key)), default=None)
-        for u in catalog.units.values()
+        u.key: min((c.key for c in catalog.courses_of_unit(u.key) if c.key in courses),
+                   default=None)
+        for u in units.values()
     }
     doc_rows: list[dict[str, Any]] = []
     page_rows: list[PageRow] = []
     extraction_rows: list[dict[str, Any]] = []
     seen_sha: set[str] = set()
-    for doc in sorted(repo.documents.values(), key=lambda d: d.id):
+    for doc in documents:
         c = doc.classification
+        shown = visibility[doc.id]
         extraction = repo.extraction_meta(doc.blob.sha256)
         unit_key = c.value("unit")
         course_key = unit_course.get(unit_key) if unit_key else None
@@ -131,10 +168,12 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
             "mime": doc.blob.mime,
             "original_path": repo.layout.relative(
                 repo.layout.original_path(doc.blob.sha256, doc.blob.ext)),
-            "parent": doc.parent, "visibility": doc.visibility, "status": doc.status.value,
+            "parent": doc.parent if doc.parent in included else None,
+            "visibility": shown.value, "visibility_inherited": shown.inherited,
+            "status": doc.status.value,
             "display_name": doc.display_name,
-            "source_path": first.path if first else None,
-            "batch": first.batch if first else None,
+            "source_path": first.path if first and not public else None,
+            "batch": first.batch if first and not public else None,
             "created_at": doc.created_at.isoformat() if doc.created_at else None,
             "unit": unit_key, "course": course_key,
             "document_type": c.value("document_type"),
@@ -144,14 +183,14 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
             "assessment_number": c.value("assessment_number"),
             "role": c.value("role"), "solution_origin": c.value("solution_origin"),
             "confidence": _required_confidence(doc, repo),
-            "needs_review": doc.needs_review,
-            "review_reasons": _dump(doc.review.reasons) if doc.needs_review and doc.review
-            else [],
-            "classification": _dump(c),
-            "sources": _dump(doc.sources),
-            "history": _dump(doc.history),
+            "needs_review": doc.needs_review and not public,
+            "review_reasons": _dump(doc.review.reasons)
+            if doc.needs_review and doc.review and not public else [],
+            "classification": _strip_reasons(_dump(c)) if public else _dump(c),
+            "sources": [] if public else _dump(doc.sources),
+            "history": [] if public else _dump(doc.history),
             "manifest": _dump(doc.manifest) if doc.manifest else None,
-            "notes": doc.notes,
+            "notes": "" if public else doc.notes,
             "pages": len(extraction.pages) if extraction else 0,
             "words": extraction.words if extraction else 0,
             "rendition": (repo.layout.relative(repo.layout.text_dir(doc.blob.sha256)
@@ -174,36 +213,37 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
                     continue
                 page_rows.append(PageRow(
                     text=text, doc_id=doc.id, sha256=doc.blob.sha256, page=number,
-                    owner=doc.owner, visibility=doc.visibility, unit=unit_key,
+                    owner=doc.owner, visibility=shown.value, unit=unit_key,
                     course=course_key, document_type=c.value("document_type"),
                     academic_year=c.value("academic_year"), title=doc.display_name))
-    pairs = near_duplicate_pairs(repo)
+    pairs = near_duplicate_pairs(repo, included if public else None)
 
     with engine.begin() as con:
         con.execute(insert(schema.meta), [{"key": k, "value": v}
                                           for k, v in sorted(meta_values.items())])
-        if catalog.institutions:
+        if institutions:
             con.execute(insert(schema.institutions), [
                 {"slug": i.slug, "name": i.name, "acronym": i.acronym}
-                for i in catalog.institutions.values()])
-        if catalog.courses:
+                for i in institutions.values()])
+        if courses:
             con.execute(insert(schema.courses), [
                 {"key": c.key, "institution": c.institution, "slug": c.slug, "name": c.name,
-                 "degree": c.degree} for c in catalog.courses.values()])
+                 "degree": c.degree} for c in courses.values()])
             links = [{"course_key": c.key, "unit_key": f"{c.institution}/{link.unit}",
                       "curricular_year": link.curricular_year, "semester": link.semester}
-                     for c in catalog.courses.values() for link in c.units]
+                     for c in courses.values() for link in c.units
+                     if f"{c.institution}/{link.unit}" in units]
             if links:
                 con.execute(insert(schema.course_units), links)
-        if catalog.units:
+        if units:
             con.execute(insert(schema.units), [
                 {"key": u.key, "institution": u.institution, "slug": u.slug, "code": u.code,
                  "name": u.name, "acronym": u.acronym, "ects": u.ects,
-                 "lecturers": u.all_lecturers()} for u in catalog.units.values()])
+                 "lecturers": u.all_lecturers()} for u in units.values()])
             editions = [{"unit_key": u.key, "academic_year": e.academic_year,
                          "lecturers": e.lecturers, "assessment_method": e.assessment_method,
                          "assessments": _dump(e.assessments)}
-                        for u in catalog.units.values() for e in u.editions]
+                        for u in units.values() for e in u.editions]
             if editions:
                 con.execute(insert(schema.unit_editions), editions)
         if topic_rows:
@@ -214,10 +254,12 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
                   "is_fallback": t.is_fallback, "sort": index}
                  for kind in VOCAB_KINDS for index, t in enumerate(getattr(vocab, kind))]
         con.execute(insert(schema.vocab_terms), terms)
-        if repo.users:
+        if users:
             con.execute(insert(schema.users), [
-                {"login": u.login, "name": u.name, "preferences": _dump(u.preferences),
-                 "enrollments": _dump(u.enrollments)} for u in repo.users.values()])
+                {"login": u.login, "name": u.name,
+                 "preferences": {} if public else _dump(u.preferences),
+                 "enrollments": {} if public else _dump(u.enrollments),
+                 "sharing": {} if public else _dump(u.sharing)} for u in users.values()])
         if doc_rows:
             con.execute(insert(schema.documents), doc_rows)
         if extraction_rows:
@@ -225,7 +267,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
         if pairs:
             con.execute(insert(schema.near_duplicates), [
                 {"doc_a": a, "doc_b": b, "distance": d, "score": s} for a, b, d, s in pairs])
-        if repo.proposals:
+        if repo.proposals and not public:
             con.execute(insert(schema.proposals), [
                 {"id": p.id, "kind": p.kind, "status": p.status,
                  "name": str(p.data.get("name", p.id)), "data": p.data,
@@ -240,7 +282,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None) -> B
         "schema_version": schema.SCHEMA_VERSION,
         "search_schema_version": SEARCH_SCHEMA_VERSION,
         "built_at": built_at,
-        "built_from": built_from,
+        "built_from": None if public else built_from,
+        "scope": "public" if public else "private",
         "files": {META_DB: _file_info(meta_path), SEARCH_DB: _file_info(search_path)},
     }
     (out / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

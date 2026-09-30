@@ -90,6 +90,12 @@ class LimitSettings(_Section):
     max_file_bytes: int = 99_614_720
 
 
+class PublishingSettings(_Section):
+    # "<dono>/<nome>" do repositório PÚBLICO onde vai o material marcado como público.
+    public_repo: str | None = None
+    public_branch: str = "main"
+
+
 class Settings(_Section):
     classification: ClassificationSettings = Field(default_factory=ClassificationSettings)
     extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)
@@ -97,6 +103,7 @@ class Settings(_Section):
     code_projects: CodeProjectSettings = Field(default_factory=CodeProjectSettings)
     dedup: DedupSettings = Field(default_factory=DedupSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
+    publishing: PublishingSettings = Field(default_factory=PublishingSettings)
 
 
 @cache

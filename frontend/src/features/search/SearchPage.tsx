@@ -7,7 +7,7 @@ import { useLabels } from "../../lib/labels";
 
 export function SearchPage() {
   const { t } = useTranslation();
-  const { meta, login } = useApp();
+  const { meta, login, to, readOnly } = useApp();
   const labels = useLabels(meta);
   const index = useSearchIndex();
   const [params, setParams] = useSearchParams();
@@ -40,8 +40,8 @@ export function SearchPage() {
         <input
           type="search"
           className="min-w-64 flex-1 rounded-xl border border-line-strong px-3 py-2"
-          placeholder={t("search.placeholder")}
-          aria-label={t("search.placeholder")}
+          placeholder={t(readOnly ? "search.placeholder_public" : "search.placeholder")}
+          aria-label={t(readOnly ? "search.placeholder_public" : "search.placeholder")}
           value={query}
           onChange={(e) => set("q", e.target.value)}
           autoFocus
@@ -95,7 +95,10 @@ export function SearchPage() {
       <div className="space-y-2">
         {hits.map((hit) => (
           <Card key={`${hit.doc_id}-${hit.page}`}>
-            <Link to={`/documento/${hit.doc_id}?pagina=${hit.page}`} className="block space-y-1">
+            <Link
+              to={to(`/documento/${hit.doc_id}?pagina=${hit.page}`)}
+              className="block space-y-1"
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium underline">{hit.title}</span>
                 <Badge>{t("search.page", { page: hit.page })}</Badge>

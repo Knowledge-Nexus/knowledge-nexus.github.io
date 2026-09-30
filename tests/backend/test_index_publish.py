@@ -12,6 +12,7 @@ from amostras import gerar
 from nexus.cli import app
 from nexus.datarepo.store import DataRepo
 from nexus.index.builder import META_DB, SEARCH_DB, build_indices
+from nexus.index.schema import SCHEMA_VERSION
 from nexus.index.search import HIGHLIGHT_START, SearchFilters, SqliteFtsSearch, build_match
 from nexus.pipeline.run import Pipeline
 from nexus.publish import process_and_publish
@@ -50,7 +51,7 @@ def test_meta_db_contents(catalog_root: Path, tmp_path: Path) -> None:
     build_indices(DataRepo(catalog_root), tmp_path, built_from="abc")
     con = sqlite3.connect(tmp_path / META_DB)
     meta = dict(con.execute("SELECT key, value FROM meta"))
-    assert meta["built_from"] == "abc" and meta["schema_version"] == "1"
+    assert meta["built_from"] == "abc" and meta["schema_version"] == str(SCHEMA_VERSION)
     rows = con.execute("SELECT unit, course, document_type, status FROM documents "
                        "ORDER BY unit").fetchall()
     assert ("ufe/am1", "ufe/lei", "enunciados-avaliacao", "filed") in rows

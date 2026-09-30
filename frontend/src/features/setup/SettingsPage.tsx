@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { IconGlobe } from "../../components/icons";
 import { Button, Card, ErrorBox, PageHeader } from "../../components/ui";
 import { clearCache } from "../../data/cache";
 import { useApp } from "../../data/context";
@@ -17,6 +18,9 @@ export function SettingsPage() {
   const [tutor, setTutor] = useState(user?.preferences.tutor_mode ?? true);
   const [error, setError] = useState<unknown>(null);
   const [saved, setSaved] = useState(false);
+  const publicCount = (meta?.documents({ owner: login }) ?? []).filter(
+    (d) => d.visibility === "public",
+  ).length;
   const expiration = source instanceof GitHubDataSource ? source.client.tokenExpiration : null;
 
   async function save() {
@@ -63,6 +67,16 @@ export function SettingsPage() {
           <Button variant="danger" onClick={logout}>
             {t("nav.logout")}
           </Button>
+        </div>
+      </Card>
+      <Card title={t("settings.sharing")}>
+        <div className="space-y-2 text-sm">
+          <p className="text-ink-soft">{t("settings.sharing_intro")}</p>
+          <p>{t("settings.sharing_count", { count: publicCount })}</p>
+          <a className="inline-flex items-center gap-1.5 text-pen underline" href="#/publico">
+            <IconGlobe size={15} /> {t("settings.sharing_public_page")}
+          </a>
+          <p className="text-xs text-muted">{t("settings.sharing_setup")}</p>
         </div>
       </Card>
       <Card title={t("settings.enrollments")}>

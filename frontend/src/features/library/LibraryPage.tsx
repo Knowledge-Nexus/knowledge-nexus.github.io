@@ -1,20 +1,21 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
-import { FileGlyph, IconArrowRight } from "../../components/icons";
+import { FileGlyph, IconArrowRight, IconGlobe } from "../../components/icons";
 import { Badge, Card, Empty, ErrorBox, PageHeader, Spinner, unitColor } from "../../components/ui";
+import { isPublic, PublicBadge, UnitVisibility } from "../../components/Visibility";
 import { useApp } from "../../data/context";
 import type { DocumentRow, UnitRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 
 export function DocumentLink(props: { doc: DocumentRow; showUnit?: boolean }) {
   const { t } = useTranslation();
-  const { meta } = useApp();
+  const { meta, to, readOnly } = useApp();
   const labels = useLabels(meta);
   const { doc } = props;
   return (
     <Link
-      to={`/documento/${doc.id}`}
+      to={to(`/documento/${doc.id}`)}
       className="group flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-paper"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-paper text-ink-soft group-hover:bg-sheet">
@@ -30,6 +31,7 @@ export function DocumentLink(props: { doc: DocumentRow; showUnit?: boolean }) {
         )}
       </span>
       <span className="flex shrink-0 gap-1">
+        {!readOnly && <PublicBadge value={doc.visibility} />}
         {doc.academic_year && <Badge>{doc.academic_year}</Badge>}
         {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
       </span>
@@ -37,20 +39,31 @@ export function DocumentLink(props: { doc: DocumentRow; showUnit?: boolean }) {
   );
 }
 
-/** Uma UC apresentada como um livro: lombada de cor, sigla e nome. */
+/** Uma cadeira apresentada como um livro: lombada de cor, sigla e nome. */
 export function UnitBook(props: { unit: UnitRow; count: number; subtitle?: string }) {
   const { t } = useTranslation();
+  const { meta, login, to, readOnly } = useApp();
   const { unit } = props;
   const color = unitColor(unit.key);
+  const shared = !readOnly && isPublic(meta?.unitVisibility(login)[unit.key]);
   return (
     <Link
-      to={`/biblioteca?uc=${encodeURIComponent(unit.key)}`}
+      to={to(`/biblioteca?uc=${encodeURIComponent(unit.key)}`)}
       className="group relative flex overflow-hidden rounded-2xl border border-line bg-sheet transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-20px_rgba(29,39,51,0.45)]"
     >
       <span className="w-3 shrink-0" style={{ backgroundColor: color }} />
       <span className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-4">
-        <span className="text-xs font-semibold tracking-wider uppercase" style={{ color }}>
+        <span
+          className="flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase"
+          style={{ color }}
+        >
           {unit.acronym ?? unit.code ?? unit.slug}
+          {shared && (
+            <span className="text-pen" title={t("visibility.badge")}>
+              <IconGlobe size={13} />
+              <span className="sr-only">{t("visibility.badge")}</span>
+            </span>
+          )}
         </span>
         <span className="font-serif text-lg leading-snug font-semibold text-ink">{unit.name}</span>
         <span className="mt-1 text-xs text-muted">
@@ -67,7 +80,7 @@ export function UnitBook(props: { unit: UnitRow; count: number; subtitle?: strin
 
 function UnitDetail(props: { unitKey: string }) {
   const { t } = useTranslation();
-  const { meta, login } = useApp();
+  const { meta, login, to } = useApp();
   const labels = useLabels(meta);
   const [params, setParams] = useSearchParams();
   const year = params.get("ano") ?? "";
@@ -89,7 +102,7 @@ function UnitDetail(props: { unitKey: string }) {
 
   return (
     <div className="space-y-6">
-      <Link to="/biblioteca" className="text-sm text-pen hover:underline">
+      <Link to={to("/biblioteca")} className="text-sm text-pen hover:underline">
         ← {t("library.back")}
       </Link>
       <div className="flex overflow-hidden rounded-2xl border border-line bg-sheet">
@@ -105,6 +118,9 @@ function UnitDetail(props: { unitKey: string }) {
             {unit?.lecturers.length ? (
               <p className="mt-1 text-sm text-muted">{unit.lecturers.join(", ")}</p>
             ) : null}
+            <div className="mt-4">
+              <UnitVisibility key={props.unitKey} unitKey={props.unitKey} />
+            </div>
           </div>
           <select
             aria-label={t("library.all_years")}
@@ -148,7 +164,7 @@ function UnitDetail(props: { unitKey: string }) {
 
 export function LibraryPage() {
   const { t } = useTranslation();
-  const { meta, login, indexLoading, indexError } = useApp();
+  const { meta, login, indexLoading, indexError, to } = useApp();
   const labels = useLabels(meta);
   const [params] = useSearchParams();
   const selectedUnit = params.get("uc") ?? "";
@@ -193,7 +209,7 @@ export function LibraryPage() {
       <PageHeader title={t("library.title")} />
       {unfiled.length > 0 && (
         <Link
-          to="/rever"
+          to={to("/rever")}
           className="block rounded-2xl border border-marker/60 bg-marker-soft px-5 py-4 text-sm text-ink"
         >
           <strong>{t("library.unfiled")}</strong> ({unfiled.length}) — {t("library.unfiled_help")}

@@ -15,6 +15,11 @@ convenções ou comandos.
 - **O pipeline corre no GitHub Actions do repositório de dados.** O workflow
   `.github/workflows/nexus.yml` dele chama o reutilizável `.github/workflows/pipeline.yml`
   daqui. Também pode correr localmente ou numa sessão do Claude Code.
+- **Material público (opcional):** o que o dono marca como público (por cadeira ou por
+  documento) é publicado por `nexus publicar` num repositório PÚBLICO à parte
+  (`publishing.public_repo`, ex.: `estudo-publico`), servido pelo Pages em `/<nome>/` e
+  lido pela interface em `#/publico` sem token (`data/public.ts`). Um só commit,
+  reescrito a cada vez; sem nada pessoal. Código: `nexus/public.py`, `domain/visibility.py`.
 - **A interface fala directamente com a API do GitHub**, com um token fine-grained que fica
   só no browser.
   - **Leitura:** índices SQLite do ramo `indices`, lidos com SQLite em WebAssembly.
@@ -35,8 +40,9 @@ Detalhes: `docs/arquitectura.md`, `docs/repo-dados.md`, `docs/modelo-dados.md`,
    geradas em tempo de execução (`tests/amostras/gerar.py`). Há uma guarda para isso:
    `scripts/guarda-binarios.sh`.
 2. **O repositório de dados tem de ser privado.** A interface, o `nexus vigiar` e o
-   workflow recusam repositórios públicos. A partilha é sempre em grupos fechados, e a
-   fronteira de segurança é o repositório.
+   workflow recusam repositórios públicos. A fronteira de segurança é o repositório.
+   **Só sai dele o que o dono marcou como público** (nunca por defeito, nunca pelo
+   pipeline ou pela IA), e só para o repositório público configurado.
 3. **Os originais (`originais/`) nunca são alterados nem apagados.** O que é derivado
    (`texto/`, índices, versões PDF) pode ser regenerado.
 4. **O pipeline é idempotente.** Correr duas vezes sobre o mesmo estado não produz
@@ -50,7 +56,7 @@ Detalhes: `docs/arquitectura.md`, `docs/repo-dados.md`, `docs/modelo-dados.md`,
 7. **O pipeline nunca sobrepõe campos definidos pelo utilizador** (`method: user`) nem
    pela IA (`ai:*`).
 8. **Tudo o que a IA gera fica marcado** (`ai:<agente>`) e liga à fonte (sha256 + página).
-9. **Nada sobre cursos fica fixo no código.** Instituições, cursos, UCs, tipos de
+9. **Nada sobre cursos fica fixo no código.** Instituições, cursos, cadeiras, tipos de
    documento, avaliações e épocas são dados (`config/vocabularios.yaml` e `catalogo/`).
    O código só usa atributos dos termos (`is_assessment`, `role`, `extensions`…), nunca slugs.
 10. **O modo tutor é o comportamento por defeito** nas ferramentas de estudo.
@@ -89,6 +95,8 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Pipeline local | `uv run nexus processar --repo <pasta> [--sem-push]` |
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |
 | Exportar árvore | `uv run nexus exportar-arvore <destino> --repo <pasta>` |
+| Visibilidade | `uv run nexus visibilidade cadeira <inst>/<cadeira> publico\|privado --repo <pasta>` |
+| Publicar o material público | `NEXUS_PUBLICO_TOKEN=… uv run nexus publicar --repo <pasta>` |
 
 Dependências de sistema (Ubuntu/WSL2):
 - `tesseract-ocr tesseract-ocr-por tesseract-ocr-eng`
@@ -106,6 +114,8 @@ Dependências de sistema (Ubuntu/WSL2):
     carregar/enviar (não fazer upload), definições (não configurações), equipa (não time),
     telemóvel (não celular).
   - A classificação aceita sempre as duas grafias, porque `normalize()` as unifica.
+  - Na interface e na documentação diz-se **"cadeira"**, nunca "UC" (confunde-se com
+    Universidade de Coimbra). No código e nas chaves continua `unit`.
 - **Identidade visual ("caderno de estudo"):**
   - Tokens de cor e tipografia em `frontend/src/styles.css` (`@theme`): paper, sheet, line, ink,
     pen (azul de caneta), marker (amarelo), sage, clay. Usar sempre os tokens, nunca cores soltas.
@@ -161,7 +171,8 @@ Dependências de sistema (Ubuntu/WSL2):
   `nexus vigiar`, testes (backend, contrato, E2E).
 - **Fase 2:** enriquecimento por skills, transcrição de manuscritos e matemática
   (páginas `needs_ai_transcription`), banco de perguntas.
-- **Fase 3:** páginas das UCs, pesquisa semântica (sqlite-vec / transformers.js),
+- **Fase 3:** páginas das cadeiras, pesquisa semântica (sqlite-vec / transformers.js),
   flashcards FSRS, simulados.
 - **Fase 4:** restantes ferramentas.
-- **Fase 5:** abertura a outros utilizadores (backend, autenticação, grupos, limites de IA).
+- **Fase 5:** abertura a outros utilizadores (backend, autenticação, grupos, limites de IA),
+  partilha por utilizador ou por ligação (valores `user:<login>` e `link` já reservados).

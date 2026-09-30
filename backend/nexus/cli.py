@@ -18,12 +18,15 @@ from nexus import __version__
 
 app = typer.Typer(help="Motor do depósito da plataforma de estudo Knowledge Nexus.",
                   no_args_is_help=True, add_completion=False)
-catalog_app = typer.Typer(help="Catálogo: instituições, cursos e UCs.", no_args_is_help=True)
+catalog_app = typer.Typer(help="Catálogo: instituições, cursos e cadeiras.", no_args_is_help=True)
 review_app = typer.Typer(help="Fila \"A rever\".", no_args_is_help=True)
 document_app = typer.Typer(help="Consultar documentos.", no_args_is_help=True)
+sharing_app = typer.Typer(help="Visibilidade: privado ou público, por cadeira ou documento.",
+                          no_args_is_help=True)
 app.add_typer(catalog_app, name="catalogo")
 app.add_typer(review_app, name="revisao")
 app.add_typer(document_app, name="documento")
+app.add_typer(sharing_app, name="visibilidade")
 
 RepoOption = Annotated[Path, typer.Option(
     "--repo", "-r", help="Raiz do repositório de dados.", envvar="NEXUS_REPO")]
@@ -147,6 +150,34 @@ def indexar(
 
 
 @app.command()
+def publicar(
+    repo: RepoOption = Path("."),
+    push: Annotated[bool, typer.Option("--push/--sem-push", help="Fazer push.")] = True,
+    as_json: JsonOption = False,
+) -> None:
+    """Publica o material marcado como público no repositório público (GitHub Pages)."""
+    from nexus.datarepo.git import GitError
+    from nexus.public import PublishError, publish_public
+
+    _repo(repo)
+    try:
+        result = publish_public(repo, token=os.environ.get("NEXUS_PUBLICO_TOKEN"), push=push)
+    except (GitError, PublishError) as exc:
+        _fail(str(exc))
+        return
+    if as_json:
+        _print_json(result.as_dict())
+        return
+    if not result.configured:
+        typer.echo("publicação não configurada (publishing.public_repo no nexus.yaml)")
+        return
+    typer.echo(f"{result.documents} documento(s) públicos → {result.target}"
+               + (" (publicado)" if result.published else ""))
+    for note in result.notes:
+        typer.echo(note)
+
+
+@app.command()
 def migrar(repo: RepoOption = Path(".")) -> None:
     """Migra o formato dos ficheiros do repositório de dados."""
     from nexus.formats import migrate
@@ -160,7 +191,7 @@ def pesquisar(
     consulta: Annotated[str, typer.Argument()],
     repo: RepoOption = Path("."),
     utilizador: Annotated[str | None, typer.Option(help="Login de quem pesquisa.")] = None,
-    uc: Annotated[str | None, typer.Option(help="Chave da UC, ex.: ufe/am1.")] = None,
+    uc: Annotated[str | None, typer.Option(help="Chave da cadeira, ex.: ufe/am1.")] = None,
     tipo: Annotated[str | None, typer.Option(help="Slug do tipo de documento.")] = None,
     ano: Annotated[str | None, typer.Option(help="Ano lectivo, ex.: 2023-2024.")] = None,
 ) -> None:
@@ -255,7 +286,7 @@ def catalogo_exportar(repo: RepoOption = Path("."),
 
 @catalog_app.command("propostas")
 def catalogo_propostas(repo: RepoOption = Path("."), as_json: JsonOption = False) -> None:
-    """Lista propostas de catálogo (UCs, cursos, instituições em falta)."""
+    """Lista propostas de catálogo (cadeiras, cursos, instituições em falta)."""
     data = _repo(repo)
     proposals = sorted(data.proposals.values(), key=lambda p: p.id)
     if as_json:
@@ -274,7 +305,7 @@ def catalogo_aceitar(
     codigo: Annotated[str | None, typer.Option()] = None,
     sigla: Annotated[str | None, typer.Option()] = None,
 ) -> None:
-    """Aceita uma proposta de UC e cria-a no catálogo."""
+    """Aceita uma proposta de cadeira e cria-a no catálogo."""
     from nexus.review import ReviewError, accept_unit_proposal
 
     try:
@@ -282,7 +313,7 @@ def catalogo_aceitar(
     except ReviewError as exc:
         _fail(str(exc))
         return
-    typer.echo(f"UC criada: {unit.key}")
+    typer.echo(f"Cadeira criada: {unit.key}")
 
 
 @catalog_app.command("rejeitar")
@@ -407,3 +438,44 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# --- visibilidade -----------------------------------------------------------------------
+
+VisibilityArg = Annotated[str, typer.Argument(
+    help="publico, privado ou cadeira (seguir a escolha da cadeira).")]
+
+
+@sharing_app.command("documento")
+def visibilidade_documento(documento: Annotated[str, typer.Argument()],
+                           valor: VisibilityArg, repo: RepoOption = Path(".")) -> None:
+    """Define a visibilidade de um documento (excepção à escolha da cadeira)."""
+    from nexus.sharing import SharingError, set_document_visibility
+
+    try:
+        doc = set_document_visibility(_repo(repo), documento, valor)
+    except SharingError as exc:
+        _fail(str(exc))
+        return
+    typer.echo(f"{doc.id}: {doc.visibility or 'segue a cadeira'}")
+
+
+@sharing_app.command("cadeira")
+def visibilidade_cadeira(
+    cadeira: Annotated[str, typer.Argument(help="Chave da cadeira, ex.: ufe/am1.")],
+    valor: VisibilityArg,
+    repo: RepoOption = Path("."),
+    login: Annotated[str | None, typer.Option(help="Dono (por defeito, o do nexus.yaml).")]
+    = None,
+) -> None:
+    """Define a visibilidade de todo o material de uma cadeira."""
+    from nexus.sharing import SharingError, set_unit_visibility
+
+    data = _repo(repo)
+    owner = login or str(data.raw_settings.get("owner", ""))
+    try:
+        user = set_unit_visibility(data, owner, cadeira, None if valor == "cadeira" else valor)
+    except SharingError as exc:
+        _fail(str(exc))
+        return
+    typer.echo(f"{cadeira}: {user.sharing.units.get(cadeira, 'private')}")

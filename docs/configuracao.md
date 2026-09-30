@@ -26,10 +26,34 @@ interface a cada alteração em `main`.
    `uv run nexus scaffold <clone> --dono <login>`, e depois commit e push.
 5. Configura o catálogo de uma de três formas:
    - importa um YAML (vê `config/catalogo/exemplo.yaml`);
-   - preenche a instituição, o curso e as UCs;
+   - preenche a instituição, o curso e as cadeiras;
    - ou escolhe "inferir do material".
 
-## 3. Depositar
+## 3. Página pública (opcional)
+
+Só é preciso se quiseres tornar algum material público. Por defeito tudo é privado.
+
+1. Cria um repositório **público** e vazio chamado `estudo-publico` (ex.:
+   `Knowledge-Nexus/estudo-publico`). Não ponhas lá nada à mão: é reescrito a cada
+   publicação.
+2. Nesse repositório, em **Settings → Pages**, escolhe **Deploy from a branch**, ramo
+   `main`, pasta `/ (root)`. Fica em `https://<dono>.github.io/estudo-publico/`.
+3. Cria um **token fine-grained só para `estudo-publico`**, com Contents: leitura e escrita.
+4. No repositório de **dados**, em **Settings → Secrets and variables → Actions**, cria o
+   segredo `NEXUS_PUBLICO_TOKEN` com esse token.
+5. No `nexus.yaml` do repositório de dados:
+   ```yaml
+   publishing:
+     public_repo: Knowledge-Nexus/estudo-publico
+   ```
+6. Escolhe o que é público: na **Biblioteca**, em cada cadeira ("Visibilidade da
+   cadeira"), ou em cada documento (excepções). Também dá com o Claude Code:
+   `nexus visibilidade cadeira <inst>/<cadeira> publico`.
+
+A página pública é `https://knowledge-nexus.github.io/#/publico`. Não aparece nos motores
+de pesquisa (`noindex`), mas qualquer pessoa com a ligação a vê.
+
+## 4. Depositar
 
 - **Interface:** arrasta ficheiros ou pastas para **Depositar**.
 - **GitHub:** larga ficheiros em `deposito/<login>/` pela interface web do GitHub (máximo
@@ -44,16 +68,16 @@ interface a cada alteração em `main`.
   - Os ficheiros saem da pasta só depois de processados: vão para `_enviados/` ou,
     se falharem, para `_erros/`.
 
-## 4. Claude Code sobre o repositório de dados
+## 5. Claude Code sobre o repositório de dados
 
 - Abre uma sessão do Claude Code (web ou WSL2) com o repositório de dados. O hook
   SessionStart instala o motor e as ferramentas.
 - Skills disponíveis:
   - `/processar-deposito`: processa localmente (útil quando o Actions está sem minutos);
   - `/rever-classificacoes`: propõe classificações para a fila "A rever";
-  - `/inferir-catalogo`: propõe a instituição, o curso e as UCs.
+  - `/inferir-catalogo`: propõe a instituição, o curso e as cadeiras.
 
-## 5. Uso local para desenvolvimento (Windows 11 + WSL2 / Ubuntu)
+## 6. Uso local para desenvolvimento (Windows 11 + WSL2 / Ubuntu)
 
 ```bash
 sudo apt install tesseract-ocr tesseract-ocr-por tesseract-ocr-eng pandoc p7zip-full \

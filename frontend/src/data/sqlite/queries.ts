@@ -15,7 +15,7 @@ import type {
 } from "../types";
 import type { ReadonlyDb } from "./db";
 
-export const SUPPORTED_SCHEMA_VERSION = 1;
+export const SUPPORTED_SCHEMA_VERSION = 2;
 
 const JSON_DOC_COLUMNS = [
   "review_reasons",
@@ -43,6 +43,7 @@ function toDocument(row: Record<string, unknown>): DocumentRow {
     );
   }
   out.needs_review = Boolean(row.needs_review);
+  out.visibility_inherited = Boolean(row.visibility_inherited);
   return out as unknown as DocumentRow;
 }
 
@@ -113,8 +114,14 @@ export class MetaIndex {
           ...u,
           preferences: parse(u.preferences, {}),
           enrollments: parse(u.enrollments, {}),
+          sharing: parse(u.sharing, {}),
         }) as UserRow,
     );
+  }
+
+  /** Escolhas de visibilidade por cadeira feitas pelo dono ({chave: visibilidade}). */
+  unitVisibility(owner: string): Record<string, string> {
+    return this.users().find((u) => u.login === owner)?.sharing.units ?? {};
   }
 
   documents(filter: DocumentFilter = {}): DocumentRow[] {
@@ -200,7 +207,7 @@ export class MetaIndex {
       .map(toDocument);
   }
 
-  /** Nº de documentos arrumados por UC (e total, incluindo os por arrumar). */
+  /** Nº de documentos arrumados por cadeira (e total, incluindo os por arrumar). */
   unitStats(owner: string): Map<string, { filed: number; total: number }> {
     const rows = this.db.all<{ unit: string; filed: number; total: number }>(
       `SELECT unit, sum(status IN ('filed', 'enriched', 'reviewed')) AS filed, count(*) AS total

@@ -32,7 +32,12 @@ STATUS_ORDER: tuple[Status, ...] = tuple(Status)
 METHOD_HEURISTIC = "heuristic"
 METHOD_USER = "user"
 _METHOD_RE = re.compile(r"^(heuristic|user|ai:[a-z0-9._-]+)$")
-_VISIBILITY_RE = re.compile(r"^(private|unit_edition|group:[a-z0-9-]+)$")
+# Visibilidades de um documento (ver nexus.domain.visibility). Só `public` é publicada
+# hoje; `link` e `user:<login>` ficam reservadas para quando houver contas (fase 5) e,
+# até lá, contam como privadas.
+VISIBILITY_RE = re.compile(
+    r"^(private|public|link|unit_edition|group:[a-z0-9-]+|user:[A-Za-z0-9-]+)$")
+_VISIBILITY_RE = VISIBILITY_RE
 
 CLASSIFICATION_FIELDS: tuple[str, ...] = (
     "unit",
@@ -150,7 +155,8 @@ class Document(Record):
     blob: BlobRef
     parent: str | None = None
     sources: list[Source] = Field(default_factory=list)
-    visibility: str = "private"
+    # None = segue a escolha do dono para a cadeira (ou privado, se não houver escolha).
+    visibility: str | None = None
     status: Status = Status.RECEIVED
     history: list[HistoryEntry] = Field(default_factory=list)
     classification: Classification = Field(default_factory=Classification)
@@ -164,8 +170,8 @@ class Document(Record):
 
     @field_validator("visibility")
     @classmethod
-    def _check_visibility(cls, value: str) -> str:
-        if not _VISIBILITY_RE.match(value):
+    def _check_visibility(cls, value: str | None) -> str | None:
+        if value is not None and not _VISIBILITY_RE.match(value):
             raise ValueError(f"visibilidade inválida: {value}")
         return value
 

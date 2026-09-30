@@ -52,10 +52,13 @@ def test_field_value_rejects_unknown_method() -> None:
     assert FieldValue(value="x", method="ai:claude-code").method == "ai:claude-code"
 
 
-def test_document_rejects_public_visibility() -> None:
+def test_document_visibility_values() -> None:
     blob = {"sha256": "0" * 64, "size": 1, "ext": "pdf", "mime": "application/pdf"}
     with pytest.raises(ValueError):
-        Document(id="x", owner="a", blob=blob, visibility="public")  # type: ignore[arg-type]
+        Document(id="x", owner="a", blob=blob, visibility="toda-a-gente")  # type: ignore[arg-type]
+    assert Document(id="x", owner="a", blob=blob).visibility is None  # type: ignore[arg-type]
+    assert Document(id="x", owner="a", blob=blob,  # type: ignore[arg-type]
+                    visibility="public").visibility == "public"
     doc = Document(id="x", owner="a", blob=blob, visibility="group:estudo-am1")  # type: ignore[arg-type]
     assert doc.visibility == "group:estudo-am1"
 
@@ -100,7 +103,7 @@ def test_catalog_import_rejects_bad_slug(data_root: Path) -> None:
 def test_migrations_apply_in_order(data_root: Path) -> None:
     calls: list[int] = []
     layout = Layout(data_root)
-    text = layout.settings_file.read_text().replace("format_version: 1", "format_version: 0")
+    text = layout.settings_file.read_text().replace("format_version: 2", "format_version: 0")
     layout.settings_file.write_text(text)
     applied = migrate(data_root, target=1, migrations={0: lambda root: calls.append(0)})
     assert applied == [0] and calls == [0]

@@ -5,11 +5,11 @@
 | Entidade | Onde | Notas |
 |---|---|---|
 | Instituição | `catalogo/<inst>/instituicao.yaml` | slug, nome, sigla, aliases |
-| Curso | `catalogo/<inst>/cursos/*.yaml` | grau; ligação às UCs com ano curricular e semestre (uma UC pode estar em vários cursos) |
+| Curso | `catalogo/<inst>/cursos/*.yaml` | grau; ligação às cadeiras com ano curricular e semestre (uma cadeira pode estar em vários cursos) |
 | Unidade curricular | `catalogo/<inst>/ucs/*.yaml` | código, sigla, aliases, palavras-chave, docentes, ECTS, tópicos hierárquicos |
-| Edição da UC | dentro da UC (`editions`) | ano lectivo, docentes, método de avaliação, avaliações (tipo, época, número, data, peso, folha de consulta) |
+| Edição da cadeira | dentro da cadeira (`editions`) | ano lectivo, docentes, método de avaliação, avaliações (tipo, época, número, data, peso, folha de consulta) |
 | Vocabulários | `catalogo/vocabularios.yaml` | tipos de documento, papéis, origens de resolução, tipos de avaliação, épocas; com rótulos i18n e âmbito opcional por instituição |
-| Utilizador | `utilizadores/<login>.yaml` | login GitHub, preferências (modo tutor), inscrições em cursos e em edições de UC |
+| Utilizador | `utilizadores/<login>.yaml` | login GitHub, preferências (modo tutor), inscrições em cursos e em edições de cadeira, `sharing.units` (visibilidade escolhida por cadeira) |
 | Grupo | `grupos/<slug>.yaml` | membros e papéis (usado na fase 5) |
 | Blob | `originais/` + `blob` no documento | SHA-256, tamanho, extensão, mime; único por repositório |
 | Documento | `documentos/<uuid7>.yaml` | cópia lógica por utilizador: origens, `parent` (arquivo), `kind`, visibilidade, estado + histórico, classificação por campo, revisão, nome arrumado, notas, manifesto de projecto de código |
@@ -21,7 +21,14 @@
 - O conteúdo derivado (texto, e mais tarde resumos e perguntas) é calculado por blob e
   reutilizado por quem tem acesso a esse blob.
 - Tudo o que é pessoal (classificação da cópia lógica, notas, progresso) fica por utilizador.
-- Visibilidade: `private` por defeito, `group:<slug>` ou `unit_edition`.
+- Visibilidade (formato 2):
+  - por cadeira, em `utilizadores/<login>.yaml` → `sharing.units: {<cadeira>: public}`;
+  - por documento, em `documentos/<id>.yaml` → `visibility` (sem campo = segue a cadeira);
+  - sem escolha nenhuma, é **privado**. A visibilidade efectiva vai para o índice
+    (`visibility`, `visibility_inherited`);
+  - valores: `private`, `public`; reservados para a fase 5 (contam como privados):
+    `user:<login>`, `link`, `group:<slug>`, `unit_edition`;
+  - só o utilizador escolhe visibilidades; o pipeline e a IA nunca as alteram.
 
 ## Fases seguintes (desenhado; criado quando a fase chegar)
 
@@ -29,7 +36,7 @@ Todos os registos gerados têm `generated` (proveniência) e ligam a `SourceRef`
 
 **Conteúdo por blob (partilhável):**
 - **Pergunta:** `gerado/<sha>/perguntas/*.yaml`, com número, enunciado em
-  Markdown+LaTeX, página, cotação, tópicos (UC) e ligação à resolução (sha + página)
+  Markdown+LaTeX, página, cotação, tópicos (cadeira) e ligação à resolução (sha + página)
   quando existir. É a base do banco de perguntas e da análise de frequência por tópico.
 - **Resumo, glossário, conceitos, fichas de revisão e formulários:**
   `gerado/<sha>/…` (Markdown com citações).
@@ -46,7 +53,7 @@ Todos os registos gerados têm `generated` (proveniência) e ligam a `SourceRef`
 - **Preparação por tópico:** derivada das tentativas e dos flashcards.
 
 **Calendário:**
-- Avaliações da edição da UC (data, peso) e prazos de trabalhos.
+- Avaliações da edição da cadeira (data, peso) e prazos de trabalhos.
 - Plano de estudo: sessões por tópico até à data de cada prova.
 
 **Trabalhos:**

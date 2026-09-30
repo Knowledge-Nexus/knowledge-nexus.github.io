@@ -18,6 +18,9 @@
 | 14 | Classificação **heurística e explicável**; IA só para o que fica ambíguo | Nunca arrumar à sorte. As justificações são verificáveis e traduzíveis |
 | 15 | Identificadores UUIDv7 e chaves `inst/uc` | Estáveis entre repositórios e prontos para migrar para um servidor |
 | 16 | **PyMuPDF (AGPL)** atrás de uma interface de extracção | Não afecta o uso pessoal. Na fase 5 decide-se entre a licença AGPL e o pypdfium2 |
+| 17 | Na interface diz-se **"cadeira"**, não "UC" | "UC" confunde-se com Universidade de Coimbra. No código continua `unit` |
+| 18 | **Público/privado por cadeira**, com excepções por documento; privado por defeito | Escolha do utilizador: decide o que partilha e respeita pedidos dos docentes |
+| 19 | Material público num **repositório público separado**, servido pelo Pages | O repositório de dados continua privado (fronteira de segurança). Mesma origem que a interface: sem token, sem CORS, sem limites da API. Um só commit, para que despartilhar remova mesmo |
 
 ## Por decidir
 

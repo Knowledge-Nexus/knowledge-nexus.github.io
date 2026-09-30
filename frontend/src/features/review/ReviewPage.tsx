@@ -65,7 +65,7 @@ function ProposalCard(props: { proposal: ProposalRow }) {
             ],
             proposals: { accept: [proposal.id] },
           },
-          `catálogo: criar UC ${proposal.name}`,
+          `catálogo: criar cadeira ${proposal.name}`,
         );
       } else {
         await source.catalogRequest(

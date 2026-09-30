@@ -1,6 +1,6 @@
 ---
 name: rever-classificacoes
-description: Analisa os documentos da fila "A rever" deste repositório de dados, lê o texto extraído e propõe a classificação (UC, tipo, ano lectivo, avaliação, época, enunciado ou resolução) com confiança e justificação, gravando as propostas através da CLI nexus. Usa quando houver documentos por rever ou quando o utilizador pedir para rever classificações.
+description: Analisa os documentos da fila "A rever" deste repositório de dados, lê o texto extraído e propõe a classificação (cadeira, tipo, ano lectivo, avaliação, época, enunciado ou resolução) com confiança e justificação, gravando as propostas através da CLI nexus. Usa quando houver documentos por rever ou quando o utilizador pedir para rever classificações.
 ---
 
 # Rever classificações
@@ -27,14 +27,14 @@ sorte**. Tu propões; o utilizador confirma na interface (fila "A rever").
    }
    ```
 
-   - Usa só valores que existam: chaves de UC `<instituicao>/<uc>` do catálogo e slugs de
+   - Usa só valores que existam: chaves de cadeira `<instituicao>/<uc>` do catálogo e slugs de
      `catalogo/vocabularios.yaml`. Ano lectivo no formato `2023-2024`.
    - A confiança tem de ser honesta. Abaixo de 0.7 o documento continua "A rever" (as tuas
      alternativas ficam visíveis ao utilizador).
    - A justificação cita o documento (página e excerto curto).
 4. Grava: `nexus revisao propor <id> --ficheiro proposta.json` (ou `-` para stdin).
    A CLI marca os campos como `ai:claude-code`; nunca sobrepõe campos do utilizador.
-5. Se a UC não existir no catálogo, não a inventes: verifica `nexus catalogo propostas`
+5. Se a cadeira não existir no catálogo, não a inventes: verifica `nexus catalogo propostas`
    e, se fizer sentido, sugere ao utilizador aceitá-la (ou corre `/inferir-catalogo`).
 6. No fim: `nexus processar --json` (aplica, arruma o que ficou confiante e publica) e
    resume o que mudou.

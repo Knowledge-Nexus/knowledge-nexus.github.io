@@ -6,7 +6,7 @@ slides, fotos de apontamentos, enunciados, resoluções, código, zips) e o sist
 1. identifica cada ficheiro;
 2. deduplica;
 3. extrai o texto, com OCR em português;
-4. classifica-o por UC, tipo, ano lectivo e época;
+4. classifica-o por cadeira, tipo, ano lectivo e época;
 5. arruma-o numa biblioteca pesquisável.
 
 - **Interface:** https://knowledge-nexus.github.io (só código; os teus dados nunca estão aqui).

@@ -64,7 +64,7 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
 1. A interface grava um patch no `documentos/<id>.yaml`: os campos escolhidos ficam com
    `method: user` e a revisão fica `resolved`.
 2. O próximo processamento arruma o documento e marca-o como `reviewed`.
-3. As propostas de UC são aceites através de um pedido de catálogo. O motor cria a UC e
+3. As propostas de cadeira são aceites através de um pedido de catálogo. O motor cria a cadeira e
    reclassifica o que estava à espera dela.
 
 ### Pesquisa
@@ -83,7 +83,7 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
   - cabeçalho da 1.ª página;
   - texto das primeiras páginas;
   - metadados do PDF.
-- **UC:** código, sigla, nome, aliases, palavras-chave e docentes do catálogo. Primeiro
+- **Cadeira:** código, sigla, nome, aliases, palavras-chave e docentes do catálogo. Primeiro
   entre as inscrições do utilizador (com bónus) e só depois no catálogo todo.
 - **Tipo de documento:** famílias de tipos com as mesmas palavras-chave. Dentro da
   família, o papel (enunciado ou resolução) decide o tipo. O formato (ex.: .pptx → slides)
@@ -92,7 +92,7 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
   ano começa em Setembro (configurável).
 - **Confiança:** `melhor / (melhor + segundo + prior)`. Um sinal forte e isolado dá
   confiança alta; dois candidatos próximos ou um sinal fraco dão confiança baixa.
-- **Obrigatórios para arrumar:** UC e tipo; nas avaliações, também o ano e o tipo de
+- **Obrigatórios para arrumar:** cadeira e tipo; nas avaliações, também o ano e o tipo de
   avaliação. Tudo configurável em `nexus.yaml`.
 - **Casos ambíguos:** vão para "A rever". A skill `/rever-classificacoes` (Claude Code)
   propõe classificações com justificação, e quem confirma é o utilizador.
@@ -104,6 +104,14 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
 - **Token:** fine-grained e limitado ao repositório de dados. Fica em `sessionStorage`,
   ou em `localStorage` se o utilizador pedir "lembrar".
 - **Recusa de repositórios públicos:** a interface, o `nexus vigiar` e o workflow.
+- **Material público (opcional, por escolha do dono):** o que tiver visibilidade `public`
+  (por cadeira ou por documento) é copiado por `nexus publicar` para um repositório
+  **público à parte** (`publishing.public_repo`, ex.: `estudo-publico`) servido pelo Pages
+  em `/<nome>/`; a interface lê-o em `#/publico` sem token (mesma origem, `connect-src
+  'self'`). Esse repositório tem um só commit, reescrito a cada publicação: o que volta a
+  ser privado sai de lá sem ficar no histórico. Não leva notas, caminhos de origem,
+  histórico, revisões, propostas nem justificações. O `nexus publicar` recusa publicar no
+  repositório de dados ou no da aplicação, e só faz push se o conteúdo mudou.
 - **Neste repositório:** a guarda de binários impede commits de documentos.
 - **No workflow do repositório de dados:** uma guarda falha se algum commit alterar ou
   apagar ficheiros em `originais/`.
@@ -121,4 +129,4 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
   "privado" não se garante (quem lê o repositório lê tudo). Na fase 5 a solução passa por
   repositórios por grupo ou por um backend.
 - **Crescimento do índice:** o browser descarrega os índices inteiros. Quando crescerem,
-  reparte-se `pesquisa.db` por UC ou por ano lectivo.
+  reparte-se `pesquisa.db` por cadeira ou por ano lectivo.

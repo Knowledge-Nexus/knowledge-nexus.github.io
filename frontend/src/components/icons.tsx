@@ -131,3 +131,18 @@ export function FileGlyph(props: { ext: string; kind: string; size?: number }) {
   }
   return <IconFile size={size} />;
 }
+
+export const IconGlobe = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M4 12h16" />
+    <path d="M12 4c2.2 2.3 3.2 5 3.2 8s-1 5.7-3.2 8c-2.2-2.3-3.2-5-3.2-8s1-5.7 3.2-8z" />
+  </Svg>
+);
+
+export const IconLock = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5.5" y="10.5" width="13" height="9" rx="2" />
+    <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+  </Svg>
+);

@@ -9,7 +9,11 @@ test.skip(!out, "defina NEXUS_SCREENSHOTS para gerar capturas");
 
 const snapshot = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "../../test-fixtures/e2e/repo.json"), "utf-8"),
-) as { main: Record<string, string>; indices: Record<string, string> };
+) as {
+  main: Record<string, string>;
+  indices: Record<string, string>;
+  publico: Record<string, string>;
+};
 const decode = (files: Record<string, string>) =>
   Object.fromEntries(Object.entries(files).map(([p, b]) => [p, Buffer.from(b, "base64")]));
 
@@ -30,6 +34,12 @@ test("capturas", async ({ page }) => {
       body: Buffer.from(await res.arrayBuffer()),
     });
   });
+  const publicFiles = decode(snapshot.publico);
+  await page.route("**/estudo-publico/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/estudo-publico\//, "");
+    const body = publicFiles[path];
+    await route.fulfill(body ? { status: 200, body } : { status: 404, body: "" });
+  });
   await page.goto("/");
   await page.screenshot({ path: `${out}/1-ligacao.png` });
   await page.getByLabel("Repositório de dados (dono/nome)").fill("aluna/estudo-dados");
@@ -47,12 +57,14 @@ test("capturas", async ({ page }) => {
     .click();
   await page.getByText("2023-2024_exame-recurso-enunciado.pdf").waitFor();
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
+  await page.getByRole("button", { name: "Pública" }).waitFor();
+  await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
   await page.locator("canvas").waitFor();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${out}/3-documento.png` });
   await page.getByRole("link", { name: /A rever/ }).click();
-  await page.getByText(/UC em falta/).waitFor();
+  await page.getByText(/Cadeira em falta/).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/4-a-rever.png`, fullPage: true });
   await page.getByRole("link", { name: "Pesquisa" }).click();
@@ -68,4 +80,9 @@ test("capturas", async ({ page }) => {
   await page.getByRole("link", { name: "Início" }).first().click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/7-movel.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await page.goto("/#/publico");
+  await page.getByRole("heading", { name: "Material partilhado" }).waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/8-publico.png`, fullPage: true });
 });

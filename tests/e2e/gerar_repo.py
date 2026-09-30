@@ -3,7 +3,8 @@
 Uso: uv run python tests/e2e/gerar_repo.py <saida.json>
 
 O JSON tem os ficheiros do ramo `main` e do ramo `indices` (em base64); o Playwright
-serve-os através de um GitHub simulado (frontend/src/data/github/fake.ts).
+serve-os através de um GitHub simulado (frontend/src/data/github/fake.ts). A cadeira AM1 é
+marcada como pública: `publico` tem o site público gerado pelo motor (modo de visitante).
 """
 
 from __future__ import annotations
@@ -25,7 +26,9 @@ from nexus.datarepo.store import DataRepo  # noqa: E402
 from nexus.datarepo.yamlio import read_yaml  # noqa: E402
 from nexus.index.builder import build_indices  # noqa: E402
 from nexus.pipeline.run import Pipeline  # noqa: E402
+from nexus.public import build_public_site  # noqa: E402
 from nexus.scaffold import scaffold  # noqa: E402
+from nexus.sharing import set_unit_visibility  # noqa: E402
 
 OWNER = "aluna"
 
@@ -46,9 +49,13 @@ def build(out: Path) -> None:
                       read_yaml(ROOT / "config" / "catalogo" / "exemplo.yaml"))
         gerar.pasta_exemplo(root / "deposito" / OWNER)
         Pipeline(DataRepo(root)).run()
+        set_unit_visibility(DataRepo(root), OWNER, "ufe/am1", "public")
         indices = Path(tmp) / "indices"
         build_indices(DataRepo(root), indices, built_from="e2e")
-        data = {"owner": OWNER, "main": _files(root), "indices": _files(indices)}
+        public = Path(tmp) / "publico"
+        build_public_site(DataRepo(root), public)
+        data = {"owner": OWNER, "main": _files(root), "indices": _files(indices),
+                "publico": _files(public)}
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data), encoding="utf-8")
 

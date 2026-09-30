@@ -198,7 +198,7 @@ export function Empty(props: { children: ReactNode; action?: ReactNode }) {
   );
 }
 
-// Cores de lombada para as UCs (tons de encadernação; estáveis por chave).
+// Cores de lombada para as cadeiras (tons de encadernação; estáveis por chave).
 const SPINES = [
   "#7e3b3b",
   "#355f48",

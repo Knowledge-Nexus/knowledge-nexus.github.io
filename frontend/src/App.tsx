@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { HashRouter, Navigate, Route, Routes } from "react-router";
+import { HashRouter, Link, Navigate, Route, Routes } from "react-router";
 import { Layout } from "./components/Layout";
-import { ErrorBox, Spinner } from "./components/ui";
+import { buttonClass, Empty, ErrorBox, Spinner } from "./components/ui";
 import { DataProvider, useApp } from "./data/context";
+import { fetchPublicManifest, PublicDataSource } from "./data/public";
 import { clearSession, loadSession, saveSession } from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
 import { HomePage } from "./features/home/HomePage";
@@ -49,6 +50,55 @@ function Shell(props: { connected: Connected; onLogout: () => void }) {
   );
 }
 
+const noop = () => {};
+
+/** Página pública: o material que o dono marcou como público, só de leitura. */
+function PublicShell() {
+  const { t } = useTranslation();
+  const manifest = useQuery({
+    queryKey: ["public-manifest"],
+    queryFn: () => fetchPublicManifest(),
+  });
+  const owner = manifest.data?.owner ?? "";
+  const source = useMemo(() => new PublicDataSource(owner), [owner]);
+  if (manifest.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+  if (manifest.error) return <ErrorBox error={manifest.error} />;
+  if (!manifest.data) {
+    return (
+      <div className="mx-auto max-w-lg space-y-3 p-8">
+        <Empty
+          action={
+            <Link to="/" className={buttonClass("secondary")}>
+              {t("public.enter")}
+            </Link>
+          }
+        >
+          {t("public.unavailable")} {t("public.unavailable_hint")}
+        </Empty>
+      </div>
+    );
+  }
+  return (
+    <DataProvider source={source} onLogout={noop} readOnly base="/publico">
+      <Layout>
+        <Routes>
+          <Route index element={<HomePage />} />
+          <Route path="biblioteca" element={<LibraryPage />} />
+          <Route path="documento/:id" element={<DocumentPage />} />
+          <Route path="pesquisa" element={<SearchPage />} />
+          <Route path="*" element={<Navigate to="/publico" replace />} />
+        </Routes>
+      </Layout>
+    </DataProvider>
+  );
+}
+
 export function App() {
   const { t } = useTranslation();
   const [connected, setConnected] = useState<Connected | null>(null);
@@ -86,18 +136,26 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <HashRouter>
-        {connected ? (
-          <Shell connected={connected} onLogout={logout} />
-        ) : (
-          <>
-            {restoreError ? (
-              <div className="mx-auto max-w-lg p-4">
-                <ErrorBox error={restoreError} />
-              </div>
-            ) : null}
-            <ConnectPage onConnected={onConnected} />
-          </>
-        )}
+        <Routes>
+          <Route path="/publico/*" element={<PublicShell />} />
+          <Route
+            path="*"
+            element={
+              connected ? (
+                <Shell connected={connected} onLogout={logout} />
+              ) : (
+                <>
+                  {restoreError ? (
+                    <div className="mx-auto max-w-lg p-4">
+                      <ErrorBox error={restoreError} />
+                    </div>
+                  ) : null}
+                  <ConnectPage onConnected={onConnected} />
+                </>
+              )
+            }
+          />
+        </Routes>
       </HashRouter>
     </QueryClientProvider>
   );

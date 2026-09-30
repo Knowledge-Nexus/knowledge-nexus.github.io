@@ -83,6 +83,9 @@ jobs:
           key: nexus-extract-${{ github.run_id }}
           restore-keys: nexus-extract-
 
+      - name: Migrar o formato dos ficheiros (se preciso)
+        run: nexus migrar
+
       - name: Processar
         env:
           GIT_AUTHOR_NAME: nexus-bot
@@ -117,6 +120,32 @@ jobs:
           PY
           # Erros de ficheiros individuais (status 2) não falham o workflow: estão em _erros/.
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
+
+      - name: Publicar o material marcado como público
+        # Só corre se o nexus.yaml tiver publishing.public_repo; só sai o que o dono marcou
+        # como "Público" (por cadeira ou por documento). O repositório de dados fica privado.
+        env:
+          NEXUS_PUBLICO_TOKEN: ${{ secrets.NEXUS_PUBLICO_TOKEN }}
+          GIT_AUTHOR_NAME: nexus-bot
+          GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
+          GIT_COMMITTER_NAME: nexus-bot
+          GIT_COMMITTER_EMAIL: nexus-bot@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          nexus publicar --json > "$RUNNER_TEMP/publico.json"
+          python3 - <<'PY'
+          import json
+          import os
+          r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "publico.json")))
+          if r["configured"]:
+              if r["missing_token"]:
+                  print("::warning::Há material público por publicar: cria o segredo "
+                        "NEXUS_PUBLICO_TOKEN (Settings → Secrets and variables → Actions).")
+              state = "publicado" if r["published"] else "; ".join(r["notes"])
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+                  fh.write(f"- material público: {r['documents']} documento(s) → "
+                           f"`{r['target']}` ({state})\n")
+          PY
 
       - name: Guarda — os originais nunca são alterados nem apagados
         # Um force push é uma reescrita deliberada do histórico (ex.: limpar dados de teste),

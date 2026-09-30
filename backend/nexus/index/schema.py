@@ -23,7 +23,7 @@ from sqlalchemy import (
     Text,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 metadata = MetaData()
 
@@ -111,6 +111,7 @@ users = Table(
     Column("name", Text),
     Column("preferences", JSON, nullable=False),
     Column("enrollments", JSON, nullable=False),
+    Column("sharing", JSON, nullable=False),
 )
 
 documents = Table(
@@ -124,7 +125,8 @@ documents = Table(
     Column("mime", String(128), nullable=False),
     Column("original_path", String(64), nullable=False),
     Column("parent", String(36)),
-    Column("visibility", String(80), nullable=False),
+    Column("visibility", String(80), nullable=False),  # visibilidade efectiva
+    Column("visibility_inherited", Boolean, nullable=False),  # vem da cadeira
     Column("status", String(16), nullable=False),
     Column("display_name", Text, nullable=False),
     Column("source_path", Text),

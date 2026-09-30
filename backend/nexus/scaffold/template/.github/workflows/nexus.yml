@@ -32,3 +32,5 @@ jobs:
     with:
       app-ref: __APP_REF__
       reclassify: ${{ inputs.reclassificar || false }}
+    # Passa o segredo NEXUS_PUBLICO_TOKEN (opcional) para publicar o material público.
+    secrets: inherit
