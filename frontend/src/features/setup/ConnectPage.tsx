@@ -74,10 +74,10 @@ export function ConnectPage(props: {
 
   return (
     <div className="leather min-h-screen pb-12">
-      <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-8 sm:pt-10">
+      <div className="mx-auto max-w-2xl px-4 pt-5 sm:px-8 sm:pt-8">
         <BrandBanner />
       </div>
-      <div className="mx-auto grid max-w-5xl gap-8 px-4 pt-8 sm:px-8 lg:grid-cols-[1fr_26rem]">
+      <div className="mx-auto grid max-w-5xl gap-8 px-4 pt-6 sm:px-8 lg:grid-cols-[1fr_26rem]">
         <section className="space-y-5 text-white/85 lg:pt-2">
           <h1 className="font-display text-2xl leading-snug tracking-[0.04em] text-gold-light">
             {t("app.tagline")}
