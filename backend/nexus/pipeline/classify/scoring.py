@@ -63,6 +63,8 @@ class CompiledTerm:
     term: Term
     keywords: tuple[str, ...]
     patterns: tuple[re.Pattern[str], ...]
+    # forma normalizada → forma escrita no vocabulário (para as justificações)
+    originals: dict[str, str] = field(default_factory=dict, compare=False, hash=False)
 
     @property
     def family_key(self) -> tuple[frozenset[str], frozenset[str]]:
@@ -72,9 +74,13 @@ class CompiledTerm:
 def compile_terms(terms: list[Term]) -> list[CompiledTerm]:
     out: list[CompiledTerm] = []
     for term in terms:
-        keywords = tuple(dict.fromkeys(k for k in (normalize(kw) for kw in term.keywords) if k))
+        originals: dict[str, str] = {}
+        for keyword in term.keywords:
+            norm = normalize(keyword)
+            if norm:
+                originals.setdefault(norm, keyword)
         patterns = tuple(re.compile(p) for p in term.patterns)
-        out.append(CompiledTerm(term, keywords, patterns))
+        out.append(CompiledTerm(term, tuple(originals), patterns, originals))
     return out
 
 
@@ -99,7 +105,8 @@ def score_term(compiled: CompiledTerm, signals: list[Signal], value: Any = None)
                 points * signal.weight,
                 Reason(
                     code="term.keyword",
-                    params={"keywords": matched + pattern_hits},
+                    params={"keywords": [compiled.originals.get(k, k) for k in matched]
+                            + pattern_hits},
                     source=signal.source,
                 ),
             )

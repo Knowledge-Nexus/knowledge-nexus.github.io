@@ -5,8 +5,9 @@
 # - `slug` é um identificador estável (aparece em caminhos e referências). Não o mudes
 #   depois de haver documentos classificados; muda antes o rótulo.
 # - `labels` são traduzíveis (pt-PT por defeito).
-# - `keywords` são comparadas depois de normalizadas: minúsculas, sem acentos e com as
-#   grafias pré-AO/AO90 unificadas (lectivo = letivo, correcção = correção).
+# - `keywords` escrevem-se normalmente (com acentos, em pt-PT); são comparadas depois de
+#   normalizadas: minúsculas, sem acentos e com as grafias pré-AO/AO90 unificadas
+#   (lectivo = letivo, correcção = correção). Aparecem assim nas justificações.
 # - `patterns` são expressões regulares aplicadas ao texto normalizado.
 # - `extensions` (só tipos de documento): formatos que por si só são indício do tipo.
 # - O código nunca depende de um slug concreto; só dos atributos (`is_assessment`,
@@ -19,8 +20,8 @@ document_types:
     role: any
     # Formatos que, por si só, são indício deste tipo.
     extensions: [pptx, ppt, pps, ppsx, odp, key]
-    keywords: [slides, diapositivos, teorica, teoricas, aula teorica, aulas teoricas,
-               apresentacao, lecture, lectures, capitulo, chapter, sumario]
+    keywords: [slides, diapositivos, teórica, teóricas, aula teórica, aulas teóricas,
+               apresentação, lecture, lectures, capítulo, chapter, sumário]
   - slug: apontamentos
     labels: { pt-PT: "Apontamentos", en: "Notes" }
     role: any
@@ -28,9 +29,9 @@ document_types:
   - slug: fichas-exercicios
     labels: { pt-PT: "Fichas de exercícios", en: "Exercise sheets" }
     role: statement
-    keywords: &exercise_keywords [ficha, fichas, ficha de exercicios, folha de exercicios,
-               caderno de exercicios, exercicios, exercicio, problemas, exercises,
-               problem set, aula pratica, aulas praticas, pratica, praticas, tp, tp1, tp2]
+    keywords: &exercise_keywords [ficha, fichas, ficha de exercícios, folha de exercícios,
+               caderno de exercícios, exercícios, exercício, problemas, exercises,
+               problem set, aula prática, aulas práticas, prática, práticas, tp, tp1, tp2]
   - slug: resolucoes-exercicios
     labels: { pt-PT: "Resoluções de exercícios", en: "Exercise solutions" }
     role: solution
@@ -39,8 +40,8 @@ document_types:
     labels: { pt-PT: "Enunciados de avaliação", en: "Assessment papers" }
     role: statement
     is_assessment: true
-    keywords: &assessment_keywords [exame, exames, teste, testes, frequencia, mini teste,
-               mini testes, miniteste, prova, provas, epoca, exam, test, quiz, midterm]
+    keywords: &assessment_keywords [exame, exames, teste, testes, frequência, mini-teste,
+               mini-testes, miniteste, prova, provas, época, exam, test, quiz, midterm]
   - slug: resolucoes-avaliacao
     labels: { pt-PT: "Resoluções de avaliações", en: "Assessment solutions" }
     role: solution
@@ -49,30 +50,30 @@ document_types:
   - slug: enunciados-trabalhos
     labels: { pt-PT: "Enunciados de trabalhos / projectos", en: "Assignments / projects" }
     role: statement
-    keywords: [trabalho pratico, trabalho de grupo, trabalho individual, projecto,
-               enunciado do projecto, enunciado do trabalho, guia de laboratorio,
-               laboratorio, assignment, project, mini projecto]
+    keywords: [trabalho prático, trabalho de grupo, trabalho individual, projecto,
+               enunciado do projecto, enunciado do trabalho, guia de laboratório,
+               laboratório, assignment, project, mini-projecto]
   - slug: entregas
     labels: { pt-PT: "Entregas (relatórios, código)", en: "Submissions" }
     role: any
     is_submission: true
-    keywords: [relatorio, entrega, submissao, report, submission, codigo fonte]
+    keywords: [relatório, entrega, submissão, report, submission, código-fonte]
   - slug: bibliografia
     labels: { pt-PT: "Bibliografia", en: "Bibliography" }
     role: any
-    keywords: [livro, book, bibliografia, isbn, edicao, edition, publisher, editora, copyright]
+    keywords: [livro, book, bibliografia, isbn, edição, edition, publisher, editora, copyright]
   - slug: formularios
     labels: { pt-PT: "Formulários", en: "Formula sheets" }
     role: any
-    keywords: [formulario, formularios, formulas, folha de consulta, cheat sheet,
+    keywords: [formulário, formulários, fórmulas, folha de consulta, cheat sheet,
                cheatsheet, tabela de integrais, tabela de derivadas]
   - slug: programa-uc
     labels: { pt-PT: "Ficha da UC / programa", en: "Course syllabus" }
     role: any
     is_syllabus: true
-    keywords: [ficha da unidade curricular, ficha da uc, programa da unidade curricular,
-               programa, conteudos programaticos, objectivos de aprendizagem,
-               metodos de avaliacao, bibliografia principal, syllabus, ects]
+    keywords: [ficha da unidade curricular, ficha da UC, programa da unidade curricular,
+               programa, conteúdos programáticos, objectivos de aprendizagem,
+               métodos de avaliação, bibliografia principal, syllabus, ECTS]
   - slug: outros
     labels: { pt-PT: "Outros", en: "Other" }
     role: any
@@ -86,21 +87,21 @@ roles:
     keywords: [enunciado, enunciados, statement, questions]
   - slug: solution
     labels: { pt-PT: "Resolução", en: "Solution" }
-    keywords: [resolucao, resolucoes, resolvido, resolvida, resolvidos, solucao, solucoes,
-               correcao, proposta de resolucao, criterios de correcao, solutions,
+    keywords: [resolução, resoluções, resolvido, resolvida, resolvidos, solução, soluções,
+               correcção, proposta de resolução, critérios de correcção, solutions,
                solution, answers, respostas]
 
 # Origem de uma resolução.
 solution_origins:
   - slug: oficial
     labels: { pt-PT: "Oficial", en: "Official" }
-    keywords: [proposta de resolucao, resolucao oficial, criterios de correcao, docente]
+    keywords: [proposta de resolução, resolução oficial, critérios de correcção, docente]
   - slug: propria
     labels: { pt-PT: "Própria", en: "Own" }
-    keywords: [minha resolucao, a minha resolucao, resolucao propria]
+    keywords: [minha resolução, a minha resolução, resolução própria]
   - slug: colegas
     labels: { pt-PT: "De colegas", en: "From peers" }
-    keywords: [resolucao de colegas, resolucao do colega, feito por alunos]
+    keywords: [resolução de colegas, resolução do colega, feito por alunos]
   - slug: desconhecida
     labels: { pt-PT: "Desconhecida", en: "Unknown" }
     is_fallback: true
@@ -109,13 +110,13 @@ solution_origins:
 assessment_types:
   - slug: mini-teste
     labels: { pt-PT: "Mini-teste", en: "Quiz" }
-    keywords: [mini teste, mini testes, miniteste, minitestes, quiz, questao aula]
+    keywords: [mini-teste, mini-testes, miniteste, minitestes, quiz, questão-aula]
   - slug: teste
     labels: { pt-PT: "Teste", en: "Test" }
     keywords: [teste, testes, test, midterm, teste intercalar]
   - slug: frequencia
     labels: { pt-PT: "Frequência", en: "Midterm (frequência)" }
-    keywords: [frequencia, frequencias]
+    keywords: [frequência, frequências]
   - slug: exame
     labels: { pt-PT: "Exame", en: "Exam" }
     keywords: [exame, exames, exam, prova final, prova escrita]
@@ -129,10 +130,10 @@ assessment_types:
 exam_seasons:
   - slug: normal
     labels: { pt-PT: "Época normal", en: "Regular season" }
-    keywords: [epoca normal, 1a epoca, 1 epoca, primeira epoca, epoca de avaliacao normal]
+    keywords: [época normal, 1.ª época, 1ª época, primeira época, época de avaliação normal]
   - slug: recurso
     labels: { pt-PT: "Época de recurso", en: "Resit" }
-    keywords: [epoca de recurso, recurso, 2a epoca, 2 epoca, segunda epoca, resit]
+    keywords: [época de recurso, recurso, 2.ª época, 2ª época, segunda época, resit]
   - slug: especial
     labels: { pt-PT: "Época especial", en: "Special season" }
-    keywords: [epoca especial, especial]
+    keywords: [época especial, especial]

@@ -9,7 +9,8 @@ import { defineConfig } from "vitest/config";
 const devWithoutCsp: Plugin = {
   name: "nexus-dev-without-csp",
   apply: "serve",
-  transformIndexHtml: (html) => html.replace(/<meta\s+http-equiv="Content-Security-Policy"[^>]*>/s, ""),
+  transformIndexHtml: (html) =>
+    html.replace(/<meta\s+http-equiv="Content-Security-Policy"[^>]*>/s, ""),
 };
 
 export default defineConfig({

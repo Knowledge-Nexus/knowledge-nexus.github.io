@@ -39,7 +39,10 @@ async function withFakeGitHub(page: Page, options: { private?: boolean } = {}) {
     });
     await route.fulfill({
       status: response.status,
-      headers: { ...CORS, "content-type": response.headers.get("content-type") ?? "application/octet-stream" },
+      headers: {
+        ...CORS,
+        "content-type": response.headers.get("content-type") ?? "application/octet-stream",
+      },
       body: Buffer.from(await response.arrayBuffer()),
     });
   });
@@ -63,7 +66,8 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (msg) => {
-    if (msg.type() === "error" && /Content Security Policy/i.test(msg.text())) errors.push(msg.text());
+    if (msg.type() === "error" && /Content Security Policy/i.test(msg.text()))
+      errors.push(msg.text());
   });
   const fake = await withFakeGitHub(page);
   await login(page, fake);

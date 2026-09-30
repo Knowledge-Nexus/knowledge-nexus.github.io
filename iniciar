@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Um só comando para trabalhar localmente (Linux, macOS ou Windows com WSL2).
+#
+#   ./iniciar             interface em http://localhost:5173 (liga ao teu repositório de dados)
+#                         + `nexus vigiar`, se NEXUS_VIGIAR e NEXUS_REPOSITORIO estiverem definidos
+#   ./iniciar verificar   ferramentas de sistema, lint, tipos e testes
+#
+# Variáveis (opcionais):
+#   NEXUS_VIGIAR=/caminho/da/pasta   pasta local de depósito a vigiar
+#   NEXUS_REPOSITORIO=dono/nome      repositório de dados PRIVADO
+#   NEXUS_TOKEN=...                  token fine-grained (só esse repositório)
+set -euo pipefail
+cd "$(dirname "$0")"
+
+command -v uv >/dev/null || { echo "Falta o uv: https://docs.astral.sh/uv/"; exit 1; }
+command -v pnpm >/dev/null || { echo "Falta o pnpm: corepack enable pnpm"; exit 1; }
+
+uv sync -q --python 3.12
+pnpm -C frontend install --silent
+
+if [ "${1:-}" = "verificar" ]; then
+  uv run nexus verificar || true
+  bash scripts/guarda-binarios.sh
+  uv run ruff check . && uv run mypy && uv run pytest -q
+  uv run python tests/contrato/gerar_indice.py frontend/test-fixtures/contrato
+  pnpm -C frontend lint && pnpm -C frontend typecheck && pnpm -C frontend test
+  exit 0
+fi
+
+pids=()
+cleanup() { kill "${pids[@]}" 2>/dev/null || true; }
+trap cleanup EXIT INT TERM
+
+pnpm -C frontend dev --port 5173 --strictPort &
+pids+=($!)
+
+if [ -n "${NEXUS_VIGIAR:-}" ] && [ -n "${NEXUS_REPOSITORIO:-}" ]; then
+  uv run nexus vigiar "$NEXUS_VIGIAR" --repositorio "$NEXUS_REPOSITORIO" &
+  pids+=($!)
+fi
+
+echo "Interface: http://localhost:5173  (Ctrl+C para parar)"
+wait

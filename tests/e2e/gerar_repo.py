@@ -19,7 +19,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tests"))
 
 from amostras import gerar  # noqa: E402
-
 from nexus import clock  # noqa: E402
 from nexus.datarepo.catalog_io import import_bundle  # noqa: E402
 from nexus.datarepo.store import DataRepo  # noqa: E402
