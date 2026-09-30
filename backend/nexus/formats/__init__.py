@@ -28,8 +28,12 @@ def _v1_visibility_inherits(root: Path) -> None:
             write_yaml_if_changed(path, data)
 
 
+def _v2_duplicate_of(root: Path) -> None:
+    """2 → 3: novo campo opcional `duplicate_of` nos documentos (calculado pelo pipeline)."""
+
+
 # {versão de origem: função que migra para a versão seguinte}
-MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits}
+MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits, 2: _v2_duplicate_of}
 
 
 def current_version(root: Path) -> int:

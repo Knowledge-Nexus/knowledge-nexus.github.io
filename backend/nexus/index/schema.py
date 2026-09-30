@@ -23,7 +23,7 @@ from sqlalchemy import (
     Text,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 metadata = MetaData()
 
@@ -125,6 +125,7 @@ documents = Table(
     Column("mime", String(128), nullable=False),
     Column("original_path", String(64), nullable=False),
     Column("parent", String(36)),
+    Column("duplicate_of", String(36)),  # cópia (mesmo texto) de outro documento
     Column("visibility", String(80), nullable=False),  # visibilidade efectiva
     Column("visibility_inherited", Boolean, nullable=False),  # vem da cadeira
     Column("status", String(16), nullable=False),

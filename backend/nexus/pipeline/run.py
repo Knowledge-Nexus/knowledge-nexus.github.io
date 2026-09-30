@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import hashlib
 import logging
 import os
 import shutil
@@ -45,7 +46,7 @@ from nexus.domain.documents import (
     Status,
 )
 from nexus.domain.proposals import CatalogProposal, Evidence
-from nexus.domain.text import slugify
+from nexus.domain.text import normalize, slugify
 from nexus.pipeline import codeproject
 from nexus.pipeline.classify.classifier import CLASSIFIER_VERSION, Classifier
 from nexus.pipeline.classify.proposals import ProposalCandidate
@@ -148,6 +149,7 @@ class Pipeline:
         self.report = RunReport()
         self.now = clock.now()
         self.workdir = Path()
+        self._content_seen: dict[tuple[str, str], str] = {}
         self._extracted_now: set[str] = set()
 
     @property
@@ -509,6 +511,7 @@ class Pipeline:
     def _reconcile_all(self) -> None:
         classifier = Classifier(self.repo.vocabularies, self.repo.catalog,
                                 self.settings.classification)
+        self._content_seen = {}
         for doc_id in sorted(self.repo.documents):
             try:
                 self._reconcile(self.repo.documents[doc_id].model_copy(deep=True), classifier)
@@ -555,12 +558,35 @@ class Pipeline:
             or doc.needs_review
         )
 
+    def _content_key(self, doc: Document) -> str | None:
+        """Resumo do texto normalizado, página a página (None se houver pouco texto)."""
+        if doc.kind is not DocumentKind.FILE:
+            return None
+        pages = [normalize(t) for t in self.repo.page_texts(doc.blob.sha256)]
+        if sum(len(p.split()) for p in pages) < self.settings.dedup.min_words:
+            return None
+        return hashlib.sha256("\f".join(pages).encode()).hexdigest()
+
+    def _link_same_content(self, doc: Document) -> None:
+        """Mesmo texto em todas as páginas que um documento anterior do mesmo dono: é uma
+        cópia (ficheiro diferente, conteúdo igual). A ordem por id torna isto estável."""
+        key = self._content_key(doc)
+        found = self._content_seen.get((doc.owner, key)) if key else None
+        if found and found not in doc.near_duplicates_dismissed and doc.id not in \
+                self.repo.documents[found].near_duplicates_dismissed:
+            doc.duplicate_of = found
+            return
+        doc.duplicate_of = None
+        if key:
+            self._content_seen.setdefault((doc.owner, key), doc.id)
+
     def _reconcile(self, doc: Document, classifier: Classifier) -> None:
         self._reextract(doc)
         sha = doc.blob.sha256
         meta = self.repo.extraction_meta(sha)
         if meta is not None:
             doc.advance(Status.EXTRACTED, self.now)
+            self._link_same_content(doc)
         proposal_ids: list[str] = []
         if meta is not None and self._needs_classification(doc):
             pages = self.repo.page_texts(sha)
@@ -618,6 +644,14 @@ class Pipeline:
     def _review_and_file(self, doc: Document, classifier: Classifier, extracted: bool,
                          proposal_ids: list[str]) -> None:
         original = self.repo.documents.get(doc.id)
+        if doc.duplicate_of:
+            # Cópia de outro documento: não vai para "A rever" nem ganha nome próprio.
+            if doc.review is not None and doc.review.status == "open":
+                doc.review.status = "resolved"
+                doc.review.resolved_at = self.now
+                doc.review.resolved_by = "pipeline"
+            doc.filed_name = None
+            return self._save(doc, original)
         reasons: list[Reason] = []
         if not extracted and doc.review is not None and doc.review.status == "open":
             reasons += [r for r in doc.review.reasons if r.code == EXTRACTION_FAILED]

@@ -74,6 +74,8 @@ export interface DocumentRow {
   mime: string;
   original_path: string;
   parent: string | null;
+  /** Cópia (mesmo texto) deste documento; não aparece nas listas. */
+  duplicate_of: string | null;
   /** Visibilidade efectiva: private | public | (reservadas) link | user:<login> | group:… */
   visibility: string;
   /** true = segue a escolha feita para a cadeira (ou a predefinição, privado). */

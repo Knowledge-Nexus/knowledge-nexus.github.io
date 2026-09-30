@@ -367,3 +367,38 @@ def test_software_archive_is_kept_whole(catalog_root: Path) -> None:
     docs = list(DataRepo(catalog_root).documents.values())
     assert len(docs) == 1 and docs[0].kind is DocumentKind.ARCHIVE
     assert any("arquivo de software" in w for w in report.warnings)
+
+
+def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path: Path) -> None:
+    import sqlite3
+
+    from nexus.index.builder import SEARCH_DB
+
+    # O mesmo exame guardado duas vezes (metadados diferentes → bytes diferentes) e uma
+    # versão com uma linha a mais (é outra versão: fica).
+    gerar.pdf_nativo(deposit(catalog_root, "AM1/fre1_AM1-24AA.pdf"), gerar.EXAME_AM1, title="a")
+    gerar.pdf_nativo(deposit(catalog_root, "AM1/fre1_AM1-24AA (1).pdf"), gerar.EXAME_AM1,
+                     title="b")
+    gerar.pdf_nativo(deposit(catalog_root, "AM1/fre1_AM1-24AAA.pdf"),
+                     gerar.EXAME_AM1 + "\nResolução: a resposta é 2.")
+    Pipeline(DataRepo(catalog_root)).run()
+    repo = DataRepo(catalog_root)
+    docs = {d.sources[0].path.rsplit("/", 1)[-1]: d for d in repo.documents.values()}
+    assert len({d.blob.sha256 for d in docs.values()}) == 3, "três ficheiros diferentes"
+    first, copy = sorted([docs["fre1_AM1-24AA.pdf"], docs["fre1_AM1-24AA (1).pdf"]],
+                         key=lambda d: d.id)
+    assert copy.duplicate_of == first.id and first.duplicate_of is None
+    assert docs["fre1_AM1-24AAA.pdf"].duplicate_of is None
+    assert copy.filed_name is None and not copy.needs_review
+
+    build_indices(repo, tmp_path)
+    ids = {r[0] for r in sqlite3.connect(tmp_path / SEARCH_DB).execute(
+        "SELECT DISTINCT doc_id FROM pages_fts")}
+    assert copy.id not in ids and first.id in ids
+
+    # "Não são iguais": volta a ser um documento separado, e fica assim.
+    repo.save_document(copy.model_copy(update={"near_duplicates_dismissed": [first.id]}))
+    Pipeline(DataRepo(catalog_root)).run()
+    again = DataRepo(catalog_root).documents[copy.id]
+    assert again.duplicate_of is None and (again.filed_name or again.needs_review), \
+        "volta a ser um documento separado (arrumado ou em «A rever»)"

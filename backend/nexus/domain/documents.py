@@ -170,6 +170,10 @@ class Document(Record):
     filed_name: str | None = None
     notes: str = ""
     near_duplicates_dismissed: list[str] = Field(default_factory=list)
+    # Outro documento do mesmo dono com exactamente o mesmo texto (ficheiro diferente, ex.:
+    # o mesmo PDF guardado de novo). Fica só esse na biblioteca; o original nunca se apaga.
+    # "Não são iguais" (near_duplicates_dismissed) desfaz a ligação.
+    duplicate_of: str | None = None
     manifest: Manifest | None = None
     created_at: dt.datetime | None = None
 

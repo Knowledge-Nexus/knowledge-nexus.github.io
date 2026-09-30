@@ -17,6 +17,14 @@
 | Proposta de catálogo | `revisao/propostas/*.yaml` | tipo, estado, dados, evidências (documento, página, excerto) |
 | Proveniência | `nexus.domain.provenance` | `SourceRef {sha256, page, document}` + `Generated {by, at, model, sources}` |
 
+**Cópias:**
+- O mesmo ficheiro (mesmo SHA-256) é guardado uma só vez.
+- Ficheiros diferentes com exactamente o mesmo texto, página a página (ex.: o mesmo PDF
+  guardado de novo), ficam ligados: o mais recente leva `duplicate_of` e não aparece na
+  biblioteca, na pesquisa nem em "A rever". Qualquer diferença no texto mantém os dois
+  (são versões diferentes). "Não são iguais" (`near_duplicates_dismissed`) desfaz a
+  ligação. Os originais nunca se apagam.
+
 **Regras de partilha e visibilidade:**
 - O conteúdo derivado (texto, e mais tarde resumos e perguntas) é calculado por blob e
   reutilizado por quem tem acesso a esse blob.

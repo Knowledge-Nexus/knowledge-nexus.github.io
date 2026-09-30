@@ -3,4 +3,4 @@
 __version__ = "0.1.0"
 
 # Versão do formato dos ficheiros do repositório de dados (ver nexus.formats).
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3

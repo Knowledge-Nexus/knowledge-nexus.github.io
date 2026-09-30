@@ -169,6 +169,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
             "original_path": repo.layout.relative(
                 repo.layout.original_path(doc.blob.sha256, doc.blob.ext)),
             "parent": doc.parent if doc.parent in included else None,
+            "duplicate_of": doc.duplicate_of if doc.duplicate_of in included else None,
             "visibility": shown.value, "visibility_inherited": shown.inherited,
             "status": doc.status.value,
             "display_name": doc.display_name,
@@ -207,7 +208,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                 "pages": [p.model_dump(mode="json", exclude_none=True) for p in extraction.pages],
                 "metadata": extraction.metadata, "warnings": extraction.warnings,
             })
-        if extraction is not None:
+        if extraction is not None and not (doc.duplicate_of and doc.duplicate_of in included):
+            # As cópias (mesmo texto) não entram na pesquisa: o original já lá está.
             for number, text in enumerate(repo.page_texts(doc.blob.sha256), start=1):
                 if not text.strip():
                     continue

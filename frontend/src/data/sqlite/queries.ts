@@ -15,7 +15,7 @@ import type {
 } from "../types";
 import type { ReadonlyDb } from "./db";
 
-export const SUPPORTED_SCHEMA_VERSION = 2;
+export const SUPPORTED_SCHEMA_VERSION = 3;
 
 const JSON_DOC_COLUMNS = [
   "review_reasons",
@@ -55,6 +55,8 @@ export interface DocumentFilter {
   academicYear?: string;
   filedOnly?: boolean;
   includeArchives?: boolean;
+  /** Incluir as cópias (mesmo texto que outro documento), que por defeito não aparecem. */
+  includeDuplicates?: boolean;
 }
 
 export class MetaIndex {
@@ -119,6 +121,15 @@ export class MetaIndex {
     );
   }
 
+  /** Cópias de um documento: outros ficheiros com exactamente o mesmo texto. */
+  copiesOf(id: string): DocumentRow[] {
+    return this.db
+      .all<Record<string, unknown>>("SELECT * FROM documents WHERE duplicate_of = ? ORDER BY id", [
+        id,
+      ])
+      .map(toDocument);
+  }
+
   /** Escolhas de visibilidade por cadeira feitas pelo dono ({chave: visibilidade}). */
   unitVisibility(owner: string): Record<string, string> {
     return this.users().find((u) => u.login === owner)?.sharing.units ?? {};
@@ -139,6 +150,7 @@ export class MetaIndex {
     add("academic_year = :year", ":year", filter.academicYear);
     if (filter.filedOnly) where.push("status IN ('filed', 'enriched', 'reviewed')");
     if (!filter.includeArchives) where.push("kind <> 'archive'");
+    if (!filter.includeDuplicates) where.push("duplicate_of IS NULL");
     const sql = `SELECT * FROM documents ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY academic_year DESC, display_name`;
     return this.db.all<Record<string, unknown>>(sql, bind).map(toDocument);
@@ -159,14 +171,14 @@ export class MetaIndex {
   }
 
   reviewQueue(owner?: string): DocumentRow[] {
-    const sql = `SELECT * FROM documents WHERE needs_review = 1 AND kind <> 'archive'
+    const sql = `SELECT * FROM documents WHERE needs_review = 1 AND kind <> 'archive' AND duplicate_of IS NULL
       ${owner ? "AND owner = ?" : ""} ORDER BY created_at DESC, id DESC`;
     return this.db.all<Record<string, unknown>>(sql, owner ? [owner] : []).map(toDocument);
   }
 
   unfiled(owner?: string): DocumentRow[] {
     const sql = `SELECT * FROM documents WHERE status IN ('received', 'extracted', 'classified')
-      AND kind <> 'archive' ${owner ? "AND owner = ?" : ""} ORDER BY created_at DESC`;
+      AND kind <> 'archive' AND duplicate_of IS NULL ${owner ? "AND owner = ?" : ""} ORDER BY created_at DESC`;
     return this.db.all<Record<string, unknown>>(sql, owner ? [owner] : []).map(toDocument);
   }
 
@@ -200,7 +212,7 @@ export class MetaIndex {
   recent(owner: string, limit = 6): DocumentRow[] {
     return this.db
       .all<Record<string, unknown>>(
-        `SELECT * FROM documents WHERE owner = ? AND kind <> 'archive'
+        `SELECT * FROM documents WHERE owner = ? AND kind <> 'archive' AND duplicate_of IS NULL
          ORDER BY created_at DESC, id DESC LIMIT ?`,
         [owner, limit],
       )
@@ -211,7 +223,7 @@ export class MetaIndex {
   unitStats(owner: string): Map<string, { filed: number; total: number }> {
     const rows = this.db.all<{ unit: string; filed: number; total: number }>(
       `SELECT unit, sum(status IN ('filed', 'enriched', 'reviewed')) AS filed, count(*) AS total
-       FROM documents WHERE owner = ? AND kind <> 'archive' AND unit IS NOT NULL GROUP BY unit`,
+       FROM documents WHERE owner = ? AND kind <> 'archive' AND duplicate_of IS NULL AND unit IS NOT NULL GROUP BY unit`,
       [owner],
     );
     return new Map(rows.map((r) => [r.unit, { filed: r.filed, total: r.total }]));
@@ -229,7 +241,7 @@ export class MetaIndex {
     const row = this.db.get<{ total: number; review: number; filed: number }>(
       `SELECT count(*) AS total, sum(needs_review) AS review,
         sum(status IN ('filed', 'enriched', 'reviewed')) AS filed
-       FROM documents WHERE kind <> 'archive' ${owner ? "AND owner = ?" : ""}`,
+       FROM documents WHERE kind <> 'archive' AND duplicate_of IS NULL ${owner ? "AND owner = ?" : ""}`,
       owner ? [owner] : [],
     );
     return { total: row?.total ?? 0, review: row?.review ?? 0, filed: row?.filed ?? 0 };

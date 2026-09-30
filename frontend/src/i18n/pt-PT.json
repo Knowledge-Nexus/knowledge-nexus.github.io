@@ -195,7 +195,12 @@
     "ignored": "{{path}}/ ignorado ({{files}} ficheiros)",
     "children": "Conteúdo do arquivo",
     "download": "Descarregar original",
-    "no_text": "Sem texto extraído nesta página."
+    "no_text": "Sem texto extraído nesta página.",
+    "copies_title": "Mesmo conteúdo",
+    "copies_text": "Estes ficheiros têm exactamente o mesmo texto, página a página, e por isso só este aparece na biblioteca. Os originais continuam guardados.",
+    "copy_of": "Este ficheiro tem exactamente o mesmo texto que {{name}}, por isso aparece só uma vez na biblioteca. O original continua guardado.",
+    "open_original": "Abrir o que aparece na biblioteca",
+    "not_same": "Não são iguais"
   },
   "review": {
     "title": "A rever",

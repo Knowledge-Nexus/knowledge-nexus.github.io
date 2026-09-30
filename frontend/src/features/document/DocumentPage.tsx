@@ -135,6 +135,20 @@ export function DocumentPage() {
   }
 
   const duplicates = meta?.nearDuplicates(doc.id) ?? [];
+  const copies = meta?.copiesOf(doc.id) ?? [];
+  const copyOf = doc.duplicate_of ? meta?.document(doc.duplicate_of) : undefined;
+
+  /** "Não são iguais": a cópia passa a documento separado na próxima execução. */
+  function notSame(copyId: string, originalId: string) {
+    return source.patchDocument(
+      copyId,
+      (r) => {
+        const list = (r.near_duplicates_dismissed as string[] | undefined) ?? [];
+        r.near_duplicates_dismissed = [...new Set([...list, originalId])];
+      },
+      `não é cópia: ${copyId}`,
+    );
+  }
   const children = doc.kind === "archive" ? (meta?.children(doc.id) ?? []) : [];
   const isOwner = doc.owner === login && !readOnly;
 
@@ -169,6 +183,24 @@ export function DocumentPage() {
         </div>
       </div>
       {error ? <ErrorBox error={error} /> : null}
+      {copyOf && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-marker/60 bg-marker-soft px-4 py-3 text-sm">
+          <p className="flex-1">{t("document.copy_of", { name: copyOf.display_name })}</p>
+          <Link to={to(`/documento/${copyOf.id}`)} className={buttonClass("secondary")}>
+            {t("document.open_original")}
+          </Link>
+          {isOwner && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                void notSame(doc.id, copyOf.id).then(notifyCommit, (err: unknown) => setError(err))
+              }
+            >
+              {t("document.not_same")}
+            </Button>
+          )}
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <div className="space-y-4">
           <Card title={t("document.classification")}>
@@ -216,6 +248,33 @@ export function DocumentPage() {
               >
                 {t("common.save")}
               </Button>
+            </Card>
+          )}
+          {copies.length > 0 && (
+            <Card title={t("document.copies_title")}>
+              <p className="mb-2 text-xs text-muted">{t("document.copies_text")}</p>
+              <ul className="space-y-1 text-sm">
+                {copies.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2">
+                    <Link className="truncate underline" to={to(`/documento/${c.id}`)}>
+                      {c.source_path?.split("/").pop() ?? c.display_name}
+                    </Link>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs text-muted underline"
+                        onClick={() =>
+                          void notSame(c.id, doc.id).then(notifyCommit, (err: unknown) =>
+                            setError(err),
+                          )
+                        }
+                      >
+                        {t("document.not_same")}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
           {duplicates.length > 0 && (
