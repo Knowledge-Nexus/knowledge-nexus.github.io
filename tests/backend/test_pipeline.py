@@ -352,3 +352,18 @@ def test_incomplete_parts_wait_and_bad_parts_go_to_errors(catalog_root: Path) ->
     assert not any(p.exists() for p in wrong)
     errors = catalog_root / "deposito" / OWNER / "_erros" / "20251001T100000Z-abcd" / "a"
     assert (errors / "errado.txt.nexus-parts.yaml").exists()
+
+
+def test_software_archive_is_kept_whole(catalog_root: Path) -> None:
+    import zipfile
+
+    archive = deposit(catalog_root, "LOGICA/Programas.zip")
+    with zipfile.ZipFile(archive, "w") as zf:
+        for i in range(25):
+            zf.writestr(f"Programas/bin/lib{i}.dll", b"MZ\x90\x00" + bytes([i]) * 64)
+        zf.writestr("Programas/jre/lib/rt", b"\x00binario")
+        zf.writestr("Programas/LEIA-ME.txt", "Instalar o programa.")
+    report = Pipeline(DataRepo(catalog_root)).run()
+    docs = list(DataRepo(catalog_root).documents.values())
+    assert len(docs) == 1 and docs[0].kind is DocumentKind.ARCHIVE
+    assert any("arquivo de software" in w for w in report.warnings)

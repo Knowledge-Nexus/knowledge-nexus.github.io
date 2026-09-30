@@ -50,6 +50,10 @@ jobs:
             office=true
           fi
           if find deposito -type f -iname '*.rar' 2>/dev/null | grep -q .; then archives=true; fi
+          # Ficheiros grandes chegam em partes: o conteúdo só se conhece depois de juntar.
+          if find deposito -type f -name '*.nexus-parts.yaml' 2>/dev/null | grep -q .; then
+            office=true; archives=true
+          fi
           echo "office=$office" >> "$GITHUB_OUTPUT"
           echo "archives=$archives" >> "$GITHUB_OUTPUT"
 

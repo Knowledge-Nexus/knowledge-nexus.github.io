@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 from conftest import requires_ocr, requires_pandoc, requires_soffice
 
 from amostras import gerar
@@ -20,6 +21,17 @@ def test_native_pdf(tmp_path: Path) -> None:
     assert result.pages[0].method == "native"
     assert "Análise Matemática I" in result.pages[0].text
     assert result.metadata["title"] == "Exame AM1"
+
+
+@pytest.mark.skipif(not any(Path(f).exists() for f in gerar.FONT_PATHS),
+                    reason="sem fonte TrueType para gerar os caracteres de teste")
+def test_latex_style_accents_are_joined(tmp_path: Path) -> None:
+    # Muitos PDFs feitos em LaTeX trazem o acento separado da letra.
+    text = "Lic. Eng. Inform´atica\nDura¸c˜ao: 1:30\nIntrodu¸c˜ao `a Programa¸c˜ao\nFrequˆencia"
+    pdf = gerar.pdf_nativo(tmp_path / "t.pdf", text)
+    page = extract_file(pdf, "pdf", SETTINGS, tmp_path / "w").pages[0].text
+    for word in ("Informática", "Duração", "Introdução à Programação", "Frequência"):
+        assert word in page
 
 
 @requires_ocr

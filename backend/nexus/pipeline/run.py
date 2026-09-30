@@ -60,7 +60,13 @@ from nexus.pipeline.extract import (
     write_extraction,
 )
 from nexus.pipeline.extract.base import ExtractionResult
-from nexus.pipeline.filetypes import detect_extension, mime_of
+from nexus.pipeline.filetypes import (
+    Category,
+    category_of,
+    detect_extension,
+    extension_of,
+    mime_of,
+)
 from nexus.pipeline.filing import filed_name
 from nexus.pipeline.hashing import sha256_file
 from nexus.pipeline.intake import DepositItem, scan_deposit
@@ -355,6 +361,14 @@ class Pipeline:
                           lambda: code_project_text(project_root, manifest))
         return doc
 
+    def _is_software_bundle(self, files: list[str]) -> bool:
+        settings = self.settings.archives
+        if len(files) < settings.software_min_entries:
+            return False
+        code = set(self.settings.code_projects.code_extensions)
+        other = sum(1 for f in files if category_of(extension_of(f), code) is Category.OTHER)
+        return other / len(files) >= settings.software_other_ratio
+
     def _expand_archive(self, staging: _Staging, archive_doc: Document, path: Path, ext: str,
                         depth: int, label: str, batch: str | None) -> None:
         sha = archive_doc.blob.sha256
@@ -366,6 +380,11 @@ class Pipeline:
         entries = unpack(path, ext, dest, self.settings.archives)
         files = [e.path for e in entries]
         self._ensure_text(staging, sha, ext, "file", lambda: archive_listing(files))
+        if self._is_software_bundle(files):
+            staging.warnings.append(
+                f"{label}: arquivo de software ({len(files)} ficheiros, sobretudo programas "
+                "ou dados binários); guardado inteiro, sem abrir as entradas")
+            return
         projects = codeproject.find_projects(files, self.settings.code_projects)
         in_project: set[str] = set()
         for project in projects:
@@ -581,6 +600,8 @@ class Pipeline:
             proposal = (existing.model_copy(deep=True) if existing else CatalogProposal(
                 id=pid, kind=candidate.kind, data={"name": candidate.name},
                 created_at=self.now))
+            if candidate.acronym and not proposal.data.get("acronym"):
+                proposal.data = {**proposal.data, "acronym": candidate.acronym}
             if candidate.kind == "unit" and len(catalog.institutions) == 1:
                 proposal.data = {**proposal.data, "institution": next(iter(catalog.institutions))}
             if all(e.document != doc.id for e in proposal.evidence) and \

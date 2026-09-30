@@ -81,7 +81,11 @@ def pdf_nativo(path: Path, text: str, title: str | None = None) -> Path:
 
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_textbox(pymupdf.Rect(50, 50, 550, 800), text, fontsize=11, fontname="helv")
+    # Com uma fonte TrueType cabem todos os caracteres (ex.: os acentos soltos do LaTeX);
+    # sem ela, fica a Helvetica de base.
+    fontfile = next((f for f in FONT_PATHS if Path(f).exists()), None)
+    font = {"fontname": "dejavu", "fontfile": fontfile} if fontfile else {"fontname": "helv"}
+    page.insert_textbox(pymupdf.Rect(50, 50, 550, 800), text, fontsize=11, **font)
     if title:
         doc.set_metadata({"title": title})
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -199,7 +203,11 @@ def pdf_bytes(text: str) -> bytes:
 
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_textbox(pymupdf.Rect(50, 50, 550, 800), text, fontsize=11, fontname="helv")
+    # Com uma fonte TrueType cabem todos os caracteres (ex.: os acentos soltos do LaTeX);
+    # sem ela, fica a Helvetica de base.
+    fontfile = next((f for f in FONT_PATHS if Path(f).exists()), None)
+    font = {"fontname": "dejavu", "fontfile": fontfile} if fontfile else {"fontname": "helv"}
+    page.insert_textbox(pymupdf.Rect(50, 50, 550, 800), text, fontsize=11, **font)
     buffer = io.BytesIO()
     doc.save(buffer)
     doc.close()

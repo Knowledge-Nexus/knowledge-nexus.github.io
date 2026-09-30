@@ -201,7 +201,14 @@
     "reject": "Rejeitar",
     "slug": "Identificador (slug)",
     "institution_select": "Instituição",
-    "preview": "Início do documento"
+    "preview": "Início do documento",
+    "acronym": "Sigla",
+    "create_institution": "Criar instituição",
+    "new_institution": "{{name}} (nova)",
+    "evidence_count": "Encontrado em {{count}} documento(s)",
+    "accept_all": "Criar tudo",
+    "accept_all_text": "Criar {{institution}} com as cadeiras {{units}} e arrumar o que estava à espera?",
+    "accept_all_done": "Pedido enviado. O material é reclassificado na próxima execução (1–3 minutos)."
   },
   "search": {
     "title": "Pesquisa",

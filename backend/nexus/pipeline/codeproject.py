@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 
 from nexus.config import CodeProjectSettings
 from nexus.domain.documents import Manifest, ManifestFile, ManifestIgnored
-from nexus.pipeline.filetypes import extension_of
+from nexus.pipeline.filetypes import Category, category_of, extension_of
 from nexus.pipeline.hashing import sha256_file
 
 _FIXED_DATE = (1980, 1, 1, 0, 0, 0)
@@ -49,11 +49,28 @@ def _code_ratio(
     return len(code), len(code) / len(inside)
 
 
+_DOCUMENT_CATEGORIES = {Category.PDF, Category.DOCX, Category.PPTX, Category.XLSX,
+                        Category.LEGACY_OFFICE}
+
+
+def _has_documents(directory: str, files: list[str], settings: CodeProjectSettings) -> bool:
+    """Tem documentos de estudo (PDF, Word, PowerPoint, Excel…) algures lá dentro?
+
+    Sem marcador, uma pasta assim é de arrumação (ex.: `<instituição>/<cadeira>/`, ou um
+    trabalho com o relatório): os documentos ficam como documentos próprios, pesquisáveis
+    e classificados, e só as subpastas só com código viram projectos."""
+    prefix = f"{directory}/" if directory else ""
+    code = set(settings.code_extensions)
+    return any(category_of(extension_of(f), code) in _DOCUMENT_CATEGORIES
+               for f in files if f.startswith(prefix) and not _is_ignored(f, settings))
+
+
 def find_projects(files: list[str], settings: CodeProjectSettings) -> list[str]:
     """Raízes de projectos de código (caminhos relativos; "" = a raiz toda).
 
     Um directório é projecto se tiver um marcador (pyproject.toml, package.json, .git…)
-    ou, não sendo a raiz, se tiver código suficiente. Fica o mais exterior.
+    ou, não sendo a raiz, se tiver código suficiente e nenhum documento de estudo (essa é
+    uma pasta de arrumação, que junta coisas diferentes). Fica o mais exterior.
     """
     candidates: set[str] = set()
     directories = sorted({d for f in files for d in _dirs_of(f)})
@@ -66,7 +83,8 @@ def find_projects(files: list[str], settings: CodeProjectSettings) -> list[str]:
             candidates.add(directory)
             continue
         count, ratio = _code_ratio(directory, files, settings)
-        if count >= settings.min_code_files and ratio >= settings.code_ratio:
+        if (count >= settings.min_code_files and ratio >= settings.code_ratio
+                and not _has_documents(directory, files, settings)):
             candidates.add(directory)
     outermost = [
         c for c in candidates if not any(c != o and c.startswith(o + "/") for o in candidates)

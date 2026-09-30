@@ -8,7 +8,7 @@ campos obrigatórios abaixo do limiar mandam o documento para "A rever"; nunca s
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from nexus.config import ClassificationSettings
@@ -41,7 +41,11 @@ from nexus.pipeline.classify.units import UnitFeatures, compile_unit, score_unit
 from nexus.pipeline.classify.years import score_years
 
 # Sobe quando a lógica muda de forma a justificar reclassificar o que não foi revisto.
-CLASSIFIER_VERSION = 1
+# 2: enunciado/resolução decidido só pelo nome, pastas, metadados e título (as primeiras
+#    palavras da página 1); abreviaturas nos vocabulários (res_, corr_, fre1…).
+CLASSIFIER_VERSION = 2
+# Palavras do início da página 1 que contam como título para decidir o papel.
+ROLE_TITLE_WORDS = 40
 
 ROLE_PRIOR = 0.3
 DEFAULT_STATEMENT_CONFIDENCE = 0.9
@@ -97,7 +101,7 @@ class Classifier:
             return value if value is not None and value.method != "heuristic" else None
 
         result.unit = kept("unit") or self._unit(signals, owner)
-        role_field, solution_score = self._role(signals)
+        role_field, solution_score = self._role(signals, self._unit_names(result.unit))
         if kept("role") is not None:
             role_field = kept("role")
         doc_type, is_assessment = self._document_type(signals, role_field, doc.kind,
@@ -138,7 +142,10 @@ class Classifier:
             result.topics = self._topics(result.unit.value, signals)
 
         weak = self.weak_fields(result, type_term)
-        found = proposals.detect(pages, self.catalog) if pages else []
+        # Propostas de catálogo só a partir de documentos (nunca de listagens de arquivos
+        # ou de projectos de código, que citam caminhos e tamanhos).
+        found = proposals.detect(pages, self.catalog, paths=[s.path for s in doc.sources]) \
+            if pages and doc.kind is DocumentKind.FILE else []
         return Outcome(result, weak, found)
 
     def weak_fields(self, result: Classification, type_term: Term | None) -> list[str]:
@@ -178,7 +185,28 @@ class Classifier:
             result.reasons = [*result.reasons, Reason(code="unit.not_enrolled")]
         return result
 
-    def _role(self, signals: list[Signal]) -> tuple[FieldValue | None, float]:
+    def _unit_names(self, unit: FieldValue | None) -> list[str]:
+        found = self.catalog.units.get(str(unit.value)) if unit and unit.value else None
+        if found is None:
+            return []
+        return [n for n in (normalize(x) for x in (found.name, *found.aliases)) if n]
+
+    def _role(self, signals: list[Signal], unit_names: list[str] | None = None
+              ) -> tuple[FieldValue | None, float]:
+        """Enunciado ou resolução. O texto das perguntas fala muitas vezes de "solução" ou
+        "resolva", por isso só contam o nome, as pastas, os metadados e o título — e sem o
+        nome da cadeira ("… e Resolução de Problemas" não é uma resolução)."""
+        def clean(norm: str) -> str:
+            text = f" {norm} "
+            for name in unit_names or []:
+                text = text.replace(f" {name} ", " ")
+            return " ".join(text.split())
+
+        signals = [
+            replace(s, norm=clean(" ".join(s.norm.split()[:ROLE_TITLE_WORDS])
+                                  if s.source == "header" else s.norm))
+            for s in signals if s.source != "body"
+        ]
         by_slug = {c.term.slug: c for c in self.roles}
         solution = score_term(by_slug[ROLE_SOLUTION], signals) if ROLE_SOLUTION in by_slug \
             else Candidate(ROLE_SOLUTION)

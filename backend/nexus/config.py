@@ -71,6 +71,8 @@ class ArchiveSettings(_Section):
     max_entries: int = 5000
     max_total_bytes: int = 2 * 1024**3
     max_ratio: float = 200
+    software_min_entries: int = 20
+    software_other_ratio: float = 0.5
 
 
 class CodeProjectSettings(_Section):

@@ -88,6 +88,21 @@ sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o 
 - **Tipo de documento:** famílias de tipos com as mesmas palavras-chave. Dentro da
   família, o papel (enunciado ou resolução) decide o tipo. O formato (ex.: .pptx → slides)
   e a condição de projecto de código também contam como indícios.
+- **Papel (enunciado ou resolução):** decide-se só pelo nome do ficheiro, pelas pastas,
+  pelos metadados e pelo título (as primeiras palavras da página 1), sem o nome da
+  cadeira. O texto das perguntas ("indique uma solução…") não conta. Abreviaturas como
+  `res_`, `corr_`, `sol_` e `fre1`/`freq` estão nos vocabulários (`patterns`).
+- **Cadeiras e instituições em falta:** além dos cabeçalhos ("Unidade Curricular: …"), as
+  siglas das pastas e dos nomes dos ficheiros (`UC/ED/…`, `IPRP_Teste1.pdf`) são ligadas a
+  frases do início do documento com essas iniciais ("Estruturas Discretas"). Resultam
+  propostas agrupadas (uma por cadeira, com as evidências), que a interface cria de uma vez.
+  Listagens de arquivos e de projectos de código nunca geram propostas.
+- **Projectos de código:** uma pasta com marcador (`pyproject.toml`, `package.json`…) é um
+  projecto inteiro. Sem marcador, só é projecto se tiver sobretudo código e nenhum
+  documento de estudo (PDF, Word…): pastas de arrumação (`<instituição>/<cadeira>/`) nunca
+  são engolidas, e os enunciados ficam como documentos próprios.
+- **Arquivos de software** (sobretudo binários, sem extensão…): guardados inteiros, com a
+  listagem, sem criar um documento por entrada.
 - **Ano lectivo:** padrões como "2023/24" ou "Ano Lectivo 2023-2024", ou então datas. O
   ano começa em Setembro (configurável).
 - **Confiança:** `melhor / (melhor + segundo + prior)`. Um sinal forte e isolado dá

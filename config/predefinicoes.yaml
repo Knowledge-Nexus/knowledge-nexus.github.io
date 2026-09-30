@@ -41,6 +41,11 @@ archives:
   max_entries: 5000
   max_total_bytes: 2147483648
   max_ratio: 200
+  # Arquivo "de software" (programas, bibliotecas): com pelo menos N entradas e esta
+  # fracção de ficheiros que não são documentos (binários, sem extensão…), fica como um
+  # só documento com a listagem, sem criar um documento por entrada.
+  software_min_entries: 20
+  software_other_ratio: 0.5
 
 code_projects:
   markers: [pyproject.toml, setup.py, requirements.txt, package.json, pom.xml,

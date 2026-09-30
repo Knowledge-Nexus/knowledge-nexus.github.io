@@ -7,6 +7,7 @@ from pathlib import Path
 import pymupdf
 
 from nexus.config import ExtractionSettings
+from nexus.domain.text import fix_spacing_accents
 from nexus.pipeline.extract.base import (
     ExtractionError,
     ExtractionResult,
@@ -16,7 +17,8 @@ from nexus.pipeline.extract.base import (
 )
 from nexus.pipeline.extract.ocr import ocr_image
 
-VERSION = 1
+# 2: acentos soltos dos PDFs em LaTeX juntos à letra (domain.text.fix_spacing_accents).
+VERSION = 2
 _META_KEYS = ("title", "author", "subject", "keywords", "creator", "producer", "creationDate")
 
 
@@ -35,7 +37,7 @@ def pdf_pages(
     with doc:
         for index in range(doc.page_count):
             page = doc[index]
-            native = clean_text(page.get_text("text", sort=True))
+            native = clean_text(fix_spacing_accents(page.get_text("text", sort=True)))
             if len(native) >= settings.min_native_chars_per_page or not allow_ocr:
                 pages.append(PageText(native, "native" if native else "none"))
                 continue

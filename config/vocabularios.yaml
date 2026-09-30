@@ -25,13 +25,15 @@ document_types:
   - slug: apontamentos
     labels: { pt-PT: "Apontamentos", en: "Notes" }
     role: any
-    keywords: [apontamentos, resumo, resumos, sebenta, caderno, notes, summary]
+    keywords: [apontamentos, resumo, resumos, sebenta, caderno, notes, summary,
+               textos de apoio, texto de apoio, notas de aula, lecture notes]
   - slug: fichas-exercicios
     labels: { pt-PT: "Fichas de exercícios", en: "Exercise sheets" }
     role: statement
     keywords: &exercise_keywords [ficha, fichas, ficha de exercícios, folha de exercícios,
-               caderno de exercícios, exercícios, exercício, problemas, exercises,
-               problem set, aula prática, aulas práticas, prática, práticas, tp, tp1, tp2]
+               folha, folhas, caderno de exercícios, exercícios, exercício, problemas,
+               exercises, problem set, aula prática, aulas práticas, prática, práticas,
+               prática laboratorial, práticas laboratoriais, tp, tp1, tp2, pl]
   - slug: resolucoes-exercicios
     labels: { pt-PT: "Resoluções de exercícios", en: "Exercise solutions" }
     role: solution
@@ -41,12 +43,17 @@ document_types:
     role: statement
     is_assessment: true
     keywords: &assessment_keywords [exame, exames, teste, testes, frequência, mini-teste,
-               mini-testes, miniteste, prova, provas, época, exam, test, quiz, midterm]
+               mini-testes, miniteste, prova, provas, época, exam, test, quiz, midterm,
+               duração, cotação, cotações, número de estudante, número de aluno,
+               sem consulta, com consulta]
+    # "fre1", "freq", "resfreq" nos nomes dos ficheiros.
+    patterns: &assessment_patterns ['(\b|(?<=res))freq?\b']
   - slug: resolucoes-avaliacao
     labels: { pt-PT: "Resoluções de avaliações", en: "Assessment solutions" }
     role: solution
     is_assessment: true
     keywords: *assessment_keywords
+    patterns: *assessment_patterns
   - slug: enunciados-trabalhos
     labels: { pt-PT: "Enunciados de trabalhos / projectos", en: "Assignments / projects" }
     role: statement
@@ -68,7 +75,7 @@ document_types:
     keywords: [formulário, formulários, fórmulas, folha de consulta, cheat sheet,
                cheatsheet, tabela de integrais, tabela de derivadas]
   - slug: programa-uc
-    labels: { pt-PT: "Ficha da UC / programa", en: "Course syllabus" }
+    labels: { pt-PT: "Ficha da cadeira / programa", en: "Course syllabus" }
     role: any
     is_syllabus: true
     keywords: [ficha da unidade curricular, ficha da UC, programa da unidade curricular,
@@ -90,6 +97,10 @@ roles:
     keywords: [resolução, resoluções, resolvido, resolvida, resolvidos, solução, soluções,
                correcção, proposta de resolução, critérios de correcção, solutions,
                solution, answers, respostas]
+    # Abreviaturas comuns nos nomes dos ficheiros: res_fre1, corr_teste1, sol_exame,
+    # resfreq… (o texto já vem normalizado: minúsculas, sem acentos, "fre1" → "fre 1").
+    patterns: ['^(res|resol|corr|sol)\b', '^res(freq?|exame|teste|ficha)',
+               '\b(res|resol|corr|sol) (freq?|frequencia|teste|exame|ficha|tp|pl)\b']
 
 # Origem de uma resolução.
 solution_origins:
@@ -117,6 +128,7 @@ assessment_types:
   - slug: frequencia
     labels: { pt-PT: "Frequência", en: "Midterm (frequência)" }
     keywords: [frequência, frequências]
+    patterns: ['(\b|(?<=res))freq?\b']
   - slug: exame
     labels: { pt-PT: "Exame", en: "Exam" }
     keywords: [exame, exames, exam, prova final, prova escrita]

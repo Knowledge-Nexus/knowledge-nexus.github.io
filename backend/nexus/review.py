@@ -112,7 +112,7 @@ def accept_unit_proposal(repo: DataRepo, proposal_id: str, slug: str | None = No
         raise ReviewError("indica a instituição (--instituicao) existente no catálogo")
     name = str(proposal.data.get("name"))
     unit = CurricularUnit(slug=slug or slugify(name, 40), name=name, code=code,
-                          acronym=acronym)
+                          acronym=acronym or proposal.data.get("acronym"))
     unit.institution = inst
     if unit.key in repo.catalog.units:
         raise ReviewError(f"a cadeira {unit.key} já existe")

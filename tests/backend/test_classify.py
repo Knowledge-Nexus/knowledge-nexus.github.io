@@ -113,3 +113,62 @@ def test_unknown_unit_is_proposed(catalog_root: Path) -> None:
                    repo.catalog)
     assert [(p.kind, p.name) for p in found] == [("unit", "Teoria dos Grafos Imaginários")]
     assert detect(["Unidade Curricular: Análise Matemática I"], repo.catalog) == []
+
+
+def test_acronym_folders_propose_institution_and_units() -> None:
+    from nexus.domain.catalog import Catalog
+    from nexus.pipeline.classify.proposals import detect, path_acronyms
+
+    assert path_acronyms(["INST/PDA/Arquivo - x/teste_PDA-24BB.pdf"]) == ["INST", "PDA", "BB"]
+    header = ("Departamento de Inform´atica da Universidade Fict´ıcia de Aveiro\n"
+              "Frequˆencia de Programa¸c˜ao e Desenho de Algoritmos B\n2024/25")
+    found = detect([header], Catalog(), paths=["UFA/PDA/teste_PDA-24BB.pdf"])
+    got = {(c.kind, c.name, c.acronym) for c in found}
+    assert ("unit", "Programação e Desenho de Algoritmos", "PDA") in got
+    assert not any(c.acronym == "BB" for c in found), "a letra da versão não é uma cadeira"
+    found = detect([header], Catalog(), paths=["UFA/PDA/x.pdf"])
+    # "Universidade Fictícia de Aveiro" tem as iniciais UFA
+    assert ("institution", "Universidade Fictícia de Aveiro", "UFA") in {
+        (c.kind, c.name, c.acronym) for c in found}
+
+
+def test_proposals_ignore_paths_and_listings() -> None:
+    from nexus.domain.catalog import Catalog
+    from nexus.pipeline.classify.proposals import detect
+
+    listing = "- `X/Repositório Geral da Disciplina - abc/ficha1.pdf` (131409 B)"
+    assert detect([listing], Catalog()) == []
+
+
+def test_role_comes_from_names_and_titles_not_from_questions(catalog_root: Path) -> None:
+    classifier, _ = _classifier(catalog_root)
+    exam = ["Exame de Recurso de Análise Matemática I\nAno Lectivo 2023/2024\nDuração: 2h\n"
+            + "Nome completo:\n" + "texto da prova " * 30
+            + "\n3. Indique uma solução da equação e justifique a resolução."]
+    c = classifier.classify(_doc("AM1/exameB_am1-recurso-23-24.pdf"), None, exam, None,
+                            []).classification
+    assert c.value("role") == "statement"
+    assert c.value("document_type") == "enunciados-avaliacao"
+    for name in ("res_fre1_AM1-24A.pdf", "corr_teste1A-2023-24.pdf", "resfreq-06-jan2024.pdf"):
+        c = classifier.classify(_doc(f"AM1/{name}"), None, exam, None, []).classification
+        assert c.value("role") == "solution", name
+        assert c.value("document_type") == "resolucoes-avaliacao", name
+    neutral = ["Análise Matemática I\nAno Lectivo 2024/2025\nDuração: 1:30"]
+    c = classifier.classify(_doc("AM1/fre1_AM1-24A.pdf"), None, neutral, None,
+                            []).classification
+    assert c.value("assessment_type") == "frequencia", "«fre1» no nome do ficheiro"
+
+
+def test_unit_name_is_not_a_role_signal(catalog_root: Path) -> None:
+    from nexus.datarepo.catalog_io import import_bundle
+    from nexus.datarepo.layout import Layout
+
+    import_bundle(Layout(catalog_root), {"format": "nexus-catalogo", "version": 1,
+                                         "institutions": [{"slug": "ufe", "name": "UFE",
+        "units": [{"slug": "mrn", "name": "Métodos e Resolução Numérica", "acronym": "MRN"}]}]})
+    classifier, _ = _classifier(catalog_root)
+    pages = ["Métodos e Resolução Numérica\n2024/2025\nTeste 1\nDuração: 45min"]
+    c = classifier.classify(_doc("MRN/MRN_Teste1_2024_2025.pdf"), None, pages, None,
+                            []).classification
+    assert c.value("unit") == "ufe/mrn"
+    assert c.value("role") == "statement"

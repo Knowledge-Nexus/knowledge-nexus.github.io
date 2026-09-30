@@ -13,7 +13,7 @@ import {
   Spinner,
 } from "../../components/ui";
 import { useApp } from "../../data/context";
-import type { ProposalRow } from "../../data/types";
+import type { CatalogBundle, ProposalRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
 import { ReviewForm } from "./ReviewForm";
@@ -36,15 +36,162 @@ function Preview(props: { sha256: string }) {
   );
 }
 
-function ProposalCard(props: { proposal: ProposalRow }) {
+interface InstitutionChoice {
+  key: string;
+  slug: string;
+  name: string;
+  acronym?: string;
+  proposalId?: string;
+}
+
+/** Instituições disponíveis para uma cadeira: as do catálogo e as propostas em aberto. */
+function institutionChoices(
+  existing: { slug: string; name: string; acronym: string | null }[],
+  proposals: ProposalRow[],
+): InstitutionChoice[] {
+  const out: InstitutionChoice[] = existing.map((i) => ({
+    key: `i:${i.slug}`,
+    slug: i.slug,
+    name: i.name,
+    ...(i.acronym ? { acronym: i.acronym } : {}),
+  }));
+  for (const p of proposals.filter((x) => x.kind === "institution")) {
+    const acronym = typeof p.data.acronym === "string" ? p.data.acronym : undefined;
+    out.push({
+      key: `p:${p.id}`,
+      slug: slugify(acronym ?? p.name, 30),
+      name: p.name,
+      ...(acronym ? { acronym } : {}),
+      proposalId: p.id,
+    });
+  }
+  return out;
+}
+
+interface UnitChoice {
+  proposal: ProposalRow;
+  slug: string;
+  acronym: string;
+}
+
+const proposalAcronym = (p: ProposalRow) =>
+  typeof p.data.acronym === "string" ? p.data.acronym : "";
+
+const defaultSlug = (p: ProposalRow) => slugify(proposalAcronym(p) || p.name, 30);
+
+/** Pedido de catálogo: cria a instituição (se for proposta) e as cadeiras, e aceita as
+ * propostas. O motor aplica-o e reclassifica o que estava à espera. */
+function catalogBundle(institution: InstitutionChoice, units: UnitChoice[]): CatalogBundle {
+  return {
+    format: "nexus-catalogo",
+    version: 1,
+    institutions: [
+      {
+        slug: institution.slug,
+        name: institution.name,
+        ...(institution.acronym ? { acronym: institution.acronym } : {}),
+        units: units.map((u) => ({
+          slug: u.slug,
+          name: u.proposal.name,
+          ...(u.acronym ? { acronym: u.acronym } : {}),
+        })),
+      },
+    ],
+    proposals: {
+      accept: [
+        ...units.map((u) => u.proposal.id),
+        ...(institution.proposalId ? [institution.proposalId] : []),
+      ],
+    },
+  };
+}
+
+function Evidence(props: { proposal: ProposalRow }) {
   const { t } = useTranslation();
-  const { source, meta, notifyCommit } = useApp();
-  const { proposal } = props;
-  const institutions = meta?.institutions() ?? [];
-  const [slug, setSlug] = useState(slugify(proposal.name, 30));
-  const [institution, setInstitution] = useState(
-    String(proposal.data.institution ?? institutions[0]?.slug ?? ""),
+  const { to } = useApp();
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted">
+        {t("review.evidence_count", { count: props.proposal.evidence.length })}
+      </p>
+      <ul className="list-disc pl-5 text-xs text-ink-soft">
+        {props.proposal.evidence.slice(0, 3).map((e) => (
+          <li key={e.document}>
+            <Link className="underline" to={to(`/documento/${e.document}?pagina=${e.page ?? 1}`)}>
+              «{e.snippet}»
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
+}
+
+/** Um clique: a instituição proposta (ou a única existente) com todas as cadeiras propostas. */
+function AcceptAll(props: { proposals: ProposalRow[]; choices: InstitutionChoice[] }) {
+  const { t } = useTranslation();
+  const { source, notifyCommit } = useApp();
+  const units = props.proposals.filter((p) => p.kind === "unit");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const institution = props.choices.length === 1 ? props.choices[0] : undefined;
+  if (!institution || units.length === 0) return null;
+
+  async function run() {
+    setBusy(true);
+    setError(null);
+    try {
+      const chosen = units.map((p) => ({
+        proposal: p,
+        slug: defaultSlug(p),
+        acronym: proposalAcronym(p),
+      }));
+      await source.catalogRequest(
+        catalogBundle(institution!, chosen),
+        `catálogo: ${institution!.name} + ${units.length} cadeira(s)`,
+      );
+      notifyCommit();
+      setDone(true);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-marker/60 bg-marker-soft p-4 text-sm">
+      {done ? (
+        <p className="text-sage">✓ {t("review.accept_all_done")}</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="flex-1">
+            {t("review.accept_all_text", {
+              institution: institution.name,
+              units: units
+                .map((u) => (proposalAcronym(u) ? `${u.name} (${proposalAcronym(u)})` : u.name))
+                .join(", "),
+            })}
+          </p>
+          <Button onClick={() => void run()} disabled={busy}>
+            {t("review.accept_all")}
+          </Button>
+        </div>
+      )}
+      {error ? <ErrorBox error={error} /> : null}
+    </div>
+  );
+}
+
+function ProposalCard(props: { proposal: ProposalRow; choices: InstitutionChoice[] }) {
+  const { t } = useTranslation();
+  const { source, notifyCommit } = useApp();
+  const { proposal, choices } = props;
+  const [slug, setSlug] = useState(defaultSlug(proposal));
+  const [acronym, setAcronym] = useState(proposalAcronym(proposal));
+  const suggested = choices.find((c) => c.slug === proposal.data.institution) ?? choices[0];
+  const [institutionKey, setInstitutionKey] = useState(suggested?.key ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState(false);
@@ -53,19 +200,22 @@ function ProposalCard(props: { proposal: ProposalRow }) {
     setBusy(true);
     setError(null);
     try {
-      const inst = institutions.find((i) => i.slug === institution);
       if (accept && proposal.kind === "unit") {
+        const inst = choices.find((c) => c.key === institutionKey);
         if (!inst) throw new Error(t("review.institution_select"));
+        await source.catalogRequest(
+          catalogBundle(inst, [{ proposal, slug, acronym }]),
+          `catálogo: criar cadeira ${proposal.name}`,
+        );
+      } else if (accept && proposal.kind === "institution") {
         await source.catalogRequest(
           {
             format: "nexus-catalogo",
             version: 1,
-            institutions: [
-              { slug: inst.slug, name: inst.name, units: [{ slug, name: proposal.name }] },
-            ],
+            institutions: [{ slug, name: proposal.name, ...(acronym ? { acronym } : {}) }],
             proposals: { accept: [proposal.id] },
           },
-          `catálogo: criar cadeira ${proposal.name}`,
+          `catálogo: criar instituição ${proposal.name}`,
         );
       } else {
         await source.catalogRequest(
@@ -86,55 +236,61 @@ function ProposalCard(props: { proposal: ProposalRow }) {
     }
   }
 
+  const editable = proposal.kind === "unit" || proposal.kind === "institution";
+  const input = "rounded-lg border border-line-strong bg-sheet px-2 py-1";
   return (
     <Card title={t(`review.proposal_${proposal.kind}`, { name: proposal.name })}>
       {done ? (
         <p className="text-sm text-sage">✓ {t("common.pending_sync")}</p>
       ) : (
         <div className="space-y-3 text-sm">
-          <div>
-            <p className="text-xs font-semibold text-muted">{t("review.evidence")}</p>
-            <ul className="list-disc pl-5 text-xs text-ink-soft">
-              {proposal.evidence.map((e) => (
-                <li key={e.document}>
-                  <Link className="underline" to={`/documento/${e.document}?pagina=${e.page ?? 1}`}>
-                    «{e.snippet}»
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          {proposal.kind === "unit" && (
+          <Evidence proposal={proposal} />
+          {editable && (
             <div className="flex flex-wrap gap-3">
+              <label>
+                {t("review.acronym")}{" "}
+                <input
+                  className={`${input} w-24`}
+                  value={acronym}
+                  onChange={(e) => setAcronym(e.target.value.trim())}
+                />
+              </label>
               <label>
                 {t("review.slug")}{" "}
                 <input
-                  className="rounded border border-line-strong px-2 py-1"
+                  className={input}
                   value={slug}
                   onChange={(e) => setSlug(slugify(e.target.value, 30))}
                 />
               </label>
-              <label>
-                {t("review.institution_select")}{" "}
-                <select
-                  className="rounded border border-line-strong px-2 py-1"
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
-                >
-                  {institutions.map((i) => (
-                    <option key={i.slug} value={i.slug}>
-                      {i.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {proposal.kind === "unit" && (
+                <label>
+                  {t("review.institution_select")}{" "}
+                  <select
+                    className={input}
+                    value={institutionKey}
+                    onChange={(e) => setInstitutionKey(e.target.value)}
+                  >
+                    {choices.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.proposalId ? t("review.new_institution", { name: c.name }) : c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
           )}
           {error ? <ErrorBox error={error} /> : null}
           <div className="flex gap-2">
             {proposal.kind === "unit" && (
-              <Button disabled={busy || !slug || !institution} onClick={() => run(true)}>
+              <Button disabled={busy || !slug || !institutionKey} onClick={() => run(true)}>
                 {t("review.create_unit")}
+              </Button>
+            )}
+            {proposal.kind === "institution" && (
+              <Button disabled={busy || !slug} onClick={() => run(true)}>
+                {t("review.create_institution")}
               </Button>
             )}
             <Button variant="danger" disabled={busy} onClick={() => run(false)}>
@@ -158,6 +314,7 @@ export function ReviewPage() {
 
   const queue = meta.reviewQueue(login);
   const proposals = meta.proposals("open");
+  const choices = institutionChoices(meta.institutions(), proposals);
   const selectedId = params.get("doc") ?? queue[0]?.id;
   const selected = selectedId ? meta.document(selectedId) : undefined;
 
@@ -169,8 +326,9 @@ export function ReviewPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
             {t("review.proposals")}
           </h2>
+          <AcceptAll proposals={proposals} choices={choices} />
           {proposals.map((p) => (
-            <ProposalCard key={p.id} proposal={p} />
+            <ProposalCard key={p.id} proposal={p} choices={choices} />
           ))}
         </div>
       )}

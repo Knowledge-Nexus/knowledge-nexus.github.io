@@ -83,6 +83,25 @@ def test_code_project_detection() -> None:
     assert codeproject.find_projects(["package.json", "index.js"], settings) == [""]
 
 
+def test_folder_of_courses_is_not_one_code_project() -> None:
+    # Estrutura típica: <instituição>/<cadeira>/…, com muito código numa cadeira e só PDFs
+    # noutra. Nada pode ser engolido por um "projecto" que junte as duas.
+    settings = load_settings().code_projects
+    files = [f"INST/PROG/Cap_{c}/ex{i}.py" for c in (1, 2) for i in range(6)]
+    files += [f"INST/PROG/Enunciados/teste{i}.pdf" for i in range(2)]
+    files += [f"INST/MAT/Arquivo da cadeira/ficha{i}.pdf" for i in range(4)]
+    assert codeproject.find_projects(files, settings) == ["INST/PROG/Cap_1", "INST/PROG/Cap_2"]
+    # Sem marcador, o relatório de um trabalho fica como documento e o código como projecto;
+    # com marcador (pyproject.toml…), o projecto inteiro fica junto.
+    work = ["T1/relatorio.pdf", "T1/src/a.py", "T1/src/b.py", "T1/src/c.py", "T1/README.md"]
+    assert codeproject.find_projects(work, settings) == ["T1/src"]
+    assert codeproject.find_projects([*work, "T1/pyproject.toml"], settings) == ["T1"]
+    # Pasta com exercícios e o enunciado do projecto: o PDF não fica escondido num zip.
+    mixed = ["PROG/Projecto/enunciado.pdf", "PROG/Projecto/jogo.py", "PROG/Projecto/a.gif",
+             *[f"PROG/Cap_1/ex{i}.py" for i in range(4)]]
+    assert codeproject.find_projects(mixed, settings) == ["PROG/Cap_1"]
+
+
 def test_code_bundle_is_deterministic(tmp_path: Path) -> None:
     settings = load_settings().code_projects
     root = tmp_path / "p"
