@@ -93,7 +93,9 @@ def test_public_site_only_has_public_material_and_nothing_personal(
     assert again == digest
 
 
-def test_publish_is_idempotent_and_unsharing_removes(git_root: Path, tmp_path: Path) -> None:
+def test_publish_is_idempotent_and_unsharing_removes(git_root: Path, tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     remote = tmp_path / "publico.git"
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
     assert publish_public(git_root).configured is False
@@ -158,3 +160,13 @@ def test_cli_visibility(catalog_root: Path) -> None:
     bad = runner.invoke(app, ["visibilidade", "documento", doc, "toda-a-gente",
                               "--repo", str(catalog_root)])
     assert bad.exit_code == 1
+
+
+def test_publish_in_actions_without_token_only_warns(git_root: Path, tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    remote = tmp_path / "publico.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
+    _configure(git_root)
+    result = publish_public(git_root, token=None, remote_url=str(remote))
+    assert result.missing_token and not result.published
