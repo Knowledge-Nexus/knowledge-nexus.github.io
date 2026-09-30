@@ -313,7 +313,8 @@
     "unavailable_hint": "Se estavas à espera de ver algo, pede à pessoa que partilhou que confirme a ligação.",
     "enter": "Entrar com o meu repositório",
     "view": "Ver o material público",
-    "badge": "Página pública"
+    "badge": "Página pública",
+    "enter_short": "Entrar"
   },
   "guide": {
     "title": "Como funciona",

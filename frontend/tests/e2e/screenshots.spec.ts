@@ -40,7 +40,8 @@ test("capturas", async ({ page }) => {
     const body = publicFiles[path];
     await route.fulfill(body ? { status: 200, body } : { status: 404, body: "" });
   });
-  await page.goto("/");
+  await page.goto("/#/entrar");
+  await page.getByLabel("Repositório de dados (dono/nome)").waitFor();
   await page.screenshot({ path: `${out}/1-ligacao.png` });
   await page.getByLabel("Repositório de dados (dono/nome)").fill("aluna/estudo-dados");
   await page.getByLabel("Token de acesso (fine-grained)").fill(fake.token);

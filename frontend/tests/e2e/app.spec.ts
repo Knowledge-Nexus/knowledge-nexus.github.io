@@ -55,7 +55,7 @@ async function withFakeGitHub(page: Page, options: { private?: boolean } = {}) {
 }
 
 async function login(page: Page, fake: FakeGitHub) {
-  await page.goto("/");
+  await page.goto("/#/entrar");
   await page.getByLabel("Repositório de dados (dono/nome)").fill(REPO);
   await page.getByLabel("Token de acesso (fine-grained)").fill(fake.token);
   await page.getByRole("button", { name: "Ligar" }).click();
@@ -186,9 +186,11 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
     if (!body) return route.fulfill({ status: 404, body: "" });
     await route.fulfill({ status: 200, body });
   });
+  // Sem sessão, a entrada é a biblioteca pública.
   await page.goto("/");
-  await page.getByRole("link", { name: "Ver o material público" }).click();
+  await expect(page).toHaveURL(/#\/publico$/);
   await expect(page.getByRole("heading", { name: "Material partilhado" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Entrar", exact: true }).first()).toBeVisible();
   await expect(page.getByText("Página pública").first()).toBeVisible();
   await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Biblioteca" })).toBeVisible();

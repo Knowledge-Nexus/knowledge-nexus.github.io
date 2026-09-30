@@ -87,17 +87,24 @@ function PublicLayout(props: { children: ReactNode }) {
           <p className="flex items-center gap-1.5 font-medium text-gold-light">
             <IconGlobe size={14} /> {t("public.badge")}
           </p>
-          <a className="mt-1 block text-white/60 underline" href="#/">
-            {t("public.enter")}
+          <a
+            className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-gold px-3 py-1.5 text-sm font-semibold text-navy hover:bg-gold-light"
+            href="#/entrar"
+            title={t("public.enter")}
+          >
+            {t("public.enter_short")}
           </a>
         </div>
       </aside>
       <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <Brand size={30} dark />
-          <span className="flex items-center gap-1 text-xs text-gold-light">
-            <IconGlobe size={14} /> {t("public.badge")}
-          </span>
+          <a
+            href="#/entrar"
+            className="rounded-full bg-gold px-3 py-1 text-xs font-semibold text-navy"
+          >
+            {t("public.enter_short")}
+          </a>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
           {items}

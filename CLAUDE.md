@@ -132,6 +132,8 @@ Dependências de sistema (Ubuntu/WSL2):
     fontes são servidas pelo próprio site (`@fontsource`), por causa da CSP.
   - Para quem chega pela primeira vez: "Primeiros passos" no Início e a página
     "Como funciona" (`/ajuda`, textos em `guide.*`).
+  - Sem sessão, a entrada do site é a biblioteca pública (`#/publico`); o ecrã de
+    ligação está em `#/entrar` (botão "Entrar" no menu).
   - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
     `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.
   - Marca: ficheiros em `frontend/public/brand/`, configurados em `BRAND` (`components/Brand.tsx`).

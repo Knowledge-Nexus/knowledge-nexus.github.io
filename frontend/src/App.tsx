@@ -76,7 +76,7 @@ function PublicShell() {
       <div className="mx-auto max-w-lg space-y-3 p-8">
         <Empty
           action={
-            <Link to="/" className={buttonClass("secondary")}>
+            <Link to="/entrar" className={buttonClass("secondary")}>
               {t("public.enter")}
             </Link>
           }
@@ -141,10 +141,10 @@ export function App() {
         <Routes>
           <Route path="/publico/*" element={<PublicShell />} />
           <Route
-            path="*"
+            path="/entrar"
             element={
               connected ? (
-                <Shell connected={connected} onLogout={logout} />
+                <Navigate to="/" replace />
               ) : (
                 <>
                   {restoreError ? (
@@ -154,6 +154,17 @@ export function App() {
                   ) : null}
                   <ConnectPage onConnected={onConnected} />
                 </>
+              )
+            }
+          />
+          {/* Sem sessão, quem chega vê a biblioteca pública; para entrar: #/entrar. */}
+          <Route
+            path="*"
+            element={
+              connected ? (
+                <Shell connected={connected} onLogout={logout} />
+              ) : (
+                <Navigate to={restoreError ? "/entrar" : "/publico"} replace />
               )
             }
           />
