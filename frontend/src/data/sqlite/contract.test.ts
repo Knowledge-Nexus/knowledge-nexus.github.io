@@ -51,6 +51,14 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
     expect(Array.isArray(doc.sources)).toBe(true);
     expect(meta.vocab("document_types").length).toBeGreaterThanOrEqual(12);
     expect(meta.units().find((u) => u.key === "ufe/am1")?.name).toBe("Análise Matemática I");
+    // Consultas da página Início.
+    const owned = meta.documents({ owner: expected!.owner });
+    const recent = meta.recent(expected!.owner, 100);
+    expect(recent.map((d) => d.id).sort()).toEqual(owned.map((d) => d.id).sort());
+    const stats = meta.unitStats(expected!.owner);
+    const withUnit = owned.filter((d) => d.unit);
+    expect([...stats.values()].reduce((n, s) => n + s.total, 0)).toBe(withUnit.length);
+    for (const s of stats.values()) expect(s.filed).toBeLessThanOrEqual(s.total);
   });
 
   it("pesquisa como o Python", async () => {

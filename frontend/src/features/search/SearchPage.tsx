@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
-import { Badge, Card, Empty, ErrorBox, Spinner } from "../../components/ui";
+import { Badge, Card, Empty, ErrorBox, PageHeader, Spinner } from "../../components/ui";
 import { useApp, useSearchIndex } from "../../data/context";
 import { splitSnippet } from "../../data/sqlite/search";
 import { useLabels } from "../../lib/labels";
@@ -32,14 +32,14 @@ export function SearchPage() {
         })
       : [];
 
-  const select = "rounded-lg border border-slate-300 px-2 py-1.5 text-sm";
+  const select = "rounded-xl border border-line-strong px-2 py-1.5 text-sm";
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t("search.title")}</h1>
+      <PageHeader title={t("search.title")} />
       <div className="flex flex-wrap gap-2">
         <input
           type="search"
-          className="min-w-64 flex-1 rounded-lg border border-slate-300 px-3 py-2"
+          className="min-w-64 flex-1 rounded-xl border border-line-strong px-3 py-2"
           placeholder={t("search.placeholder")}
           aria-label={t("search.placeholder")}
           value={query}
@@ -88,7 +88,7 @@ export function SearchPage() {
       {index.error ? <ErrorBox error={index.error} /> : null}
       {!meta && !index.isLoading && <Empty>{t("pipeline.no_indices")}</Empty>}
       {query.trim() && index.data && (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           {hits.length ? t("search.results", { count: hits.length }) : t("search.none")}
         </p>
       )}
@@ -105,11 +105,11 @@ export function SearchPage() {
                 )}
                 {hit.academic_year && <Badge>{hit.academic_year}</Badge>}
               </div>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-ink-soft">
                 {splitSnippet(hit.snippet).map((part, i) =>
                   part.mark ? (
                     // biome-ignore lint/suspicious/noArrayIndexKey: pedaços do excerto
-                    <mark key={i} className="rounded bg-amber-200 px-0.5">
+                    <mark key={i} className="rounded bg-marker-soft px-0.5">
                       {part.text}
                     </mark>
                   ) : (

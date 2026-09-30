@@ -1,6 +1,15 @@
 import { type DragEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Card, ErrorBox, Spinner } from "../../components/ui";
+import {
+  Badge,
+  Button,
+  buttonClass,
+  Card,
+  ErrorBox,
+  Notice,
+  PageHeader,
+  Spinner,
+} from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { UploadEntry } from "../../data/source";
 import {
@@ -119,8 +128,7 @@ export function UploadPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t("upload.title")}</h1>
-      <p className="text-sm text-slate-600">{t("upload.intro")}</p>
+      <PageHeader title={t("upload.title")} subtitle={t("upload.intro")} />
       <section
         aria-label={t("upload.drop")}
         onDragOver={(e) => {
@@ -129,12 +137,12 @@ export function UploadPage() {
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-10 text-center ${over ? "border-sky-500 bg-sky-50" : "border-slate-300 bg-white"}`}
+        className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center ${over ? "border-pen bg-pen-soft" : "border-line-strong bg-sheet"}`}
       >
-        <p className="text-base font-medium text-slate-700">{t("upload.drop")}</p>
-        <p className="text-xs text-slate-500">{t("upload.or")}</p>
+        <p className="text-base font-medium text-ink-soft">{t("upload.drop")}</p>
+        <p className="text-xs text-muted">{t("upload.or")}</p>
         <div className="flex gap-2">
-          <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+          <label className={`cursor-pointer ${buttonClass("secondary")}`}>
             {t("upload.pick_files")}
             <input
               type="file"
@@ -161,11 +169,7 @@ export function UploadPage() {
       </section>
       {hashing && <Spinner label={t("upload.hashing")} />}
       {error ? <ErrorBox error={error} /> : null}
-      {sent && (
-        <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
-          ✓ {t("upload.sent")}
-        </p>
-      )}
+      {sent && <Notice>✓ {t("upload.sent")}</Notice>}
       {rows.length > 0 && (
         <Card
           actions={
@@ -179,7 +183,7 @@ export function UploadPage() {
             </div>
           }
         >
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-line text-sm">
             {rows.map((row) => (
               <li
                 key={`${row.path}-${row.entry?.sha256 ?? row.state}`}
@@ -187,7 +191,7 @@ export function UploadPage() {
               >
                 <span className="truncate font-mono text-xs">{row.path}</span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs text-slate-500">{formatBytes(row.size)}</span>
+                  <span className="text-xs text-muted">{formatBytes(row.size)}</span>
                   <Badge
                     tone={row.state === "new" ? "ok" : row.state === "known" ? "info" : "warn"}
                   >

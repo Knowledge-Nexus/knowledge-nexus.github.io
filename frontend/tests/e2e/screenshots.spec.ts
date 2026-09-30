@@ -35,20 +35,37 @@ test("capturas", async ({ page }) => {
   await page.getByLabel("Repositório de dados (dono/nome)").fill("aluna/estudo-dados");
   await page.getByLabel("Token de acesso (fine-grained)").fill(fake.token);
   await page.getByRole("button", { name: "Ligar" }).click();
-  await page.getByRole("button", { name: /Análise Matemática I/ }).click();
+  await page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
+  await page.screenshot({ path: `${out}/2-inicio.png`, fullPage: true });
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/2b-biblioteca.png`, fullPage: true });
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
   await page.getByText("2023-2024_exame-recurso-enunciado.pdf").waitFor();
-  await page.screenshot({ path: `${out}/2-biblioteca.png` });
+  await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
   await page.locator("canvas").waitFor();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${out}/3-documento.png` });
   await page.getByRole("link", { name: /A rever/ }).click();
   await page.getByText(/UC em falta/).waitFor();
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/4-a-rever.png`, fullPage: true });
   await page.getByRole("link", { name: "Pesquisa" }).click();
-  await page.getByLabel("Pesquisar no texto integral…").fill("limite sucessao");
+  await page.getByLabel("Procura em todo o teu material…").fill("limite sucessao");
   await page.locator("mark").first().waitFor();
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/5-pesquisa.png` });
   await page.getByRole("link", { name: "Depositar" }).click();
+  await page.getByRole("heading", { name: "Depositar material" }).waitFor();
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/6-depositar.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("link", { name: "Início" }).first().click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/7-movel.png`, fullPage: true });
 });

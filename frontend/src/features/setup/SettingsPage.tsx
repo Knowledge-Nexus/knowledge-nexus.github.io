@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Card, ErrorBox } from "../../components/ui";
+import { Button, Card, ErrorBox, PageHeader } from "../../components/ui";
 import { clearCache } from "../../data/cache";
 import { useApp } from "../../data/context";
 import { GitHubDataSource } from "../../data/source";
@@ -45,14 +45,14 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t("settings.title")}</h1>
+      <PageHeader title={t("settings.title")} />
       <Card title={t("settings.repository")}>
         <p className="text-sm">
           {source.repo.owner}/{source.repo.name} ({source.repo.branch}) · {t("settings.user")}:{" "}
           <strong>{login}</strong>
         </p>
         {expiration && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             {t("settings.token_expires", { when: formatWhen(expiration) })}
           </p>
         )}
@@ -89,7 +89,7 @@ export function SettingsPage() {
           <label>
             {t("setup.academic_year")}{" "}
             <select
-              className="rounded border border-slate-300 px-2 py-1"
+              className="rounded border border-line-strong px-2 py-1"
               value={year}
               onChange={(e) => setYear(e.target.value)}
             >
@@ -103,7 +103,7 @@ export function SettingsPage() {
             {t("settings.tutor_mode")}
           </label>
           {error ? <ErrorBox error={error} /> : null}
-          {saved && <p className="text-emerald-700">✓ {t("common.pending_sync")}</p>}
+          {saved && <p className="text-sage">✓ {t("common.pending_sync")}</p>}
           <Button onClick={() => void save()}>{t("common.save")}</Button>
         </div>
       </Card>

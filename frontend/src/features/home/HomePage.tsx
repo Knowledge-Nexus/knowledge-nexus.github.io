@@ -1,0 +1,107 @@
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+import { IconArrowRight, IconCheckList, IconInbox } from "../../components/icons";
+import { buttonClass, Card, Empty, ErrorBox, PageHeader, Spinner } from "../../components/ui";
+import { useApp } from "../../data/context";
+import { useLabels } from "../../lib/labels";
+import { DocumentLink, UnitBook } from "../library/LibraryPage";
+
+function greeting(): "morning" | "afternoon" | "evening" {
+  const hour = new Date().getHours();
+  if (hour < 13) return "morning";
+  if (hour < 20) return "afternoon";
+  return "evening";
+}
+
+function Stat(props: { value: number; label: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-sheet px-3 py-3 sm:px-5 sm:py-4">
+      <p className="font-serif text-2xl font-semibold text-ink sm:text-3xl">{props.value}</p>
+      <p className="text-xs text-muted sm:text-sm">{props.label}</p>
+    </div>
+  );
+}
+
+export function HomePage() {
+  const { t } = useTranslation();
+  const { meta, login, indexLoading, indexError } = useApp();
+  const labels = useLabels(meta);
+  if (indexError) return <ErrorBox error={indexError} />;
+  if (indexLoading) return <Spinner />;
+
+  const counts = meta?.counts(login) ?? { total: 0, review: 0, filed: 0 };
+  const stats = meta?.unitStats(login) ?? new Map<string, { filed: number; total: number }>();
+  const recent = meta?.recent(login) ?? [];
+  const noCatalog = !meta || labels.units.length === 0;
+
+  return (
+    <div className="space-y-8">
+      <PageHeader title={t(`home.${greeting()}`)} subtitle={t("home.subtitle")} />
+
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <Stat value={counts.total} label={t("home.documents")} />
+        <Stat value={labels.units.length} label={t("home.units")} />
+        <Stat value={counts.review} label={t("home.to_review")} />
+      </div>
+
+      {counts.review > 0 && (
+        <Link
+          to="/rever"
+          className="flex items-center gap-3 rounded-2xl border border-marker/60 bg-marker-soft px-5 py-4 text-sm text-ink transition hover:bg-marker/40"
+        >
+          <IconCheckList />
+          <span className="flex-1">{t("home.review_cta", { count: counts.review })}</span>
+          <span className="flex items-center gap-1 font-medium">
+            {t("home.review_go")} <IconArrowRight size={16} />
+          </span>
+        </Link>
+      )}
+
+      {noCatalog ? (
+        <Empty
+          action={
+            <Link to="/configuracao" className={buttonClass("primary")}>
+              {t("home.setup_cta")}
+            </Link>
+          }
+        >
+          {t("home.no_units")}
+        </Empty>
+      ) : (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-xl font-semibold">{t("home.your_units")}</h2>
+            <Link to="/biblioteca" className="shrink-0 text-sm text-pen hover:underline">
+              {t("home.all_library")}
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {labels.units.map((unit) => (
+              <UnitBook key={unit.key} unit={unit} count={stats.get(unit.key)?.filed ?? 0} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recent.length > 0 ? (
+        <Card title={t("home.recent")}>
+          <div className="divide-y divide-line">
+            {recent.map((doc) => (
+              <DocumentLink key={doc.id} doc={doc} showUnit />
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Empty
+          action={
+            <Link to="/depositar" className={buttonClass("primary")}>
+              <IconInbox size={16} /> {t("home.deposit_cta")}
+            </Link>
+          }
+        >
+          {t("home.empty")}
+        </Empty>
+      )}
+    </div>
+  );
+}

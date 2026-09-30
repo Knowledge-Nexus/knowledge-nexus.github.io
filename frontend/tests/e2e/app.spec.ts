@@ -73,8 +73,13 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   await login(page, fake);
 
   // Biblioteca → UC → exame arrumado
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Biblioteca" })).toBeVisible();
-  await page.getByRole("button", { name: /Análise Matemática I/ }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
   await expect(page.getByText("2023-2024_exame-recurso-enunciado.pdf")).toBeVisible();
   await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
 
@@ -86,10 +91,10 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
 
   // Pesquisa sem acentos e com a grafia AO90 encontra o texto pré-AO
   await page.getByRole("link", { name: "Pesquisa" }).click();
-  await page.getByLabel("Pesquisar no texto integral…").fill("sucessao");
+  await page.getByLabel("Procura em todo o teu material…").fill("sucessao");
   await expect(page.getByText(/resultado\(s\)/)).toBeVisible();
   await expect(page.locator("mark").first()).toBeVisible();
-  await page.getByLabel("Pesquisar no texto integral…").fill("ano letivo");
+  await page.getByLabel("Procura em todo o teu material…").fill("ano letivo");
   await expect(page.locator("mark").first()).toBeVisible();
 
   // A rever: proposta de UC em falta e correcção de um documento

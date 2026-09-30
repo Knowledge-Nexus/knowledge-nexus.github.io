@@ -190,6 +190,26 @@ export class MetaIndex {
     return Boolean(this.db.get("SELECT 1 AS x FROM documents WHERE sha256 = ? LIMIT 1", [sha256]));
   }
 
+  recent(owner: string, limit = 6): DocumentRow[] {
+    return this.db
+      .all<Record<string, unknown>>(
+        `SELECT * FROM documents WHERE owner = ? AND kind <> 'archive'
+         ORDER BY created_at DESC, id DESC LIMIT ?`,
+        [owner, limit],
+      )
+      .map(toDocument);
+  }
+
+  /** Nº de documentos arrumados por UC (e total, incluindo os por arrumar). */
+  unitStats(owner: string): Map<string, { filed: number; total: number }> {
+    const rows = this.db.all<{ unit: string; filed: number; total: number }>(
+      `SELECT unit, sum(status IN ('filed', 'enriched', 'reviewed')) AS filed, count(*) AS total
+       FROM documents WHERE owner = ? AND kind <> 'archive' AND unit IS NOT NULL GROUP BY unit`,
+      [owner],
+    );
+    return new Map(rows.map((r) => [r.unit, { filed: r.filed, total: r.total }]));
+  }
+
   academicYears(): string[] {
     return this.db
       .all<{ academic_year: string }>(

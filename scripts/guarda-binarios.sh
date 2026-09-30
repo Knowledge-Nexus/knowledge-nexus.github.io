@@ -4,7 +4,7 @@
 set -euo pipefail
 
 pattern='\.(pdf|docx?|pptx?|xlsx?|odt|odp|ods|rtf|zip|rar|7z|heic|jpe?g|png|tiff?|db|sqlite3?)$'
-allowed='^frontend/public/[^/]+\.png$'
+allowed='^frontend/public/(brand/)?[^/]+\.(png|jpe?g|webp)$'
 
 found="$(git ls-files | grep -Ei "$pattern" | grep -Ev "$allowed" || true)"
 if [ -n "$found" ]; then

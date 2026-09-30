@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Knowledge Nexus",
-    "tagline": "O teu material de estudo, arrumado e pesquisável."
+    "tagline": "O teu material de estudo, arrumado e fácil de encontrar."
   },
   "nav": {
     "upload": "Depositar",
@@ -9,7 +9,8 @@
     "review": "A rever",
     "search": "Pesquisa",
     "settings": "Definições",
-    "logout": "Terminar sessão"
+    "logout": "Terminar sessão",
+    "home": "Início"
   },
   "common": {
     "loading": "A carregar…",
@@ -22,13 +23,19 @@
     "error": "Ocorreu um erro: {{message}}",
     "retry": "Tentar de novo",
     "generated": "Gerado automaticamente",
-    "confidence": "confiança {{value}}%",
     "method": {
-      "heuristic": "heurística",
+      "heuristic": "classificado automaticamente",
+      "heuristic_hint": "Classificado a partir do nome, das pastas e do conteúdo do documento.",
       "user": "confirmado por ti",
-      "ai": "proposta de IA"
+      "ai": "sugestão automática",
+      "ai_hint": "Sugestão gerada automaticamente a partir do documento. Confirma antes de a dares como certa."
     },
-    "pending_sync": "Alterações enviadas; os índices são actualizados depois do processamento (1–3 min)."
+    "pending_sync": "Guardado. A biblioteca é actualizada dentro de 1–3 minutos.",
+    "certainty": {
+      "high": "certeza alta",
+      "medium": "certeza média",
+      "low": "certeza baixa"
+    }
   },
   "fields": {
     "unit": "UC",
@@ -51,7 +58,7 @@
   },
   "connect": {
     "title": "Ligar ao teu repositório de dados",
-    "intro": "O material fica num repositório PRIVADO teu no GitHub. Este site é só código público: o token e os dados nunca saem do teu browser, excepto para a API do GitHub.",
+    "intro": "O teu material fica num repositório privado teu no GitHub. Este site não guarda nada: o acesso é feito directamente a partir do teu browser.",
     "repo": "Repositório de dados (dono/nome)",
     "repo_placeholder": "ex.: Knowledge-Nexus/estudo-dados",
     "token": "Token de acesso (fine-grained)",
@@ -67,7 +74,9 @@
       "not_found": "Repositório não encontrado (ou o token não lhe tem acesso).",
       "public": "Este repositório é PÚBLICO. Material com direitos de autor nunca pode estar num repositório público: torna-o privado ou cria outro.",
       "no_push": "O token não tem permissão de escrita neste repositório."
-    }
+    },
+    "banner_quote": "Todo o teu material de estudo, num só sítio.",
+    "banner_caption": "Apontamentos, slides, exames e resoluções — arrumados por unidade curricular."
   },
   "setup": {
     "title": "Configuração inicial",
@@ -104,7 +113,7 @@
   },
   "upload": {
     "title": "Depositar material",
-    "intro": "Larga aqui tudo, sem organizar: PDFs, slides, fotos de apontamentos, enunciados, resoluções, código, zips. O sistema identifica, deduplica, extrai e arruma.",
+    "intro": "Larga aqui o que tiveres, sem te preocupares com a organização: PDFs, slides, fotografias de apontamentos, enunciados, resoluções, código, zips.",
     "drop": "Larga ficheiros ou pastas aqui",
     "or": "ou",
     "pick_files": "Escolher ficheiros",
@@ -125,14 +134,14 @@
     }
   },
   "pipeline": {
-    "none": "Ainda não há processamentos.",
-    "queued": "Na fila para processar…",
-    "in_progress": "A processar o depósito…",
-    "success": "Último processamento concluído {{when}}.",
-    "failure": "O último processamento falhou.",
-    "open_run": "Ver no GitHub",
-    "indices": "Índices de {{when}}",
-    "no_indices": "Ainda não há índices: deposita material para começar."
+    "none": "Ainda sem actividade.",
+    "queued": "Na fila para arrumar…",
+    "in_progress": "A arrumar o teu material…",
+    "success": "Tudo em dia · {{when}}",
+    "failure": "Houve um problema a processar",
+    "open_run": "detalhes",
+    "indices": "Tudo em dia · {{when}}",
+    "no_indices": "Biblioteca ainda vazia"
   },
   "library": {
     "title": "Biblioteca",
@@ -143,12 +152,16 @@
     "no_course": "Sem curso",
     "no_unit": "Sem UC",
     "documents": "{{count}} documento(s)",
-    "choose_unit": "Escolhe uma UC à esquerda."
+    "choose_unit": "Escolhe uma UC à esquerda.",
+    "year_group": "{{year}}.º ano",
+    "semester": "{{semester}}.º semestre",
+    "back": "Todas as UCs",
+    "by_type": "Por tipo de material"
   },
   "document": {
     "not_found": "Documento não encontrado.",
     "classification": "Classificação",
-    "why": "Porquê?",
+    "why": "Como foi classificado?",
     "correct": "Corrigir classificação",
     "text": "Texto",
     "pdf": "PDF",
@@ -171,8 +184,8 @@
   },
   "review": {
     "title": "A rever",
-    "empty": "Nada para rever. 🎉",
-    "intro": "Documentos cuja classificação não é segura. Nada é arrumado à sorte: confirma ou corrige.",
+    "empty": "Nada por rever. A tua biblioteca está em ordem.",
+    "intro": "Documentos em que a arrumação automática não teve certeza suficiente. Nada é arrumado ao acaso: confirma ou corrige, e o documento segue para a biblioteca.",
     "reasons": "Motivos",
     "alternatives": "Alternativas",
     "choose": "Escolher…",
@@ -191,7 +204,7 @@
   },
   "search": {
     "title": "Pesquisa",
-    "placeholder": "Pesquisar no texto integral…",
+    "placeholder": "Procura em todo o teu material…",
     "any_unit": "Todas as UCs",
     "any_type": "Todos os tipos",
     "any_year": "Todos os anos",
@@ -208,5 +221,23 @@
     "tutor_mode": "Modo tutor (dicas progressivas; resolução completa só a pedido)",
     "enrollments": "Inscrições",
     "clear_cache": "Limpar cache local"
+  },
+  "home": {
+    "morning": "Bom dia",
+    "afternoon": "Boa tarde",
+    "evening": "Boa noite",
+    "subtitle": "Aqui está o estado da tua biblioteca de estudo.",
+    "documents": "documentos",
+    "units": "unidades curriculares",
+    "to_review": "por rever",
+    "your_units": "As tuas unidades curriculares",
+    "recent": "Adicionados recentemente",
+    "review_cta": "{{count}} documento(s) à espera de confirmação",
+    "review_go": "Rever agora",
+    "deposit_cta": "Depositar material",
+    "empty": "Ainda não há material. Começa por depositar apontamentos, slides ou enunciados — o resto fica por nossa conta.",
+    "setup_cta": "Configurar a instituição e as UCs",
+    "no_units": "Ainda não definiste as tuas unidades curriculares.",
+    "all_library": "Ver biblioteca completa"
   }
 }

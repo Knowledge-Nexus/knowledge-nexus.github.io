@@ -77,7 +77,7 @@ export function PdfViewer(props: {
           {t("document.next")}
         </Button>
       </div>
-      <canvas ref={canvas} className="max-w-full rounded border border-slate-200 shadow-sm" />
+      <canvas ref={canvas} className="max-w-full rounded border border-line shadow-sm" />
     </div>
   );
 }

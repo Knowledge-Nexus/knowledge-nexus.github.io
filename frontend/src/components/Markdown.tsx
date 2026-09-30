@@ -8,7 +8,7 @@ import remarkMath from "remark-math";
 
 export function Markdown(props: { children: string }) {
   return (
-    <div className="prose-nexus text-sm leading-relaxed text-slate-800">
+    <div className="prose-nexus text-sm leading-relaxed text-ink">
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
         {props.children}
       </ReactMarkdown>

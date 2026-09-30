@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import YAML from "yaml";
-import { Button, Card, ErrorBox, Spinner } from "../../components/ui";
+import { Button, Card, ErrorBox, PageHeader, Spinner } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle } from "../../data/types";
 import { academicYears } from "../../lib/labels";
@@ -81,10 +81,10 @@ function StructureStep() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   if (ready.isLoading) return <Spinner />;
-  if (ready.data) return <p className="text-sm text-emerald-700">✓ {t("setup.structure_ready")}</p>;
+  if (ready.data) return <p className="text-sm text-sage">✓ {t("setup.structure_ready")}</p>;
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">{t("setup.structure_missing")}</p>
+      <p className="text-sm text-ink-soft">{t("setup.structure_missing")}</p>
       {error ? (
         <ErrorBox
           error={t("setup.structure_error", {
@@ -166,7 +166,7 @@ function ManualCatalog(props: { onDone: () => void }) {
     }
   }
 
-  const input = "mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm";
+  const input = "mt-1 w-full rounded-xl border border-line-strong px-2 py-1.5 text-sm";
   return (
     <form className="space-y-4" onSubmit={submit}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -239,7 +239,7 @@ function ManualCatalog(props: { onDone: () => void }) {
             />
             <button
               type="button"
-              className="col-span-1 text-xs text-red-700"
+              className="col-span-1 text-xs text-clay"
               onClick={() => setUnits((all) => all.filter((_, i) => i !== index))}
             >
               {t("setup.remove")}
@@ -254,7 +254,7 @@ function ManualCatalog(props: { onDone: () => void }) {
         <label>
           {t("setup.academic_year")}{" "}
           <select
-            className="rounded border border-slate-300 px-2 py-1"
+            className="rounded border border-line-strong px-2 py-1"
             value={year}
             onChange={(e) => setYear(e.target.value)}
           >
@@ -282,7 +282,7 @@ function ImportCatalog(props: { onDone: () => void }) {
   const [error, setError] = useState<unknown>(null);
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-slate-600">{t("setup.import_help")}</p>
+      <p className="text-ink-soft">{t("setup.import_help")}</p>
       <input
         type="file"
         accept=".yaml,.yml"
@@ -312,19 +312,19 @@ export function SetupPage() {
   const [mode, setMode] = useState<"import" | "manual" | "infer">("manual");
   const [done, setDone] = useState(false);
   const tab = (value: typeof mode) =>
-    `rounded-lg px-3 py-1.5 text-sm ${mode === value ? "bg-slate-900 text-white" : "border border-slate-300 bg-white"}`;
+    `rounded-full px-4 py-1.5 text-sm font-medium transition ${mode === value ? "bg-pen text-white" : "border border-line-strong bg-sheet text-ink-soft hover:bg-paper"}`;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t("setup.title")}</h1>
+      <PageHeader title={t("setup.title")} />
       <Card title={t("setup.structure_title")}>
         <StructureStep />
       </Card>
       <Card title={t("setup.catalog_title")}>
         {done ? (
-          <p className="text-sm text-emerald-700">✓ {t("setup.done")}</p>
+          <p className="text-sm text-sage">✓ {t("setup.done")}</p>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{t("setup.catalog_intro")}</p>
+            <p className="text-sm text-ink-soft">{t("setup.catalog_intro")}</p>
             <div className="flex gap-2">
               <button type="button" className={tab("manual")} onClick={() => setMode("manual")}>
                 {t("setup.mode_manual")}
@@ -340,7 +340,7 @@ export function SetupPage() {
             {mode === "import" && <ImportCatalog onDone={() => setDone(true)} />}
             {mode === "infer" && (
               <div className="space-y-3 text-sm">
-                <p className="text-slate-600">{t("setup.infer_help")}</p>
+                <p className="text-ink-soft">{t("setup.infer_help")}</p>
                 <Button onClick={() => navigate("/depositar")}>{t("setup.infer_go")}</Button>
               </div>
             )}

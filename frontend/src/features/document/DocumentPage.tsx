@@ -7,6 +7,7 @@ import { PdfViewer } from "../../components/PdfViewer";
 import {
   Badge,
   Button,
+  buttonClass,
   Card,
   ConfidenceBadge,
   Empty,
@@ -140,7 +141,9 @@ export function DocumentPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold break-all">{doc.display_name}</h1>
+          <h1 className="font-serif text-2xl font-semibold break-all text-ink">
+            {doc.display_name}
+          </h1>
           <div className="mt-1 flex flex-wrap gap-1">
             <Badge>{t(`status.${doc.status}`)}</Badge>
             {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
@@ -157,10 +160,7 @@ export function DocumentPage() {
             {t("document.download")}
           </Button>
           {isOwner && (
-            <Link
-              to={`/rever?doc=${doc.id}`}
-              className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-            >
+            <Link to={`/rever?doc=${doc.id}`} className={buttonClass("primary")}>
               {t("document.correct")}
             </Link>
           )}
@@ -176,14 +176,12 @@ export function DocumentPage() {
                 if (!value) return null;
                 return (
                   <div key={field}>
-                    <dt className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                    <dt className="flex items-center justify-between gap-2 text-xs text-muted">
                       {t(`fields.${field}`)} <ConfidenceBadge field={value} />
                     </dt>
                     <dd className="font-medium">{labels.value(field, value.value)}</dd>
                     <details className="text-xs">
-                      <summary className="cursor-pointer text-slate-500">
-                        {t("document.why")}
-                      </summary>
+                      <summary className="cursor-pointer text-muted">{t("document.why")}</summary>
                       <ReasonList reasons={value.reasons} />
                     </details>
                   </div>
@@ -194,7 +192,7 @@ export function DocumentPage() {
           {isOwner && (
             <Card title={t("document.notes")}>
               <textarea
-                className="h-28 w-full rounded-lg border border-slate-300 p-2 text-sm"
+                className="h-28 w-full rounded-xl border border-line-strong p-2 text-sm"
                 placeholder={t("document.notes_placeholder")}
                 value={notes ?? doc.notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -223,7 +221,7 @@ export function DocumentPage() {
                     {isOwner && (
                       <button
                         type="button"
-                        className="text-xs text-slate-500 underline"
+                        className="text-xs text-muted underline"
                         onClick={() =>
                           void patch((r) => {
                             const list =
@@ -245,7 +243,7 @@ export function DocumentPage() {
               {doc.sources.map((s) => (
                 <li key={`${s.via}-${s.path}-${s.batch ?? ""}`} className="font-mono break-all">
                   {s.path}{" "}
-                  <span className="text-slate-500">
+                  <span className="text-muted">
                     ({s.via}, {formatWhen(s.received_at)})
                   </span>
                 </li>
@@ -281,7 +279,7 @@ export function DocumentPage() {
                   <li key={f.path}>{f.path}</li>
                 ))}
                 {doc.manifest.ignored.map((i) => (
-                  <li key={i.path} className="text-slate-500">
+                  <li key={i.path} className="text-muted">
                     {t("document.ignored", { path: i.path, files: i.files })}
                   </li>
                 ))}
@@ -290,7 +288,7 @@ export function DocumentPage() {
           )}
           {children.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-slate-500">{t("document.children")}</p>
+              <p className="text-xs font-semibold text-muted">{t("document.children")}</p>
               <ul className="text-sm">
                 {children.map((c) => (
                   <li key={c.id}>

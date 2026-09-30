@@ -111,7 +111,7 @@ export function ReviewForm(props: { doc: DocumentRow; labels: Labels; onDone?: (
 
   if (done)
     return (
-      <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+      <p className="rounded-lg bg-sage-soft p-3 text-sm text-sage">
         ✓ {t("review.confirmed")} {t("common.pending_sync")}
       </p>
     );
@@ -123,7 +123,7 @@ export function ReviewForm(props: { doc: DocumentRow; labels: Labels; onDone?: (
         const alternatives = current?.alternatives ?? [];
         const choices = options(field);
         return (
-          <div key={field} className="rounded-lg border border-slate-200 p-3">
+          <div key={field} className="rounded-xl border border-line p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-sm font-medium" htmlFor={`field-${field}`}>
                 {t(`fields.${field}`)}
@@ -133,7 +133,7 @@ export function ReviewForm(props: { doc: DocumentRow; labels: Labels; onDone?: (
             {choices.length > 0 ? (
               <select
                 id={`field-${field}`}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded-xl border border-line-strong px-2 py-1.5 text-sm"
                 value={draft[field] ?? ""}
                 onChange={(e) => set(field, e.target.value)}
               >
@@ -149,22 +149,22 @@ export function ReviewForm(props: { doc: DocumentRow; labels: Labels; onDone?: (
                 id={`field-${field}`}
                 type="number"
                 min={1}
-                className="mt-1 w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                className="mt-1 w-24 rounded-xl border border-line-strong px-2 py-1.5 text-sm"
                 value={draft[field] ?? ""}
                 onChange={(e) => set(field, e.target.value)}
               />
             )}
             {alternatives.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1 text-xs">
-                <span className="text-slate-500">{t("review.alternatives")}:</span>
+                <span className="text-muted">{t("review.alternatives")}:</span>
                 {alternatives.map((alt) => (
                   <button
                     type="button"
                     key={String(alt.value)}
                     onClick={() => set(field, String(alt.value))}
-                    className="rounded-full border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+                    className="rounded-full border border-line-strong px-2 py-0.5 hover:bg-paper"
                   >
-                    {labels.value(field, alt.value)} · {Math.round(alt.confidence * 100)}%
+                    {labels.value(field, alt.value)}
                   </button>
                 ))}
               </div>

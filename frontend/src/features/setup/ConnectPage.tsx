@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Brand, BrandBanner } from "../../components/Brand";
 import { Button, Card, ErrorBox } from "../../components/ui";
 import { type FetchLike, GitHubClient, GitHubError } from "../../data/github/client";
 import { parseRepo, type StoredSession } from "../../data/session";
@@ -71,63 +72,68 @@ export function ConnectPage(props: {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-lg space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t("app.name")}</h1>
-          <p className="text-sm text-slate-600">{t("app.tagline")}</p>
+    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      <div className="hidden lg:block">
+        <BrandBanner />
+      </div>
+      <div className="flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-md space-y-6">
+          <div className="space-y-2">
+            <Brand size={36} />
+            <p className="text-sm text-ink-soft">{t("app.tagline")}</p>
+          </div>
+          <Card title={t("connect.title")}>
+            <p className="mb-4 text-sm text-ink-soft">{t("connect.intro")}</p>
+            <form className="space-y-4" onSubmit={submit}>
+              <label className="block text-sm">
+                <span className="font-medium">{t("connect.repo")}</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-line-strong px-3 py-2"
+                  value={repo}
+                  onChange={(e) => setRepo(e.target.value)}
+                  placeholder={t("connect.repo_placeholder")}
+                  autoComplete="off"
+                  required
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">{t("connect.token")}</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-line-strong px-3 py-2 font-mono"
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+                <span className="mt-1 block text-xs text-muted">{t("connect.token_help")}</span>
+                <a
+                  className="text-xs text-pen underline"
+                  href="https://github.com/settings/personal-access-tokens/new"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t("connect.token_link")}
+                </a>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                <span>
+                  {t("connect.remember")}
+                  <span className="block text-xs text-muted">{t("connect.remember_help")}</span>
+                </span>
+              </label>
+              {error && <ErrorBox error={error} />}
+              <Button type="submit" disabled={busy}>
+                {busy ? t("connect.checking") : t("connect.submit")}
+              </Button>
+            </form>
+          </Card>
         </div>
-        <Card title={t("connect.title")}>
-          <p className="mb-4 text-sm text-slate-600">{t("connect.intro")}</p>
-          <form className="space-y-4" onSubmit={submit}>
-            <label className="block text-sm">
-              <span className="font-medium">{t("connect.repo")}</span>
-              <input
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                value={repo}
-                onChange={(e) => setRepo(e.target.value)}
-                placeholder={t("connect.repo_placeholder")}
-                autoComplete="off"
-                required
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">{t("connect.token")}</span>
-              <input
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                autoComplete="off"
-                required
-              />
-              <span className="mt-1 block text-xs text-slate-500">{t("connect.token_help")}</span>
-              <a
-                className="text-xs text-sky-700 underline"
-                href="https://github.com/settings/personal-access-tokens/new"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t("connect.token_link")}
-              </a>
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              <span>
-                {t("connect.remember")}
-                <span className="block text-xs text-slate-500">{t("connect.remember_help")}</span>
-              </span>
-            </label>
-            {error && <ErrorBox error={error} />}
-            <Button type="submit" disabled={busy}>
-              {busy ? t("connect.checking") : t("connect.submit")}
-            </Button>
-          </form>
-        </Card>
       </div>
     </div>
   );

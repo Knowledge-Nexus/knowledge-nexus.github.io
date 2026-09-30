@@ -106,6 +106,17 @@ Dependências de sistema (Ubuntu/WSL2):
     carregar/enviar (não fazer upload), definições (não configurações), equipa (não time),
     telemóvel (não celular).
   - A classificação aceita sempre as duas grafias, porque `normalize()` as unifica.
+- **Identidade visual ("caderno de estudo"):**
+  - Tokens de cor e tipografia em `frontend/src/styles.css` (`@theme`): paper, sheet, line, ink,
+    pen (azul de caneta), marker (amarelo), sage, clay. Usar sempre os tokens, nunca cores soltas.
+  - Títulos e texto dos documentos em serifa (Source Serif 4); a interface em Inter. As fontes
+    são servidas pelo próprio site (`@fontsource`), por causa da CSP.
+  - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
+    `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.
+  - Marca: ficheiros em `frontend/public/brand/`, configurados em `BRAND` (`components/Brand.tsx`).
+  - **A IA é discreta:** nada de "IA" em destaque. A certeza aparece em pontos e palavras
+    (certeza alta/média/baixa), nunca em percentagens, e o que é gerado mostra "sugestão
+    automática" com explicação no tooltip. Continua sempre marcado e ligado à fonte (regra 8).
 - **Textos da interface:** `frontend/src/i18n/pt-PT.json`. As justificações da
   classificação estão em `config/i18n/pt-PT/reasons.json` (código → texto). Nunca
   escrever texto visível directamente num componente.
@@ -146,7 +157,7 @@ Dependências de sistema (Ubuntu/WSL2):
 ## Estado das fases
 
 - **Fase 1 (concluída):** motor (etapas 1 a 5), índices, CLI, workflows, interface
-  mínima (ligação, configuração, depósito, biblioteca, documento, A rever, pesquisa),
+  (ligação, configuração, início, depósito, biblioteca, documento, A rever, pesquisa),
   `nexus vigiar`, testes (backend, contrato, E2E).
 - **Fase 2:** enriquecimento por skills, transcrição de manuscritos e matemática
   (páginas `needs_ai_transcription`), banco de perguntas.

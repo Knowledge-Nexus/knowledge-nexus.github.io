@@ -7,6 +7,7 @@ import { ErrorBox, Spinner } from "./components/ui";
 import { DataProvider, useApp } from "./data/context";
 import { clearSession, loadSession, saveSession } from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
+import { HomePage } from "./features/home/HomePage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { ReviewPage } from "./features/review/ReviewPage";
 import { SearchPage } from "./features/search/SearchPage";
@@ -24,7 +25,7 @@ function Home() {
   if (indexLoading || manifest === undefined) return <Spinner />;
   if (!manifest || !meta || meta.institutions().length === 0)
     return <Navigate to="/configuracao" replace />;
-  return <Navigate to="/biblioteca" replace />;
+  return <Navigate to="/inicio" replace />;
 }
 
 function Shell(props: { connected: Connected; onLogout: () => void }) {
@@ -33,6 +34,7 @@ function Shell(props: { connected: Connected; onLogout: () => void }) {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/inicio" element={<HomePage />} />
           <Route path="/configuracao" element={<SetupPage />} />
           <Route path="/depositar" element={<UploadPage />} />
           <Route path="/biblioteca" element={<LibraryPage />} />
