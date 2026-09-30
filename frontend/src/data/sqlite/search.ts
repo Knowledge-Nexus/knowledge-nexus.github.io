@@ -1,4 +1,4 @@
-// Pesquisa FTS5 sobre pesquisa.db — espelho de backend/nexus/index/search.py.
+// Pesquisa FTS5 sobre pesquisa.db, espelho de backend/nexus/index/search.py.
 
 import { normalize } from "../../lib/normalize";
 import type { SearchFilters, SearchHit } from "../types";

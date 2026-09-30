@@ -194,7 +194,7 @@ class Classifier:
     def _role(self, signals: list[Signal], unit_names: list[str] | None = None
               ) -> tuple[FieldValue | None, float]:
         """Enunciado ou resolução. O texto das perguntas fala muitas vezes de "solução" ou
-        "resolva", por isso só contam o nome, as pastas, os metadados e o título — e sem o
+        "resolva", por isso só contam o nome, as pastas, os metadados e o título, e sem o
         nome da cadeira ("… e Resolução de Problemas" não é uma resolução)."""
         def clean(norm: str) -> str:
             text = f" {norm} "

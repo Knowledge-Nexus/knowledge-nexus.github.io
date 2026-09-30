@@ -33,7 +33,7 @@ class Enrollments(Record):
 class Sharing(Record):
     """Escolhas de partilha do utilizador para o seu material."""
 
-    # {chave da cadeira: visibilidade} — os documentos sem escolha própria seguem isto.
+    # {chave da cadeira: visibilidade}: os documentos sem escolha própria seguem isto.
     units: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("units")

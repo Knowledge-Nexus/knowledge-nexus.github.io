@@ -3,7 +3,7 @@
 O dono escolhe por cadeira (`utilizadores/<login>.yaml`, `sharing.units`) e pode abrir
 excepções por documento (`documentos/<id>.yaml`, `visibility`). Sem escolha, é privado.
 Só `public` sai do repositório de dados privado (ver nexus.public); o pipeline nunca
-escolhe visibilidades — só o utilizador.
+escolhe visibilidades, só o utilizador.
 """
 
 from __future__ import annotations

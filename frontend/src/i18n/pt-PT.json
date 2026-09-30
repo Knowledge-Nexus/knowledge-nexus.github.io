@@ -10,7 +10,13 @@
     "search": "Pesquisa",
     "settings": "Definições",
     "logout": "Terminar sessão",
-    "home": "Início"
+    "home": "Início",
+    "help": "Como funciona",
+    "home_hint": "Resumo e próximos passos",
+    "upload_hint": "Enviar ficheiros, sem arrumar",
+    "library_hint": "O teu material, por cadeira",
+    "review_hint": "Confirmar as dúvidas",
+    "search_hint": "Encontrar em todo o texto"
   },
   "common": {
     "loading": "A carregar…",
@@ -19,7 +25,7 @@
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "back": "Voltar",
-    "none": "—",
+    "none": "não indicado",
     "error": "Ocorreu um erro: {{message}}",
     "retry": "Tentar de novo",
     "generated": "Gerado automaticamente",
@@ -76,7 +82,13 @@
       "no_push": "O token não tem permissão de escrita neste repositório."
     },
     "banner_quote": "Todo o teu material de estudo, num só sítio.",
-    "banner_caption": "Apontamentos, slides, exames e resoluções — arrumados por cadeira."
+    "banner_caption": "Apontamentos, slides, exames e resoluções, arrumados por cadeira.",
+    "how": [
+      "Envias o teu material tal como o tens: PDFs, slides, fotografias de apontamentos, exames, código.",
+      "O site lê cada ficheiro e arruma-o por cadeira, tipo e ano lectivo. Quando tem dúvidas, pergunta-te.",
+      "Depois encontras tudo na biblioteca ou numa pesquisa, e abres logo a página certa.",
+      "Tudo fica num repositório privado teu no GitHub: só tu vês, a não ser que escolhas partilhar."
+    ]
   },
   "setup": {
     "title": "Configuração inicial",
@@ -249,11 +261,17 @@
     "review_cta": "{{count}} documento(s) à espera de confirmação",
     "review_go": "Rever agora",
     "deposit_cta": "Depositar material",
-    "empty": "Ainda não há material. Começa por depositar apontamentos, slides ou enunciados — o resto fica por nossa conta.",
+    "empty": "Ainda não há material. Começa por depositar apontamentos, slides ou enunciados. O resto fica por nossa conta.",
     "setup_cta": "Configurar a instituição e as cadeiras",
     "no_units": "Ainda não definiste as tuas cadeiras.",
     "all_library": "Ver biblioteca completa",
-    "units_shared": "Cadeiras"
+    "units_shared": "Cadeiras",
+    "steps_title": "Primeiros passos",
+    "step_catalog": "Indicar as cadeiras",
+    "step_deposit": "Depositar material",
+    "step_review": "Confirmar o que ficou em dúvida",
+    "step_done": "feito",
+    "how_link": "Como funciona?"
   },
   "visibility": {
     "private": "Privada",
@@ -263,8 +281,8 @@
     "unit_public_hint": "Qualquer pessoa com a ligação da página pública vê e descarrega o material desta cadeira (excepto documentos que marques como privados).",
     "document_label": "Visibilidade",
     "inherit": "Seguir a cadeira ({{value}})",
-    "private_only": "Privado — só eu",
-    "public_everyone": "Público — qualquer pessoa com a ligação",
+    "private_only": "Privado (só eu)",
+    "public_everyone": "Público (qualquer pessoa com a ligação)",
     "users_soon": "Pessoas específicas (quando houver contas)",
     "link_soon": "Só quem tiver a ligação deste documento (quando houver contas)",
     "doc_public_hint": "Aparece na página pública. Não aparece nos motores de pesquisa.",
@@ -282,5 +300,54 @@
     "enter": "Entrar com o meu repositório",
     "view": "Ver o material público",
     "badge": "Página pública"
+  },
+  "guide": {
+    "title": "Como funciona",
+    "subtitle": "Em quatro passos: tu envias, o site arruma, tu confirmas o que ficou em dúvida e depois é só estudar.",
+    "steps": [
+      {
+        "title": "1. Indica as tuas cadeiras",
+        "text": "Diz qual é a tua instituição e as cadeiras que tens. Se preferires, envia logo o material: o site reconhece as siglas das pastas (por exemplo UC/ED/) e propõe-nas em «A rever».",
+        "cta": "Configurar"
+      },
+      {
+        "title": "2. Deposita o material",
+        "text": "Larga ficheiros ou pastas inteiras em «Depositar», tal como os tens no computador: PDFs, slides, fotografias, código, zips. Não precisas de organizar nada.",
+        "cta": "Depositar"
+      },
+      {
+        "title": "3. Confirma o que ficou em dúvida",
+        "text": "Em 1 a 3 minutos, cada ficheiro é lido e arrumado por cadeira, tipo e ano lectivo. Quando o site não tem a certeza, não adivinha: pede-te para confirmar em «A rever», com uma sugestão.",
+        "cta": "Ver «A rever»"
+      },
+      {
+        "title": "4. Estuda",
+        "text": "Na «Biblioteca» encontras tudo por cadeira e tipo (enunciados, resoluções, fichas, slides). Na «Pesquisa» procuras qualquer palavra dentro dos documentos e abres logo a página certa.",
+        "cta": "Abrir a biblioteca"
+      }
+    ],
+    "faq_title": "Perguntas frequentes",
+    "faq": [
+      {
+        "q": "Quem vê o meu material?",
+        "a": "Só tu. Tudo fica no teu repositório privado no GitHub. Se quiseres partilhar uma cadeira ou um documento, escolhe «Pública» nessa cadeira ou nesse documento; podes voltar atrás quando quiseres."
+      },
+      {
+        "q": "E se enviar o mesmo ficheiro duas vezes?",
+        "a": "Não há problema: ficheiros iguais são guardados uma só vez."
+      },
+      {
+        "q": "O site pode estragar ou apagar os meus ficheiros?",
+        "a": "Não. Os originais nunca são alterados nem apagados; o que o site cria (texto, índices) pode ser refeito a qualquer momento."
+      },
+      {
+        "q": "Porque é que um documento está em «A rever»?",
+        "a": "Porque faltou certeza sobre a cadeira, o tipo ou o ano. Aparece o motivo e uma sugestão; basta confirmar ou corrigir."
+      },
+      {
+        "q": "Quanto tempo demora?",
+        "a": "Normalmente 1 a 3 minutos depois de enviares. O estado aparece no canto da barra lateral."
+      }
+    ]
   }
 }

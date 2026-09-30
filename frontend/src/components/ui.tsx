@@ -102,7 +102,7 @@ export function Notice(props: { children: ReactNode }) {
 export function Badge(props: { children: ReactNode; tone?: "neutral" | "warn" | "ok" | "info" }) {
   const tone = {
     neutral: "bg-paper text-ink-soft border-line",
-    warn: "bg-marker-soft text-[#7a5a12] border-marker/50",
+    warn: "bg-marker-soft text-ink border-marker/50",
     ok: "bg-sage-soft text-sage border-sage/30",
     info: "bg-pen-soft text-pen border-pen/20",
   }[props.tone ?? "neutral"];

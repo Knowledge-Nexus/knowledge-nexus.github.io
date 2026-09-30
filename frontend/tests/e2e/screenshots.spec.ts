@@ -76,6 +76,13 @@ test("capturas", async ({ page }) => {
   await page.getByRole("heading", { name: "Depositar material" }).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/6-depositar.png` });
+  await page
+    .getByRole("link", { name: /Como funciona/ })
+    .first()
+    .click();
+  await page.getByRole("heading", { name: "Como funciona" }).waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/9-ajuda.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("link", { name: "Início" }).first().click();
   await page.waitForTimeout(300);

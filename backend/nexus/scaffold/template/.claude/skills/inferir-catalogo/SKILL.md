@@ -5,7 +5,7 @@ description: Infere a instituição, o curso e as cadeiras (unidades curriculare
 
 # Inferir o catálogo a partir do material
 
-1. `nexus catalogo propostas --json` — propostas já detectadas pelas heurísticas, com
+1. `nexus catalogo propostas --json`: propostas já detectadas pelas heurísticas, com
    evidência (documento, página, excerto).
 2. Procura evidência adicional: `nexus revisao listar --json` e, para os documentos do tipo
    ficha da cadeira/programa ou com cabeçalhos ricos, `nexus documento texto <id> --paginas 1`.

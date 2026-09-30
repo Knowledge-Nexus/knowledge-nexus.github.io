@@ -74,7 +74,7 @@ def verificar(rapido: Annotated[bool, typer.Option(help="Não testar conversões
     failed_required = False
     for check in run_checks(deep=not rapido):
         mark = "ok " if check.ok else ("ERR" if check.required else "-- ")
-        typer.echo(f"[{mark}] {check.name:<11} {check.detail}  — {check.purpose}")
+        typer.echo(f"[{mark}] {check.name:<11} {check.detail}  ({check.purpose})")
         failed_required |= check.required and not check.ok
     if failed_required:
         raise typer.Exit(1)

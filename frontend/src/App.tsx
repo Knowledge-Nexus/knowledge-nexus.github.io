@@ -8,6 +8,7 @@ import { DataProvider, useApp } from "./data/context";
 import { fetchPublicManifest, PublicDataSource } from "./data/public";
 import { clearSession, loadSession, saveSession } from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
+import { HelpPage } from "./features/help/HelpPage";
 import { HomePage } from "./features/home/HomePage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { ReviewPage } from "./features/review/ReviewPage";
@@ -43,6 +44,7 @@ function Shell(props: { connected: Connected; onLogout: () => void }) {
           <Route path="/rever" element={<ReviewPage />} />
           <Route path="/pesquisa" element={<SearchPage />} />
           <Route path="/definicoes" element={<SettingsPage />} />
+          <Route path="/ajuda" element={<HelpPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

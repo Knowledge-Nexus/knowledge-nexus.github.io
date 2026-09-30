@@ -55,7 +55,7 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
     1. alterações locais por registar (ex.: ficheiros largados no depósito de um clone)
        são primeiro guardadas num commit próprio;
     2. se o push for rejeitado (o remoto avançou), o commit do pipeline é descartado, o
-       commit local é reposto sobre o remoto (rebase) e o pipeline corre de novo — é
+       commit local é reposto sobre o remoto (rebase) e o pipeline corre de novo: é
        idempotente e reaproveita a cache de extracção.
     """
     git = Git(root)

@@ -8,6 +8,7 @@ import {
   IconBooks,
   IconCheckList,
   IconGlobe,
+  IconHelp,
   IconHome,
   IconInbox,
   IconSearch,
@@ -18,25 +19,43 @@ function NavItem(props: {
   to: string;
   icon: ReactNode;
   label: string;
+  hint?: string;
   badge?: number;
   end?: boolean;
+  dark?: boolean;
 }) {
+  const dark = props.dark ?? true;
   return (
     <NavLink
       to={props.to}
       end={props.end}
+      title={props.hint}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-          isActive
-            ? "bg-sheet text-pen shadow-sm ring-1 ring-line"
-            : "text-ink-soft hover:bg-sheet/70 hover:text-ink"
+        `group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+          dark
+            ? isActive
+              ? "bg-white/10 text-gold-light shadow-[inset_3px_0_0_var(--color-gold)]"
+              : "text-white/75 hover:bg-white/5 hover:text-white"
+            : isActive
+              ? "bg-sheet text-pen shadow-sm ring-1 ring-line"
+              : "text-ink-soft hover:bg-sheet/70 hover:text-ink"
         }`
       }
     >
       <span className="shrink-0">{props.icon}</span>
-      <span className="flex-1">{props.label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block">{props.label}</span>
+        {props.hint && dark && (
+          <span
+            aria-hidden="true"
+            className="hidden truncate text-[0.7rem] font-normal text-white/45 group-hover:text-white/60 lg:block"
+          >
+            {props.hint}
+          </span>
+        )}
+      </span>
       {props.badge ? (
-        <span className="rounded-full bg-marker px-2 text-xs font-semibold text-ink">
+        <span className="rounded-full bg-gold px-2 text-xs font-semibold text-navy">
           {props.badge}
         </span>
       ) : null}
@@ -57,26 +76,26 @@ function PublicLayout(props: { children: ReactNode }) {
   );
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
-      <aside className="hidden border-r border-line bg-paper/80 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
+      <aside className="leather sticky top-0 hidden h-screen border-r border-gold/40 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
         <div className="px-2">
-          <Brand />
+          <Brand dark />
         </div>
         <nav className="flex flex-col gap-1" aria-label="principal">
           {items}
         </nav>
-        <div className="mt-auto rounded-xl border border-line bg-sheet/70 px-3 py-2.5 text-xs text-ink-soft">
-          <p className="flex items-center gap-1.5 font-medium text-pen">
+        <div className="mt-auto rounded-xl border border-gold/30 bg-white/5 px-3 py-2.5 text-xs text-white/70">
+          <p className="flex items-center gap-1.5 font-medium text-gold-light">
             <IconGlobe size={14} /> {t("public.badge")}
           </p>
-          <a className="mt-1 block text-muted underline" href="#/">
+          <a className="mt-1 block text-white/60 underline" href="#/">
             {t("public.enter")}
           </a>
         </div>
       </aside>
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur lg:hidden">
+      <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <Brand size={28} />
-          <span className="flex items-center gap-1 text-xs text-pen">
+          <Brand size={30} dark />
+          <span className="flex items-center gap-1 text-xs text-gold-light">
             <IconGlobe size={14} /> {t("public.badge")}
           </span>
         </div>
@@ -94,30 +113,62 @@ export function Layout(props: { children: ReactNode }) {
   const { meta, login, source, readOnly } = useApp();
   if (readOnly) return <PublicLayout>{props.children}</PublicLayout>;
   const review = meta?.counts(login).review ?? 0;
-  const items = (
+  const items = (dark: boolean) => (
     <>
-      <NavItem to="/inicio" icon={<IconHome />} label={t("nav.home")} />
-      <NavItem to="/depositar" icon={<IconInbox />} label={t("nav.upload")} />
-      <NavItem to="/biblioteca" icon={<IconBooks />} label={t("nav.library")} />
-      <NavItem to="/rever" icon={<IconCheckList />} label={t("nav.review")} badge={review} />
-      <NavItem to="/pesquisa" icon={<IconSearch />} label={t("nav.search")} />
+      <NavItem
+        dark={dark}
+        to="/inicio"
+        icon={<IconHome />}
+        label={t("nav.home")}
+        hint={t("nav.home_hint")}
+      />
+      <NavItem
+        dark={dark}
+        to="/depositar"
+        icon={<IconInbox />}
+        label={t("nav.upload")}
+        hint={t("nav.upload_hint")}
+      />
+      <NavItem
+        dark={dark}
+        to="/biblioteca"
+        icon={<IconBooks />}
+        label={t("nav.library")}
+        hint={t("nav.library_hint")}
+      />
+      <NavItem
+        dark={dark}
+        to="/rever"
+        icon={<IconCheckList />}
+        label={t("nav.review")}
+        hint={t("nav.review_hint")}
+        badge={review}
+      />
+      <NavItem
+        dark={dark}
+        to="/pesquisa"
+        icon={<IconSearch />}
+        label={t("nav.search")}
+        hint={t("nav.search_hint")}
+      />
     </>
   );
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
-      <aside className="hidden border-r border-line bg-paper/80 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
+    <div className="min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+      <aside className="leather sticky top-0 hidden h-screen border-r border-gold/40 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
         <div className="px-2">
-          <Brand />
+          <Brand dark />
         </div>
         <nav className="flex flex-col gap-1" aria-label="principal">
-          {items}
+          {items(true)}
         </nav>
         <div className="mt-auto flex flex-col gap-3">
+          <NavItem to="/ajuda" icon={<IconHelp />} label={t("nav.help")} />
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
-          <div className="rounded-xl border border-line bg-sheet/70 px-3 py-2.5">
+          <div className="rounded-xl border border-gold/30 bg-white/5 px-3 py-2.5 text-white/80 [&_p]:text-white/80">
             <PipelineStatus />
             <p
-              className="mt-1 truncate text-xs text-muted"
+              className="mt-1 truncate text-xs !text-white/50"
               title={`${source.repo.owner}/${source.repo.name}`}
             >
               {login} · {source.repo.name}
@@ -125,13 +176,14 @@ export function Layout(props: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <Brand size={28} />
+      <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 [&_p]:text-white/80">
+          <Brand size={30} dark />
           <PipelineStatus compact />
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
-          {items}
+          {items(true)}
+          <NavItem to="/ajuda" icon={<IconHelp />} label={t("nav.help")} />
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
         </nav>
       </header>

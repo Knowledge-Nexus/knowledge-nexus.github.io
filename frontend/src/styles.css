@@ -1,31 +1,39 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/source-serif-4";
+@import "@fontsource/cinzel/600.css";
 
-/* Identidade visual "caderno de estudo": papel, tinta azul e marcador.
-   Os tokens geram utilitários Tailwind (bg-paper, text-ink, border-line, bg-pen…). */
+/* Identidade visual: pergaminho, azul-marinho e dourado (as cores do banner e do ícone,
+   como a encadernação de um livro). Os tokens geram utilitários Tailwind (bg-paper,
+   text-ink, border-line, bg-pen…). */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
+  /* Letras romanas do banner: só para a marca e títulos curtos. */
+  --font-display: "Cinzel", "Source Serif 4 Variable", Georgia, serif;
 
-  --color-paper: #f6f2e9;
+  --color-paper: #f4efe4;
   --color-sheet: #fffdf8;
-  --color-line: #e6dfcf;
-  --color-line-strong: #d6ccb6;
-  --color-ink: #1d2733;
-  --color-ink-soft: #46515e;
-  --color-muted: #7a8190;
-  --color-pen: #27496d;
-  --color-pen-dark: #1b3552;
-  --color-pen-soft: #e4ebf3;
-  --color-marker: #f4c95d;
-  --color-marker-soft: #fbefc9;
+  --color-line: #e5dcc8;
+  --color-line-strong: #d3c5a6;
+  --color-ink: #16213a;
+  --color-ink-soft: #424c63;
+  --color-muted: #787f8f;
+  --color-pen: #1c3563;
+  --color-pen-dark: #122447;
+  --color-pen-soft: #e3e8f2;
+  /* Dourado do banner (destaques, marcador). */
+  --color-marker: #d4ae5a;
+  --color-marker-soft: #f5ecd5;
+  --color-gold: #c9a24d;
+  --color-gold-light: #e8cf8f;
   --color-sage: #4f7d58;
   --color-sage-soft: #e2ede1;
   --color-clay: #b35d3d;
   --color-clay-soft: #f6e3d9;
-  /* Azul-marinho do banner (fundo à volta dele). */
-  --color-navy: #09182b;
+  /* Azul-marinho do banner (barra lateral, página de entrada). */
+  --color-navy: #0b1a31;
+  --color-navy-soft: #16294a;
 }
 
 :root {
@@ -34,6 +42,25 @@
   font-family: var(--font-sans);
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+}
+
+/* Superfície azul-marinho com a textura ténue do couro do banner. */
+.leather {
+  background-color: var(--color-navy);
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(232, 207, 143, 0.08), transparent 55%),
+    radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size:
+    auto,
+    5px 5px;
+}
+
+/* Filete dourado duplo, como a moldura do banner. */
+.gilt-frame {
+  border: 1px solid rgba(201, 162, 77, 0.65);
+  box-shadow:
+    inset 0 0 0 3px var(--color-navy),
+    inset 0 0 0 4px rgba(201, 162, 77, 0.35);
 }
 
 body {

@@ -151,7 +151,7 @@ jobs:
                            f"`{r['target']}` ({state})\n")
           PY
 
-      - name: Guarda — os originais nunca são alterados nem apagados
+      - name: Guarda (os originais nunca são alterados nem apagados)
         # Um force push é uma reescrita deliberada do histórico (ex.: limpar dados de teste),
         # que nem a interface nem o pipeline fazem; nesse caso a guarda não se aplica.
         if: ${{ github.event.forced != true }}
@@ -159,7 +159,7 @@ jobs:
           before="${{ github.event.before }}"
           if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
             if git diff --name-status --no-renames "$before" HEAD -- originais | grep -v '^A'; then
-              echo "::error::Há alterações ou remoções em originais/ — proibido."
+              echo "::error::Há alterações ou remoções em originais/: proibido."
               exit 1
             fi
           fi

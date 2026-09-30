@@ -1,4 +1,4 @@
-# Knowledge Nexus — plataforma de estudo (repositório da aplicação)
+# Knowledge Nexus: plataforma de estudo (repositório da aplicação)
 
 Plataforma web que reúne o material de estudo de cursos do ensino superior. A peça
 central é o **depósito**: o utilizador envia tudo sem organizar, e o sistema identifica,
@@ -117,13 +117,21 @@ Dependências de sistema (Ubuntu/WSL2):
     carregar/enviar (não fazer upload), definições (não configurações), equipa (não time),
     telemóvel (não celular).
   - A classificação aceita sempre as duas grafias, porque `normalize()` as unifica.
+  - **Nunca usar o travessão "—"** em textos (interface, documentação, commits, respostas):
+    usar vírgula, dois pontos, parênteses ou ponto. O motor continua a reconhecê-lo no
+    texto dos documentos.
   - Na interface e na documentação diz-se **"cadeira"**, nunca "UC" (confunde-se com
     Universidade de Coimbra). No código e nas chaves continua `unit`.
-- **Identidade visual ("caderno de estudo"):**
+- **Identidade visual (a do banner: pergaminho, azul-marinho e dourado):**
   - Tokens de cor e tipografia em `frontend/src/styles.css` (`@theme`): paper, sheet, line, ink,
-    pen (azul de caneta), marker (amarelo), sage, clay. Usar sempre os tokens, nunca cores soltas.
-  - Títulos e texto dos documentos em serifa (Source Serif 4); a interface em Inter. As fontes
-    são servidas pelo próprio site (`@fontsource`), por causa da CSP.
+    pen (azul-marinho), navy (barra lateral e entrada), gold/marker (dourado), sage, clay.
+    Classes `.leather` (superfície azul com textura) e `.gilt-frame` (filete dourado).
+    Usar sempre os tokens, nunca cores soltas.
+  - Marca e títulos curtos em Cinzel (`font-display`, letras romanas como no banner);
+    títulos e texto dos documentos em serifa (Source Serif 4); a interface em Inter. As
+    fontes são servidas pelo próprio site (`@fontsource`), por causa da CSP.
+  - Para quem chega pela primeira vez: "Primeiros passos" no Início e a página
+    "Como funciona" (`/ajuda`, textos em `guide.*`).
   - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
     `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.
   - Marca: ficheiros em `frontend/public/brand/`, configurados em `BRAND` (`components/Brand.tsx`).

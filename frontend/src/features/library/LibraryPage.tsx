@@ -212,7 +212,7 @@ export function LibraryPage() {
           to={to("/rever")}
           className="block rounded-2xl border border-marker/60 bg-marker-soft px-5 py-4 text-sm text-ink"
         >
-          <strong>{t("library.unfiled")}</strong> ({unfiled.length}) — {t("library.unfiled_help")}
+          <strong>{t("library.unfiled")}</strong> ({unfiled.length}): {t("library.unfiled_help")}
         </Link>
       )}
       {shelves.length === 0 && <Empty>{t("library.empty")}</Empty>}

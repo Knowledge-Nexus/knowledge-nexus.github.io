@@ -15,8 +15,8 @@ export const BRAND = {
 function DefaultMark(props: { size: number }) {
   return (
     <svg width={props.size} height={props.size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="#27496d" />
-      <path d="M9 23V9h3l8 9.5V9h3v14h-3l-8-9.5V23z" fill="#f4c95d" />
+      <circle cx="16" cy="16" r="16" fill="var(--color-navy)" />
+      <path d="M9 23V9h3l8 9.5V9h3v14h-3l-8-9.5V23z" fill="var(--color-gold)" />
     </svg>
   );
 }
@@ -37,12 +37,17 @@ export function BrandIcon(props: { size?: number }) {
   );
 }
 
-export function Brand(props: { size?: number }) {
+/** Ícone + nome em letras romanas (como no banner). `dark`: sobre azul-marinho. */
+export function Brand(props: { size?: number; dark?: boolean }) {
   const { t } = useTranslation();
   return (
     <span className="flex items-center gap-2.5">
-      <BrandIcon size={props.size} />
-      <span className="whitespace-nowrap font-serif text-xl font-semibold tracking-tight text-ink">
+      <BrandIcon size={props.size ?? 34} />
+      <span
+        className={`whitespace-nowrap font-display text-[1.05rem] font-semibold leading-tight tracking-[0.06em] ${
+          props.dark ? "text-gold-light" : "text-pen"
+        }`}
+      >
         {t("app.name")}
       </span>
     </span>
@@ -60,7 +65,7 @@ export function BrandBanner() {
         alt={t("app.name")}
         width={1584}
         height={672}
-        className="mx-auto block h-auto w-full max-w-5xl"
+        className="mx-auto block h-auto w-full rounded-lg shadow-[0_24px_60px_-28px_rgba(0,0,0,0.9)]"
         onError={() => setFailed(true)}
       />
     );

@@ -8,7 +8,7 @@ description: Analisa os documentos da fila "A rever" deste repositório de dados
 Objectivo: resolver ambiguidades que as heurísticas não conseguiram, **sem nunca arrumar à
 sorte**. Tu propões; o utilizador confirma na interface (fila "A rever").
 
-1. `nexus revisao listar --json` — documentos com revisão aberta, com os valores
+1. `nexus revisao listar --json`: documentos com revisão aberta, com os valores
    actuais, as alternativas e os motivos.
 2. Para cada documento (começa pelos mais recentes; no máximo 20 por sessão):
    - `nexus documento texto <id> --paginas 1-2` para ler o início;

@@ -1,4 +1,4 @@
-# Repositório de dados — Knowledge Nexus
+# Repositório de dados do Knowledge Nexus
 
 **Este repositório tem de ser PRIVADO.** Contém material de estudo com direitos de autor.
 Nunca o tornes público, nunca actives o GitHub Pages aqui e partilha-o só com quem deve

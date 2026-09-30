@@ -22,6 +22,50 @@ function Stat(props: { value: number; label: string }) {
   );
 }
 
+/** Lista de primeiros passos, visível até estarem todos feitos. */
+function FirstSteps(props: { catalog: boolean; documents: number; review: number }) {
+  const { t } = useTranslation();
+  const steps = [
+    { label: t("home.step_catalog"), done: props.catalog, to: "/configuracao" },
+    { label: t("home.step_deposit"), done: props.documents > 0, to: "/depositar" },
+    { label: t("home.step_review"), done: props.documents > 0 && props.review === 0, to: "/rever" },
+  ];
+  if (steps.every((s) => s.done)) return null;
+  return (
+    <Card
+      title={t("home.steps_title")}
+      actions={
+        <Link to="/ajuda" className="text-sm text-pen hover:underline">
+          {t("home.how_link")}
+        </Link>
+      }
+    >
+      <ol className="space-y-2">
+        {steps.map((step, index) => (
+          <li key={step.label}>
+            <Link
+              to={step.to}
+              className="flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-paper"
+            >
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  step.done ? "bg-sage text-white" : "border border-gold text-pen"
+                }`}
+              >
+                {step.done ? "✓" : index + 1}
+              </span>
+              <span className={step.done ? "text-muted line-through" : "text-ink"}>
+                {step.label}
+              </span>
+              {step.done && <span className="text-xs text-sage">{t("home.step_done")}</span>}
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
 export function HomePage() {
   const { t } = useTranslation();
   const { meta, login, indexLoading, indexError, readOnly, to } = useApp();
@@ -40,6 +84,10 @@ export function HomePage() {
         <PageHeader title={t("public.title")} subtitle={t("public.subtitle", { owner: login })} />
       ) : (
         <PageHeader title={t(`home.${greeting()}`)} subtitle={t("home.subtitle")} />
+      )}
+
+      {!readOnly && (
+        <FirstSteps catalog={!noCatalog} documents={counts.total} review={counts.review} />
       )}
 
       <div className={`grid gap-2 sm:gap-3 ${readOnly ? "grid-cols-2" : "grid-cols-3"}`}>

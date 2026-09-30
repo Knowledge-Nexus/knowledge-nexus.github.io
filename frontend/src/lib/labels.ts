@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { MetaIndex } from "../data/sqlite/queries";
 import type { ClassificationField, UnitRow, VocabKind, VocabTerm } from "../data/types";
+import i18n from "../i18n";
 
 export const FIELD_VOCAB: Partial<Record<ClassificationField, VocabKind>> = {
   document_type: "document_types",
@@ -36,14 +37,14 @@ export function useLabels(meta: MetaIndex | null): Labels {
     >;
     const unitMap = new Map(units.map((u) => [u.key, u]));
     const unit = (key: string | null | undefined) => {
-      if (!key) return "—";
+      if (!key) return i18n.t("common.none");
       const row = unitMap.get(key);
       return row ? (row.acronym ? `${row.name} (${row.acronym})` : row.name) : key;
     };
     const term = (kind: VocabKind, slug: string | null | undefined) =>
-      slug ? (vocab[kind].find((t) => t.slug === slug)?.label ?? slug) : "—";
+      slug ? (vocab[kind].find((t) => t.slug === slug)?.label ?? slug) : i18n.t("common.none");
     const value = (field: ClassificationField, raw: unknown) => {
-      if (raw === null || raw === undefined || raw === "") return "—";
+      if (raw === null || raw === undefined || raw === "") return i18n.t("common.none");
       if (field === "unit") return unit(String(raw));
       const kind = FIELD_VOCAB[field];
       if (kind) return term(kind, String(raw));
@@ -55,7 +56,7 @@ export function useLabels(meta: MetaIndex | null): Labels {
 }
 
 export function formatWhen(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return i18n.t("common.none");
   const date = new Date(iso);
   return new Intl.DateTimeFormat("pt-PT", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }

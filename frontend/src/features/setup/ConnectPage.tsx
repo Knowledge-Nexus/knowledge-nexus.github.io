@@ -73,13 +73,33 @@ export function ConnectPage(props: {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="bg-navy">
+    <div className="leather min-h-screen pb-12">
+      <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-8 sm:pt-10">
         <BrandBanner />
       </div>
-      <div className="flex justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-md space-y-6">
-          <p className="text-center text-sm text-ink-soft">{t("app.tagline")}</p>
+      <div className="mx-auto grid max-w-5xl gap-8 px-4 pt-8 sm:px-8 lg:grid-cols-[1fr_26rem]">
+        <section className="space-y-5 text-white/85 lg:pt-2">
+          <h1 className="font-display text-2xl leading-snug tracking-[0.04em] text-gold-light">
+            {t("app.tagline")}
+          </h1>
+          <ol className="space-y-4">
+            {(t("connect.how", { returnObjects: true }) as string[]).map((line, index) => (
+              <li key={line} className="flex gap-3">
+                <span className="gilt-frame flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-display text-sm text-gold-light">
+                  {index + 1}
+                </span>
+                <span className="pt-1 text-sm leading-relaxed">{line}</span>
+              </li>
+            ))}
+          </ol>
+          <a
+            href="#/publico"
+            className="inline-flex items-center gap-2 text-sm text-gold-light hover:underline"
+          >
+            <IconGlobe size={16} /> {t("public.view")}
+          </a>
+        </section>
+        <div className="w-full space-y-6">
           <Card title={t("connect.title")}>
             <p className="mb-4 text-sm text-ink-soft">{t("connect.intro")}</p>
             <form className="space-y-4" onSubmit={submit}>
@@ -131,9 +151,6 @@ export function ConnectPage(props: {
               </Button>
             </form>
           </Card>
-          <a href="#/publico" className="flex items-center gap-2 text-sm text-pen hover:underline">
-            <IconGlobe size={16} /> {t("public.view")}
-          </a>
         </div>
       </div>
     </div>

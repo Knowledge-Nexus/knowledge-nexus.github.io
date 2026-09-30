@@ -14,7 +14,7 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
   mudar a visibilidade de nada sem pedido explícito do dono.
 - Tudo o que a IA gera fica marcado como gerado (`ai:claude-code`) e cita a fonte
   (documento + página). Em modo tutor, não dar resoluções completas sem pedido explícito.
-- Classificação com pouca confiança fica "A rever" — nunca arrumar à sorte.
+- Classificação com pouca confiança fica "A rever": nunca arrumar à sorte.
 - Interface e mensagens em português europeu (grafia pré-Acordo: projecto, lectivo).
 
 ## Estrutura
@@ -27,6 +27,6 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
 - ramo `indices`: meta.db e pesquisa.db (derivados)
 
 ## Skills
-- `/processar-deposito` — corre o pipeline localmente e publica
-- `/rever-classificacoes` — propõe classificações para a fila "A rever"
-- `/inferir-catalogo` — propõe instituição/curso/cadeiras a partir do material
+- `/processar-deposito`: corre o pipeline localmente e publica
+- `/rever-classificacoes`: propõe classificações para a fila "A rever"
+- `/inferir-catalogo`: propõe instituição/curso/cadeiras a partir do material
