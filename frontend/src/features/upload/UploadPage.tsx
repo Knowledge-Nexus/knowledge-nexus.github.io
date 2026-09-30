@@ -84,6 +84,7 @@ export function UploadPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [hashing, setHashing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [over, setOver] = useState(false);
@@ -115,7 +116,7 @@ export function UploadPage() {
     setSending(true);
     setError(null);
     try {
-      await source.upload(entries, newBatchId());
+      await source.upload(entries, newBatchId(), (done, total) => setProgress({ done, total }));
       setRows([]);
       setSent(true);
       notifyCommit();
@@ -123,6 +124,7 @@ export function UploadPage() {
       setError(err);
     } finally {
       setSending(false);
+      setProgress(null);
     }
   }
 
@@ -178,7 +180,11 @@ export function UploadPage() {
                 {t("upload.clear")}
               </Button>
               <Button onClick={send} disabled={sending || entries.length === 0}>
-                {sending ? t("upload.sending") : t("upload.send", { count: entries.length })}
+                {sending
+                  ? progress
+                    ? t("upload.sending_progress", progress)
+                    : t("upload.sending")
+                  : t("upload.send", { count: entries.length })}
               </Button>
             </div>
           }

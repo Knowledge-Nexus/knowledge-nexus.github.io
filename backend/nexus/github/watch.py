@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import logging
 import shutil
@@ -22,7 +23,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+import yaml
+
 from nexus.config import load_settings
+from nexus.datarepo.layout import PART_MARK, PARTS_SUFFIX
 from nexus.github.api import GitHub, Repo
 from nexus.pipeline.filetypes import is_junk
 
@@ -32,6 +36,7 @@ STATE_FILE = ".nexus-vigiar.json"
 SENT_DIR = "_enviados"
 ERRORS_DIR = "_erros"
 MAX_BYTES = 95 * 1024 * 1024
+PART_BYTES = 10 * 1024 * 1024
 STABLE_SECONDS = 3.0
 
 
@@ -69,6 +74,20 @@ class WatchState:
         data = {"pending": [p.__dict__ for p in self.pending]}
         (folder / STATE_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False),
                                          encoding="utf-8")
+
+
+def split_for_upload(target: str, rel: str, data: bytes) -> dict[str, bytes]:
+    """A API do GitHub recusa blobs grandes: acima de PART_BYTES vai em partes + manifesto
+    (o motor junta-as e confirma o SHA-256; igual à interface, `data/source.ts`)."""
+    if len(data) <= PART_BYTES:
+        return {target: data}
+    count = -(-len(data) // PART_BYTES)
+    out = {f"{target}{PART_MARK}{i + 1:04d}": data[i * PART_BYTES:(i + 1) * PART_BYTES]
+           for i in range(count)}
+    manifest = {"path": rel, "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                "parts": count}
+    out[f"{target}{PARTS_SUFFIX}"] = yaml.safe_dump(manifest, sort_keys=True).encode()
+    return out
 
 
 def batch_id(now: datetime | None = None) -> str:
@@ -145,7 +164,8 @@ class Watcher:
                         "ficheiro com mais de 95 MB (o GitHub recusa ficheiros > 100 MB)\n",
                         encoding="utf-8")
                     continue
-                payload[f"deposito/{self.login}/{batch}/{rel}"] = path.read_bytes()
+                payload.update(split_for_upload(f"deposito/{self.login}/{batch}/{rel}", rel,
+                                                path.read_bytes()))
             if not payload:
                 return None
             commit = self.api.commit_files(self.repo, payload,

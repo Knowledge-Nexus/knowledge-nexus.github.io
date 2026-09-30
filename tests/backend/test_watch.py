@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from nexus.github.api import Repo
 from nexus.github.watch import ERRORS_DIR, SENT_DIR, STATE_FILE, Watcher, WatchState
 
@@ -63,3 +65,18 @@ def test_watcher_sends_once_and_settles_after_pipeline(tmp_path: Path) -> None:
     assert not (folder / "AM1").exists()
     assert WatchState.load(folder).pending == []
     assert (folder / STATE_FILE).exists()
+
+
+def test_large_files_are_sent_in_parts() -> None:
+    import hashlib
+
+    from nexus.github.watch import PART_BYTES, split_for_upload
+
+    data = bytes(range(256)) * (PART_BYTES // 256 * 2 + 10)
+    out = split_for_upload("deposito/a/b/grande.pdf", "grande.pdf", data)
+    parts = sorted(k for k in out if ".nexus-part-" in k)
+    assert len(parts) == 3 and b"".join(out[k] for k in parts) == data
+    manifest = yaml.safe_load(out["deposito/a/b/grande.pdf.nexus-parts.yaml"])
+    assert manifest == {"path": "grande.pdf", "size": len(data), "parts": 3,
+                        "sha256": hashlib.sha256(data).hexdigest()}
+    assert split_for_upload("x", "x", b"pequeno") == {"x": b"pequeno"}

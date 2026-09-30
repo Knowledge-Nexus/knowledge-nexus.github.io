@@ -78,6 +78,10 @@ class ItemError(RuntimeError):
     pass
 
 
+class PartsIncomplete(RuntimeError):
+    """Ainda faltam partes de um ficheiro grande: tenta-se de novo na próxima execução."""
+
+
 @dataclass
 class RunReport:
     new_documents: list[str] = field(default_factory=list)
@@ -206,12 +210,14 @@ class Pipeline:
         try:
             if item.kind == "ref":
                 self._intake_ref(item, staging)
+            elif item.kind == "parts":
+                self._intake_parts(item, staging)
             elif item.kind == "code_project":
                 self._intake_code_project(item, staging)
             else:
                 self._intake_file(item, staging)
             self._apply(staging)
-        except (MissingToolError, ArchiveToolMissing) as exc:
+        except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
             self.report.skipped.append((item.label, str(exc)))
             log.warning("adiado %s: %s", item.label, exc)
         except Exception as exc:
@@ -221,8 +227,31 @@ class Pipeline:
     def _via(self, item: DepositItem) -> str:
         return "upload" if item.batch and GENERATED_BATCH_RE.match(item.batch) else "git"
 
-    def _intake_file(self, item: DepositItem, staging: _Staging) -> None:
-        path = item.path
+    def _intake_parts(self, item: DepositItem, staging: _Staging) -> None:
+        """Junta um ficheiro enviado em partes e verifica-o antes de o receber."""
+        manifest_path, *part_paths = item.deposit_paths()
+        data = read_yaml(manifest_path) or {}
+        expected = int(data.get("parts", 0))
+        if expected < 1 or len(part_paths) < expected:
+            raise PartsIncomplete(f"{len(part_paths)} de {expected} partes recebidas")
+        if len(part_paths) > expected:
+            raise ItemError(f"partes a mais: {len(part_paths)} (esperadas {expected})")
+        name = item.rel.rsplit("/", 1)[-1]
+        assembled = self.workdir / f"parts-{uuid7()}" / name
+        assembled.parent.mkdir(parents=True)
+        with assembled.open("wb") as out:
+            for part in part_paths:
+                with part.open("rb") as src:
+                    shutil.copyfileobj(src, out)
+        size = assembled.stat().st_size
+        if size != int(data.get("size", -1)) or sha256_file(assembled) != data.get("sha256"):
+            raise ItemError("as partes não reconstituem o ficheiro original (SHA-256 diferente)")
+        self._intake_file(item, staging, path=assembled)
+        staging.removals.extend(item.deposit_paths())
+
+    def _intake_file(self, item: DepositItem, staging: _Staging,
+                     path: Path | None = None) -> None:
+        path = path or item.path
         size = path.stat().st_size
         if size > self.settings.limits.max_file_bytes:
             raise ItemError(f"ficheiro com {size} bytes excede o limite de "
@@ -464,7 +493,7 @@ class Pipeline:
         for doc_id in sorted(self.repo.documents):
             try:
                 self._reconcile(self.repo.documents[doc_id].model_copy(deep=True), classifier)
-            except (MissingToolError, ArchiveToolMissing) as exc:
+            except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
                 self.report.skipped.append((doc_id, str(exc)))
             except Exception as exc:
                 log.exception("falhou a reconciliação de %s", doc_id)

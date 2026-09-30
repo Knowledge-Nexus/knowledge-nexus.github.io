@@ -7,11 +7,12 @@ web do GitHub, em `deposito/` (dono = `owner` do nexus.yaml).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from nexus.config import CodeProjectSettings
-from nexus.datarepo.layout import ERRORS_DIR, REF_SUFFIX
+from nexus.datarepo.layout import ERRORS_DIR, PART_MARK, PARTS_SUFFIX, REF_SUFFIX
 from nexus.pipeline import codeproject
 from nexus.pipeline.filetypes import is_junk
 
@@ -22,15 +23,16 @@ class DepositItem:
     batch: str | None
     rel: str  # caminho relativo ao lote (o caminho original do utilizador)
     base: Path  # pasta do lote (ou do utilizador, se não houver lote)
-    kind: str = "file"  # file | code_project | ref
-    files: list[str] = field(default_factory=list)  # só para code_project (relativos a base)
+    kind: str = "file"  # file | code_project | ref | parts
+    # code_project: ficheiros do projecto; parts: manifesto + partes (relativos a base)
+    files: list[str] = field(default_factory=list)
 
     @property
     def path(self) -> Path:
         return self.base / self.rel if self.rel else self.base
 
     def deposit_paths(self) -> list[Path]:
-        if self.kind == "code_project":
+        if self.kind in ("code_project", "parts"):
             return [self.base / f for f in self.files]
         return [self.path]
 
@@ -38,6 +40,9 @@ class DepositItem:
     def label(self) -> str:
         prefix = f"{self.login}/{self.batch}/" if self.batch else f"{self.login}/"
         return prefix + (self.rel or ".")
+
+
+_PART_RE = re.compile(re.escape(PART_MARK) + r"\d{4}$")
 
 
 @dataclass
@@ -64,6 +69,13 @@ def _batch_items(login: str, batch: str | None, base: Path, files: list[str],
         else:
             kept.append(rel)
     items: list[DepositItem] = []
+    # Ficheiros em partes: um item por manifesto; as partes nunca são itens soltos.
+    part_files = [r for r in kept if _PART_RE.search(r)]
+    for manifest in [r for r in kept if r.endswith(PARTS_SUFFIX)]:
+        target = manifest.removesuffix(PARTS_SUFFIX)
+        parts = sorted(r for r in part_files if r.startswith(target + PART_MARK))
+        items.append(DepositItem(login, batch, target, base, "parts", [manifest, *parts]))
+    kept = [r for r in kept if not r.endswith(PARTS_SUFFIX) and not _PART_RE.search(r)]
     projects = codeproject.find_projects(kept, settings)
     in_project: set[str] = set()
     for project in projects:

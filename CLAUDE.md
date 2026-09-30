@@ -24,6 +24,9 @@ convenções ou comandos.
   só no browser.
   - **Leitura:** índices SQLite do ramo `indices`, lidos com SQLite em WebAssembly.
   - **Escrita:** commits (depósito, correcções e pedidos de catálogo).
+  - **Ficheiros grandes (> 10 MB):** a API recusa blobs grandes, por isso a interface e o
+    `nexus vigiar` enviam-nos em partes (`*.nexus-part-NNNN` + `*.nexus-parts.yaml`) e o
+    motor junta-as e confirma o SHA-256 (`Pipeline._intake_parts`). Limite final: 95 MB.
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:

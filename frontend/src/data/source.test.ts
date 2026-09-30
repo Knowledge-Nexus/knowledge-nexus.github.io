@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import YAML from "yaml";
 import { GitHubClient } from "./github/client";
 import { FakeGitHub } from "./github/fake";
-import { GitHubDataSource } from "./source";
+import { GitHubDataSource, splitUpload, UPLOAD_PART_BYTES } from "./source";
 
 const REPO = "aluna/estudo-dados";
 
@@ -89,5 +89,39 @@ describe("GitHubDataSource", () => {
     const paths = fake.repos.get(REPO)!.commits.at(-1)!.paths;
     expect(paths).toHaveLength(1);
     expect(paths[0]).toMatch(/^catalogo\/_importar\/.+\.yaml$/);
+  });
+});
+
+describe("ficheiros grandes vão em partes", () => {
+  it("divide acima do limite e descreve as partes num manifesto", () => {
+    const bytes = new Uint8Array(UPLOAD_PART_BYTES * 2 + 5).map((_, i) => i % 251);
+    const changes = splitUpload("deposito/a/l/grande.pdf", {
+      relativePath: "grande.pdf",
+      sha256: "f".repeat(64),
+      bytes,
+    });
+    const paths = changes.map((c) => c.path);
+    expect(paths).toEqual([
+      "deposito/a/l/grande.pdf.nexus-part-0001",
+      "deposito/a/l/grande.pdf.nexus-part-0002",
+      "deposito/a/l/grande.pdf.nexus-part-0003",
+      "deposito/a/l/grande.pdf.nexus-parts.yaml",
+    ]);
+    const parts = changes.slice(0, 3).map((c) => ("content" in c ? c.content : null));
+    expect(parts.reduce((n, p) => n + (p as Uint8Array).length, 0)).toBe(bytes.length);
+    const manifest = changes[3]!;
+    expect("content" in manifest && YAML.parse(manifest.content as string)).toEqual({
+      path: "grande.pdf",
+      size: bytes.length,
+      sha256: "f".repeat(64),
+      parts: 3,
+    });
+  });
+
+  it("não mexe nos pequenos", () => {
+    const bytes = new Uint8Array(10);
+    expect(splitUpload("x", { relativePath: "x", sha256: "0", bytes })).toEqual([
+      { path: "x", content: bytes },
+    ]);
   });
 });

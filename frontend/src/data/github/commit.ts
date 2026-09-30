@@ -31,9 +31,12 @@ export async function commitChanges(
   changes: Change[],
   message: string,
   maxAttempts = 5,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<string> {
   // Blobs de conteúdo fixo: criados uma vez e reaproveitados entre tentativas.
   const fixed = new Map<string, string | null>();
+  const total = changes.filter((c) => "content" in c).length;
+  let done = 0;
   for (const change of changes) {
     if ("content" in change) {
       if (change.content === null) {
@@ -43,6 +46,7 @@ export async function commitChanges(
           typeof change.content === "string" ? encoder.encode(change.content) : change.content;
         fixed.set(change.path, await client.createBlob(repo.owner, repo.name, bytes));
       }
+      onProgress?.(++done, total);
     }
   }
   let lastError: unknown;

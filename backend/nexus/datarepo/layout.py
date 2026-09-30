@@ -7,6 +7,10 @@ from pathlib import Path
 
 ERRORS_DIR = "_erros"
 REF_SUFFIX = ".ref.yaml"
+# Ficheiros grandes enviados pelo browser chegam em partes (a API do GitHub recusa blobs
+# grandes): `<nome>.nexus-parts.yaml` + `<nome>.nexus-part-0001`, `-0002`…
+PARTS_SUFFIX = ".nexus-parts.yaml"
+PART_MARK = ".nexus-part-"
 LOG_SUFFIX = ".log"
 
 

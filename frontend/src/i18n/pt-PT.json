@@ -131,7 +131,8 @@
       "ignored_dir": "pasta gerada (ignorada)",
       "invalid": "caminho inválido",
       "duplicate": "repetido neste lote"
-    }
+    },
+    "sending_progress": "A enviar… {{done}} de {{total}}"
   },
   "pipeline": {
     "none": "Ainda sem actividade.",

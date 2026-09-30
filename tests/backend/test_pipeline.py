@@ -301,3 +301,54 @@ def test_catalog_request_from_interface(catalog_root: Path) -> None:
     proposal = read_yaml(catalog_root / "revisao" / "propostas"
                          / "unit-teoria-dos-grafos-imaginarios.yaml")
     assert proposal["status"] == "accepted"
+
+
+# --- ficheiros grandes enviados em partes ------------------------------------------------
+
+
+def _split(root: Path, rel: str, data: bytes, pieces: int, *, parts_declared: int | None = None,
+           sha: str | None = None) -> list[Path]:
+    import hashlib
+
+    from nexus.datarepo.yamlio import write_yaml_if_changed
+
+    size = -(-len(data) // pieces)
+    paths = []
+    for i in range(pieces):
+        path = deposit(root, f"{rel}.nexus-part-{i + 1:04d}")
+        path.write_bytes(data[i * size:(i + 1) * size])
+        paths.append(path)
+    manifest = deposit(root, f"{rel}.nexus-parts.yaml")
+    write_yaml_if_changed(manifest, {
+        "path": rel, "size": len(data), "parts": parts_declared or pieces,
+        "sha256": sha or hashlib.sha256(data).hexdigest()})
+    return [manifest, *paths]
+
+
+def test_file_sent_in_parts_is_reassembled(catalog_root: Path, tmp_path: Path) -> None:
+    import hashlib
+
+    source = tmp_path / "exame.pdf"
+    gerar.pdf_nativo(source, gerar.EXAME_AM1)
+    data = source.read_bytes()
+    files = _split(catalog_root, "AM1/Exame_Recurso_2023-24.pdf", data, 3)
+    report = Pipeline(DataRepo(catalog_root)).run()
+    assert len(report.new_documents) == 1 and not report.errors
+    doc = DataRepo(catalog_root).documents[report.new_documents[0]]
+    assert doc.blob.sha256 == hashlib.sha256(data).hexdigest() and doc.blob.ext == "pdf"
+    assert doc.sources[0].path == "AM1/Exame_Recurso_2023-24.pdf"
+    assert doc.classification.value("unit") == "ufe/am1"
+    assert not any(p.exists() for p in files)
+
+
+def test_incomplete_parts_wait_and_bad_parts_go_to_errors(catalog_root: Path) -> None:
+    data = b"conteudo de teste " * 1000
+    waiting = _split(catalog_root, "a/espera.bin", data, 2, parts_declared=3)
+    wrong = _split(catalog_root, "a/errado.txt", data, 2, sha="0" * 64)
+    report = Pipeline(DataRepo(catalog_root)).run()
+    assert [label for label, _ in report.skipped] == [f"{OWNER}/20251001T100000Z-abcd/a/espera.bin"]
+    assert all(p.exists() for p in waiting), "fica no depósito à espera das partes em falta"
+    assert len(report.errors) == 1 and "SHA-256" in report.errors[0][1]
+    assert not any(p.exists() for p in wrong)
+    errors = catalog_root / "deposito" / OWNER / "_erros" / "20251001T100000Z-abcd" / "a"
+    assert (errors / "errado.txt.nexus-parts.yaml").exists()

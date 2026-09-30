@@ -64,6 +64,23 @@ sha256: 2fdb509932681fda6e9235c766ab56a593dd3dd49ea45bb5a52e2733bc40ee13
 path: AM1/exame.pdf
 ```
 
+Ficheiros com mais de 10 MB enviados pela interface ou pelo `nexus vigiar` chegam em
+partes, porque a API do GitHub recusa blobs grandes. O motor junta-as, confirma o tamanho
+e o SHA-256, e só então recebe o ficheiro; se faltarem partes, espera pela próxima execução.
+
+```
+deposito/<login>/<lote>/AM1/slides.pdf.nexus-part-0001   (10 MB)
+deposito/<login>/<lote>/AM1/slides.pdf.nexus-part-0002   (resto)
+deposito/<login>/<lote>/AM1/slides.pdf.nexus-parts.yaml
+```
+
+```yaml
+path: AM1/slides.pdf
+size: 15728640
+sha256: 9c1f…
+parts: 2
+```
+
 `catalogo/_importar/<data>.yaml` (pedido da interface):
 
 ```yaml

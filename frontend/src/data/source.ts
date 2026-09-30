@@ -10,6 +10,36 @@ import type { CatalogBundle, IndexManifest } from "./types";
 export const INDICES_BRANCH = "indices";
 export const APP_REPOSITORY = { owner: "Knowledge-Nexus", name: "knowledge-nexus.github.io" };
 
+/**
+ * A API do GitHub recusa blobs grandes ("input too large"). Acima disto, o ficheiro vai em
+ * partes (`<nome>.nexus-part-0001`…) com um manifesto `<nome>.nexus-parts.yaml`; o motor
+ * junta-as e confirma o SHA-256 (nexus.pipeline.run._intake_parts).
+ */
+export const UPLOAD_PART_BYTES = 10 * 1024 * 1024;
+
+export function splitUpload(path: string, entry: UploadEntry): Change[] {
+  const bytes = entry.bytes!;
+  if (bytes.length <= UPLOAD_PART_BYTES) return [{ path, content: bytes }];
+  const count = Math.ceil(bytes.length / UPLOAD_PART_BYTES);
+  const changes: Change[] = [];
+  for (let i = 0; i < count; i++) {
+    changes.push({
+      path: `${path}.nexus-part-${String(i + 1).padStart(4, "0")}`,
+      content: bytes.subarray(i * UPLOAD_PART_BYTES, (i + 1) * UPLOAD_PART_BYTES),
+    });
+  }
+  changes.push({
+    path: `${path}.nexus-parts.yaml`,
+    content: YAML.stringify({
+      path: entry.relativePath,
+      size: bytes.length,
+      sha256: entry.sha256,
+      parts: count,
+    }),
+  });
+  return changes;
+}
+
 export interface UploadEntry {
   relativePath: string;
   sha256: string;
@@ -23,7 +53,11 @@ export interface DataSource {
   indexFile(name: string, sha256: string): Promise<Uint8Array>;
   pageText(sha256: string, page: number): Promise<string>;
   binary(path: string): Promise<Uint8Array>;
-  upload(entries: UploadEntry[], batch: string): Promise<string>;
+  upload(
+    entries: UploadEntry[],
+    batch: string,
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<string>;
   patchDocument(
     id: string,
     patch: (doc: Record<string, unknown>) => void,
@@ -103,21 +137,29 @@ export class GitHubDataSource implements DataSource {
     return this.client.raw(this.repo.owner, this.repo.name, path, this.repo.branch);
   }
 
-  upload(entries: UploadEntry[], batch: string): Promise<string> {
+  upload(
+    entries: UploadEntry[],
+    batch: string,
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<string> {
     const base = `deposito/${this.login}/${batch}`;
-    const changes: Change[] = entries.map((entry) =>
+    const changes: Change[] = entries.flatMap((entry): Change[] =>
       entry.bytes
-        ? { path: `${base}/${entry.relativePath}`, content: entry.bytes }
-        : {
-            path: `${base}/${entry.relativePath}.ref.yaml`,
-            content: YAML.stringify({ sha256: entry.sha256, path: entry.relativePath }),
-          },
+        ? splitUpload(`${base}/${entry.relativePath}`, entry)
+        : [
+            {
+              path: `${base}/${entry.relativePath}.ref.yaml`,
+              content: YAML.stringify({ sha256: entry.sha256, path: entry.relativePath }),
+            },
+          ],
     );
     return commitChanges(
       this.client,
       this.repo,
       changes,
       `depósito: ${entries.length} ficheiro(s) (${batch})`,
+      5,
+      onProgress,
     );
   }
 
