@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
-import { Markdown } from "../../components/Markdown";
+import { DocumentPreview } from "../../components/DocumentViewer";
 import {
   Button,
   Card,
@@ -18,24 +17,6 @@ import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
 import { BulkReview } from "./BulkReview";
 import { ReviewForm } from "./ReviewForm";
-
-function Preview(props: { sha256: string }) {
-  const { t } = useTranslation();
-  const { source } = useApp();
-  const text = useQuery({
-    queryKey: ["page", props.sha256, 1],
-    queryFn: () => source.pageText(props.sha256, 1),
-    retry: false,
-  });
-  if (text.isLoading) return <Spinner />;
-  if (text.error || !text.data?.trim())
-    return <p className="text-xs text-muted">{t("document.no_text")}</p>;
-  return (
-    <div className="max-h-72 overflow-auto rounded-lg bg-paper p-3">
-      <Markdown>{text.data.slice(0, 3000)}</Markdown>
-    </div>
-  );
-}
 
 interface InstitutionChoice {
   key: string;
@@ -432,7 +413,7 @@ export function ReviewPage() {
                 )}
                 <div>
                   <p className="mb-1 text-xs font-semibold text-muted">{t("review.preview")}</p>
-                  <Preview sha256={selected.sha256} />
+                  <DocumentPreview doc={selected} />
                 </div>
                 <ReviewForm doc={selected} labels={labels} />
               </div>

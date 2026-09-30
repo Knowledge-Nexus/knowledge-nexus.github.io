@@ -138,7 +138,9 @@ Dependências de sistema (Ubuntu/WSL2):
     ligação está em `#/entrar` (botão "Entrar" no menu).
   - Nas listas, o título vem da classificação (`lib/titles.ts`: "Exame · Época de recurso")
     e a data e o nome original ficam na linha secundária; o formato aparece em
-    `FileBadge` (cores `--color-file-*`). Descarga em zip no browser: `lib/download.ts`
+    `FileBadge` (cores `--color-file-*`). O original (PDF, versão PDF ou imagem) e o texto
+    vêem-se com `components/DocumentViewer.tsx` (documento e «A rever»). Descarga em zip no
+    browser: `lib/download.ts`
     (fflate, sem compressão).
   - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
     `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.

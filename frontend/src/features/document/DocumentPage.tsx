@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams } from "react-router";
-import { Markdown } from "../../components/Markdown";
-import { PdfViewer } from "../../components/PdfViewer";
+import {
+  hasOriginalView as canShowOriginal,
+  IMAGE_EXTS,
+  OriginalPane,
+  TextPane,
+} from "../../components/DocumentViewer";
 import {
   Badge,
   Button,
@@ -17,80 +20,9 @@ import {
 } from "../../components/ui";
 import { DocumentVisibility, PublicBadge } from "../../components/Visibility";
 import { useApp } from "../../data/context";
-import { CLASSIFICATION_FIELDS, type DocumentRow } from "../../data/types";
+import { CLASSIFICATION_FIELDS } from "../../data/types";
 import { formatBytes } from "../../lib/files";
 import { formatWhen, useLabels } from "../../lib/labels";
-
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp"]);
-
-function useBinary(path: string | null) {
-  const { source } = useApp();
-  return useQuery({
-    queryKey: ["binary", path],
-    enabled: Boolean(path),
-    staleTime: Number.POSITIVE_INFINITY,
-    queryFn: () => source.binary(path!),
-  });
-}
-
-function TextPane(props: { doc: DocumentRow; page: number; setPage: (p: number) => void }) {
-  const { t } = useTranslation();
-  const { source } = useApp();
-  const total = Math.max(props.doc.pages, 1);
-  const text = useQuery({
-    queryKey: ["page", props.doc.sha256, props.page],
-    queryFn: () => source.pageText(props.doc.sha256, props.page),
-    retry: false,
-  });
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm">
-        <Button
-          variant="secondary"
-          disabled={props.page <= 1}
-          onClick={() => props.setPage(props.page - 1)}
-        >
-          {t("document.previous")}
-        </Button>
-        <span>{t("document.page", { page: props.page, total })}</span>
-        <Button
-          variant="secondary"
-          disabled={props.page >= total}
-          onClick={() => props.setPage(props.page + 1)}
-        >
-          {t("document.next")}
-        </Button>
-      </div>
-      {text.isLoading && <Spinner />}
-      {text.data?.trim() ? (
-        <Markdown>{text.data}</Markdown>
-      ) : (
-        !text.isLoading && <Empty>{t("document.no_text")}</Empty>
-      )}
-    </div>
-  );
-}
-
-function OriginalPane(props: { doc: DocumentRow; page: number; setPage: (p: number) => void }) {
-  const { doc } = props;
-  const pdfPath = doc.ext === "pdf" ? doc.original_path : doc.rendition;
-  const isImage = IMAGE_EXTS.has(doc.ext);
-  const binary = useBinary(pdfPath ?? (isImage ? doc.original_path : null));
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!isImage || !binary.data) return;
-    const objectUrl = URL.createObjectURL(new Blob([binary.data.slice()], { type: doc.mime }));
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [isImage, binary.data, doc.mime]);
-  if (binary.isLoading) return <Spinner />;
-  if (binary.error) return <ErrorBox error={binary.error} />;
-  if (isImage && url)
-    return <img src={url} alt={doc.display_name} className="max-w-full rounded border" />;
-  if (pdfPath && binary.data)
-    return <PdfViewer data={binary.data} page={props.page} onPageChange={props.setPage} />;
-  return null;
-}
 
 export function DocumentPage() {
   const { t } = useTranslation();
@@ -106,7 +38,7 @@ export function DocumentPage() {
       next.set("pagina", String(p));
       return next;
     });
-  const hasOriginalView = doc && (doc.ext === "pdf" || doc.rendition || IMAGE_EXTS.has(doc.ext));
+  const hasOriginalView = doc && canShowOriginal(doc);
   const [tab, setTab] = useState<"text" | "original">(hasOriginalView ? "original" : "text");
   const [notes, setNotes] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
