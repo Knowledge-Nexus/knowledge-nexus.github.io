@@ -104,9 +104,9 @@ class Git:
         Usa um índice temporário, por isso não toca na árvore de trabalho nem no HEAD.
         """
         with tempfile.TemporaryDirectory() as tmp:
-            env = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
-            self.run("--work-tree", str(directory), "add", "-A", "-f", ".", env=env)
-            tree = self.run("write-tree", env=env)
+            index = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
+            self.run("--work-tree", str(directory), "add", "-A", "-f", ".", env=index)
+            tree = self.run("write-tree", env=index)
         commit = self.run(*self._identity(), "commit-tree", tree, "-m", message)
         self.run("update-ref", f"refs/heads/{branch}", commit)
         if remote:

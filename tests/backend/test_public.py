@@ -170,3 +170,25 @@ def test_publish_in_actions_without_token_only_warns(git_root: Path, tmp_path: P
     _configure(git_root)
     result = publish_public(git_root, token=None, remote_url=str(remote))
     assert result.missing_token and not result.published
+
+
+def test_push_to_public_repo_carries_the_token(git_root: Path, tmp_path: Path,
+                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    """O token tem de chegar ao `git push` (no Actions não há outras credenciais)."""
+    from nexus.datarepo.git import Git
+
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    remote = tmp_path / "publico.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
+    _configure(git_root)
+    seen: list[dict[str, str]] = []
+    original = Git.run
+
+    def spy(self: Git, *args: str, **kwargs):  # type: ignore[no-untyped-def]
+        if args and args[0] == "push":
+            seen.append(kwargs.get("env") or {})
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Git, "run", spy)
+    assert publish_public(git_root, token="segredo", remote_url=str(remote)).published
+    assert seen and "AUTHORIZATION: basic" in seen[0].get("GIT_CONFIG_VALUE_0", "")
