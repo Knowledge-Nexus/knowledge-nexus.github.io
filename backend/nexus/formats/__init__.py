@@ -7,6 +7,7 @@ versão N para N+1. `nexus migrar` aplica-as por ordem e actualiza `format_versi
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -56,7 +57,15 @@ def migrate(
         step(root)
         applied.append(version)
         version += 1
-        data = read_yaml(layout.settings_file) or {}
-        data["format_version"] = version
-        write_yaml_if_changed(layout.settings_file, data)
+        _set_format_version(layout.settings_file, version)
     return applied
+
+
+def _set_format_version(path: Path, version: int) -> None:
+    """Actualiza só a linha `format_version`, mantendo os comentários do `nexus.yaml`."""
+    text = path.read_text(encoding="utf-8")
+    updated, count = re.subn(r"(?m)^format_version:.*$", f"format_version: {version}", text)
+    if count == 0:
+        updated = f"format_version: {version}\n" + text
+    if updated != text:
+        path.write_text(updated, encoding="utf-8")

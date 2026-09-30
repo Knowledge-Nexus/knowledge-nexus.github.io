@@ -108,3 +108,4 @@ def test_migrations_apply_in_order(data_root: Path) -> None:
     applied = migrate(data_root, target=1, migrations={0: lambda root: calls.append(0)})
     assert applied == [0] and calls == [0]
     assert read_yaml(layout.settings_file)["format_version"] == 1
+    assert layout.settings_file.read_text().startswith("#"), "os comentários mantêm-se"
