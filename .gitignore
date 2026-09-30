@@ -26,9 +26,9 @@ frontend/test-fixtures/
 .env
 .env.*
 !.env.example
-storage/
-dados/
-estudo-dados/
+/storage/
+/dados/
+/estudo-dados/
 *.db
 *.sqlite
 *.sqlite3
