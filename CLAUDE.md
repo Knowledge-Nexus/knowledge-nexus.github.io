@@ -142,6 +142,13 @@ Dependências de sistema (Ubuntu/WSL2):
     vêem-se com `components/DocumentViewer.tsx` (documento e «A rever»). Descarga em zip no
     browser: `lib/download.ts`
     (fflate, sem compressão).
+  - Cursos de cada cadeira: "Editar cursos" na cadeira ou "Organizar por curso" na
+    Biblioteca (`features/library/UnitCourses.tsx`); grava um pedido de catálogo com a
+    lista completa das cadeiras de cada curso alterado (o motor só escreve os campos que
+    o pedido traz).
+  - Ao registar instituição, curso ou cadeira há sugestões (`components/SuggestInput.tsx`,
+    `lib/reference.ts`): o catálogo, as propostas e a lista de referência
+    `frontend/src/data/reference/pt.json` (instituições portuguesas, graus, cursos comuns).
   - Componentes base em `components/ui.tsx` (`Button`/`buttonClass`, `Card`, `PageHeader`,
     `Badge`, `ConfidenceBadge`…) e ícones de traço em `components/icons.tsx`.
   - Marca: ficheiros em `frontend/public/brand/`, configurados em `BRAND` (`components/Brand.tsx`).

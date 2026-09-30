@@ -20,6 +20,7 @@ import type { DocumentRow, UnitRow } from "../../data/types";
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { UnitCourses } from "./UnitCourses";
 
 export function DocumentLink(props: {
   doc: DocumentRow;
@@ -211,6 +212,11 @@ function UnitDetail(props: { unitKey: string }) {
             {unit?.lecturers.length ? (
               <p className="mt-1 text-sm text-muted">{unit.lecturers.join(", ")}</p>
             ) : null}
+            {unit && (
+              <div className="mt-3">
+                <UnitCourses key={props.unitKey} unit={unit} />
+              </div>
+            )}
             <div className="mt-4">
               <UnitVisibility key={props.unitKey} unitKey={props.unitKey} />
             </div>
@@ -346,9 +352,10 @@ function UnitDetail(props: { unitKey: string }) {
 
 export function LibraryPage() {
   const { t } = useTranslation();
-  const { meta, login, indexLoading, indexError, to } = useApp();
+  const { meta, login, indexLoading, indexError, to, readOnly } = useApp();
   const labels = useLabels(meta);
   const [params] = useSearchParams();
+  const [organizing, setOrganizing] = useState(false);
   const selectedUnit = params.get("uc") ?? "";
 
   const shelves = useMemo(() => {
@@ -388,7 +395,32 @@ export function LibraryPage() {
   const unfiled = meta.unfiled(login);
   return (
     <div className="space-y-8">
-      <PageHeader title={t("library.title")} />
+      <PageHeader
+        title={t("library.title")}
+        actions={
+          !readOnly && labels.units.length > 0 ? (
+            <Button variant="secondary" onClick={() => setOrganizing((v) => !v)}>
+              {t(organizing ? "courses.organize_close" : "courses.organize")}
+            </Button>
+          ) : undefined
+        }
+      />
+      {organizing && (
+        <Card title={t("courses.organize_title")}>
+          <p className="mb-3 text-sm text-ink-soft">{t("courses.organize_help")}</p>
+          <ul className="divide-y divide-line">
+            {labels.units.map((unit) => (
+              <li key={unit.key} className="py-3">
+                <p className="mb-1 font-serif font-semibold text-ink">
+                  {unit.acronym ? `${unit.acronym} · ` : ""}
+                  {unit.name}
+                </p>
+                <UnitCourses unit={unit} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {unfiled.length > 0 && (
         <Link
           to={to("/rever")}

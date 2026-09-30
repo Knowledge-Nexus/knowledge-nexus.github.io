@@ -109,3 +109,25 @@ def test_migrations_apply_in_order(data_root: Path) -> None:
     assert applied == [0] and calls == [0]
     assert read_yaml(layout.settings_file)["format_version"] == 1
     assert layout.settings_file.read_text().startswith("#"), "os comentários mantêm-se"
+
+
+def test_catalog_request_keeps_fields_it_does_not_mention(tmp_path: Path) -> None:
+    from nexus.datarepo.catalog_io import import_bundle, load_catalog
+    from nexus.datarepo.layout import Layout
+
+    layout = Layout(tmp_path)
+    import_bundle(layout, {"format": "nexus-catalogo", "version": 1, "institutions": [{
+        "slug": "ufe", "name": "Universidade Fictícia", "aliases": ["Univ. Fictícia"],
+        "units": [{"slug": "am", "name": "Análise", "keywords": ["limites"]}],
+        "courses": [{"slug": "lei", "name": "LEI", "units": [{"unit": "am"}]}]}]})
+    # Pedido da interface: só os cursos da cadeira mudam.
+    import_bundle(layout, {"format": "nexus-catalogo", "version": 1, "institutions": [{
+        "slug": "ufe", "name": "Universidade Fictícia",
+        "courses": [{"slug": "lei", "name": "LEI", "units": []},
+                    {"slug": "lia", "name": "LIA", "units": [
+                        {"unit": "am", "curricular_year": 1, "semester": 2}]}]}]})
+    catalog = load_catalog(layout)
+    assert catalog.institutions["ufe"].aliases == ["Univ. Fictícia"]
+    assert catalog.units["ufe/am"].keywords == ["limites"]
+    assert catalog.courses["ufe/lei"].units == []
+    assert [c.slug for c in catalog.courses_of_unit("ufe/am")] == ["lia"]

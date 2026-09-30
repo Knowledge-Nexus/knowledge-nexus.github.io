@@ -294,3 +294,35 @@ test("tipo de material público, selecção e descarga em zip", async ({ page })
   ]);
   expect(download.suggestedFilename()).toMatch(/\.zip$/);
 });
+
+test("editar os cursos de uma cadeira", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Editar cursos" }).click();
+  // Sai do curso actual e entra num curso novo (com sugestões ao escrever).
+  await page.getByRole("checkbox", { name: /Licenciatura em Engenharia Informática/ }).uncheck();
+  await page.getByRole("button", { name: "Acrescentar curso" }).click();
+  await page.getByLabel("Nome do curso").fill("Licenciatura em Matemática");
+  await page.getByLabel("Ano", { exact: true }).last().selectOption("1");
+  await page.getByLabel("Semestre", { exact: true }).last().selectOption("2");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(page.getByText(/biblioteca é actualizada/)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.paths[0]).toMatch(/^catalogo\/_importar\//);
+  const bundle = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  const [institution] = bundle.institutions;
+  expect(institution.units).toBeUndefined();
+  const lei = institution.courses.find((c: { slug: string }) => c.slug === "lei");
+  const units = lei.units.map((u: { unit: string }) => u.unit);
+  expect(units).not.toContain("am1");
+  expect(units).toEqual(expect.arrayContaining(["alga", "p1", "fg", "bd"]));
+  const novo = institution.courses.find(
+    (c: { name: string }) => c.name === "Licenciatura em Matemática",
+  );
+  expect(novo.units).toEqual([{ unit: "am1", curricular_year: 1, semester: 2 }]);
+});

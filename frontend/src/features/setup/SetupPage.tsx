@@ -3,11 +3,19 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import YAML from "yaml";
+import { SuggestInput } from "../../components/SuggestInput";
 import { Button, Card, ErrorBox, PageHeader, Spinner } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle } from "../../data/types";
 import { academicYears } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
+import {
+  courseSuggestions,
+  DEGREES,
+  findSuggestion,
+  institutionSuggestions,
+  unitSuggestions,
+} from "../../lib/reference";
 
 interface UnitDraft {
   name: string;
@@ -116,7 +124,7 @@ function StructureStep() {
 
 function ManualCatalog(props: { onDone: () => void }) {
   const { t } = useTranslation();
-  const { source, notifyCommit } = useApp();
+  const { source, notifyCommit, meta } = useApp();
   const [institution, setInstitution] = useState("");
   const [institutionAcronym, setInstitutionAcronym] = useState("");
   const [course, setCourse] = useState("");
@@ -127,6 +135,9 @@ function ManualCatalog(props: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  const institutions = institutionSuggestions(meta);
+  const courses = courseSuggestions(meta, degree);
+  const knownUnits = unitSuggestions(meta);
   const update = (index: number, patch: Partial<UnitDraft>) =>
     setUnits((all) => all.map((u, i) => (i === index ? { ...u, ...patch } : u)));
 
@@ -172,10 +183,15 @@ function ManualCatalog(props: { onDone: () => void }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
           {t("setup.institution")}
-          <input
+          <SuggestInput
             className={input}
             value={institution}
-            onChange={(e) => setInstitution(e.target.value)}
+            suggestions={institutions}
+            onChange={(e) => {
+              setInstitution(e.target.value);
+              const match = findSuggestion(institutions, e.target.value);
+              if (match?.acronym && !institutionAcronym) setInstitutionAcronym(match.acronym);
+            }}
             required
           />
         </label>
@@ -189,16 +205,21 @@ function ManualCatalog(props: { onDone: () => void }) {
         </label>
         <label className="text-sm">
           {t("setup.course")}
-          <input className={input} value={course} onChange={(e) => setCourse(e.target.value)} />
+          <SuggestInput
+            className={input}
+            value={course}
+            suggestions={courses}
+            onChange={(e) => setCourse(e.target.value)}
+          />
         </label>
         <label className="text-sm">
           {t("setup.degree")}
           <select className={input} value={degree} onChange={(e) => setDegree(e.target.value)}>
-            <option value="licenciatura">Licenciatura</option>
-            <option value="mestrado">Mestrado</option>
-            <option value="mestrado-integrado">Mestrado integrado</option>
-            <option value="doutoramento">Doutoramento</option>
-            <option value="ctesp">CTeSP</option>
+            {DEGREES.map((d) => (
+              <option key={d.slug} value={d.slug}>
+                {d.label}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -207,11 +228,18 @@ function ManualCatalog(props: { onDone: () => void }) {
         {units.map((unit, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: linhas editáveis sem id
           <div key={index} className="grid grid-cols-12 gap-2">
-            <input
+            <SuggestInput
               className={`${input} col-span-5`}
               placeholder={t("setup.unit_name")}
               value={unit.name}
-              onChange={(e) => update(index, { name: e.target.value })}
+              suggestions={knownUnits}
+              onChange={(e) => {
+                const match = findSuggestion(knownUnits, e.target.value);
+                update(index, {
+                  name: e.target.value,
+                  ...(match?.acronym && !unit.acronym ? { acronym: match.acronym } : {}),
+                });
+              }}
             />
             <input
               className={`${input} col-span-2`}

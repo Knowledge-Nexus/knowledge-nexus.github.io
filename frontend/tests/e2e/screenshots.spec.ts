@@ -52,6 +52,9 @@ test("capturas", async ({ page }) => {
   await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/2b-biblioteca.png`, fullPage: true });
+  await page.getByRole("button", { name: "Organizar por curso" }).click();
+  await page.screenshot({ path: `${out}/2b-organizar-cursos.png`, fullPage: true });
+  await page.getByRole("button", { name: "Fechar" }).click();
   await page
     .getByRole("link", { name: /Análise Matemática I/ })
     .first()
@@ -60,6 +63,11 @@ test("capturas", async ({ page }) => {
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByRole("button", { name: "Pública" }).waitFor();
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
+  await page.getByRole("button", { name: "Editar cursos" }).click();
+  await page.getByRole("button", { name: "Acrescentar curso" }).click();
+  await page.getByLabel("Nome do curso").fill("Licenciatura em Mat");
+  await page.screenshot({ path: `${out}/2d-cursos-cadeira.png`, fullPage: true });
+  await page.getByRole("button", { name: "Cancelar" }).click();
   await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
   await page.locator("canvas").waitFor();
   await page.waitForTimeout(800);

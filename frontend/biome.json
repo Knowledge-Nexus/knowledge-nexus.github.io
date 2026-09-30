@@ -12,7 +12,13 @@
     "rules": {
       "preset": "recommended",
       "a11y": {
-        "noAutofocus": "off"
+        "noAutofocus": "off",
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": {
+            "inputComponents": ["SuggestInput"]
+          }
+        }
       },
       "style": {
         "noNonNullAssertion": "off"

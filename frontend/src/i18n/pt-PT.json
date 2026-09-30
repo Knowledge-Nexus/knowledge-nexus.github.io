@@ -382,5 +382,20 @@
         "a": "Normalmente 1 a 3 minutos depois de enviares. O estado aparece no canto da barra lateral."
       }
     ]
+  },
+  "courses": {
+    "label": "Cursos:",
+    "none": "ainda sem curso",
+    "edit": "Editar cursos",
+    "help": "Marca os cursos de {{institution}} a que esta cadeira pertence, com o ano e o semestre. Se o curso ainda não existir, acrescenta-o (há sugestões ao escrever).",
+    "no_courses": "Esta instituição ainda não tem cursos. Acrescenta o primeiro.",
+    "add": "Acrescentar curso",
+    "new_name": "Nome do curso",
+    "year_any": "Ano",
+    "semester_any": "Semestre",
+    "organize": "Organizar por curso",
+    "organize_title": "Cursos de cada cadeira",
+    "organize_help": "Uma cadeira pode pertencer a vários cursos (e ter anos ou semestres diferentes em cada um). As alterações aparecem na biblioteca depois do próximo processamento (1 a 3 minutos).",
+    "organize_close": "Fechar"
   }
 }

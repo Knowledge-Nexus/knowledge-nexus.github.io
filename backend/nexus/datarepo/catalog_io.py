@@ -85,6 +85,11 @@ def _write_entity(path: Path, data: dict[str, Any], label: str, report: ImportRe
     report.record(label, existed, changed)
 
 
+def _given(model: Any) -> dict[str, Any]:
+    data: dict[str, Any] = model.model_dump(mode="json", exclude_none=True, exclude_unset=True)
+    return data
+
+
 def import_bundle(layout: Layout, raw: Any) -> ImportReport:
     """Importa (funde) um catálogo `nexus-catalogo`. Idempotente."""
     bundle = CatalogBundle.model_validate(raw)
@@ -105,22 +110,24 @@ def import_bundle(layout: Layout, raw: Any) -> ImportReport:
                     f"o curso {course.slug} refere UCs inexistentes: {', '.join(missing)}"
                 )
         inst_dir = layout.catalog_dir / inst.slug
-        inst_data = model_to_data(Institution.model_validate(
-            inst.model_dump(exclude={"courses", "units"})
+        # Só os campos que o pedido traz: o resto do que está no ficheiro mantém-se
+        # (ex.: um pedido que só muda os cursos não apaga os nomes alternativos).
+        inst_data = _given(Institution.model_validate(
+            inst.model_dump(exclude={"courses", "units"}, exclude_unset=True)
         ))
         _write_entity(inst_dir / INSTITUTION_FILE, inst_data, inst.slug, report)
         for unit in inst.units:
             _check_slug("UC", unit.slug)
             _write_entity(
                 inst_dir / UNITS_DIR / f"{unit.slug}.yaml",
-                model_to_data(unit),
+                _given(unit),
                 unit_key(inst.slug, unit.slug),
                 report,
             )
         for course in inst.courses:
             _write_entity(
                 inst_dir / COURSES_DIR / f"{course.slug}.yaml",
-                model_to_data(course),
+                _given(course),
                 unit_key(inst.slug, course.slug),
                 report,
             )
