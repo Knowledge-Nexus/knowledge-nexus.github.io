@@ -191,6 +191,7 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Material partilhado" })).toBeVisible();
   await expect(page.getByText("Página pública").first()).toBeVisible();
   await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Biblioteca" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Análise Matemática I/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Álgebra Linear/ })).toHaveCount(0);
   await page.getByRole("link", { name: /Análise Matemática I/ }).click();
