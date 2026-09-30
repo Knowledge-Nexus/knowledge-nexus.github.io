@@ -46,6 +46,10 @@ export function useLabels(meta: MetaIndex | null): Labels {
     const value = (field: ClassificationField, raw: unknown) => {
       if (raw === null || raw === undefined || raw === "") return i18n.t("common.none");
       if (field === "unit") return unit(String(raw));
+      if (field === "date" && /^\d{4}-\d{2}-\d{2}$/.test(String(raw))) {
+        const [y, m, d] = String(raw).split("-");
+        return `${d}/${m}/${y}`;
+      }
       const kind = FIELD_VOCAB[field];
       if (kind) return term(kind, String(raw));
       if (Array.isArray(raw)) return raw.join(", ");

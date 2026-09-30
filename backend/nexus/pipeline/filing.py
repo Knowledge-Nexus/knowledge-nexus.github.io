@@ -1,4 +1,9 @@
-"""Arrumação: nome normalizado `<ano-lectivo>_<descricao>.<ext>`."""
+"""Arrumação: nome normalizado `<ano-lectivo>_<descricao>.<ext>`.
+
+Nas avaliações, a descrição leva o tipo, o número, a época, a data da prova e a versão:
+`2024-2025_frequencia-1-2024-11-20-d-enunciado.pdf`. Se mesmo assim dois documentos da
+mesma cadeira ficarem com o mesmo nome, `unique_name` acrescenta `-2`, `-3`…
+"""
 
 from __future__ import annotations
 
@@ -29,6 +34,10 @@ def filed_name(doc: Document, vocab: Vocabularies) -> str:
             parts.append(str(c.value("assessment_number")))
         if c.value("exam_season"):
             parts.append(c.value("exam_season"))
+        if c.value("date"):
+            parts.append(c.value("date"))
+        if c.value("variant"):
+            parts.append(c.value("variant"))
         parts.append("resolucao" if c.value("role") == ROLE_SOLUTION else "enunciado")
     else:
         type_slug = type_term.slug if type_term else "documento"
@@ -39,3 +48,18 @@ def filed_name(doc: Document, vocab: Vocabularies) -> str:
     description = "-".join(slugify(str(p), 60) for p in parts if p)
     ext = "zip" if doc.kind == "code_project" else doc.blob.ext
     return f"{year}_{description}.{ext}" if ext else f"{year}_{description}"
+
+
+def unique_name(name: str, taken: set[str]) -> str:
+    """`name`, ou `name` com `-2`, `-3`… antes da extensão, se já estiver usado."""
+    if name not in taken:
+        return name
+    stem, dot, ext = name.rpartition(".")
+    if not dot:
+        stem, ext = name, ""
+    n = 2
+    while True:
+        candidate = f"{stem}-{n}.{ext}" if ext else f"{stem}-{n}"
+        if candidate not in taken:
+            return candidate
+        n += 1

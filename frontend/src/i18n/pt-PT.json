@@ -52,7 +52,9 @@
     "assessment_number": "Número",
     "role": "Enunciado ou resolução",
     "solution_origin": "Origem da resolução",
-    "topics": "Tópicos"
+    "topics": "Tópicos",
+    "date": "Data da prova",
+    "variant": "Versão"
   },
   "status": {
     "received": "Recebido",

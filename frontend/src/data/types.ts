@@ -13,6 +13,8 @@ export const CLASSIFICATION_FIELDS = [
   "role",
   "solution_origin",
   "topics",
+  "date",
+  "variant",
 ] as const;
 export type ClassificationField = (typeof CLASSIFICATION_FIELDS)[number];
 

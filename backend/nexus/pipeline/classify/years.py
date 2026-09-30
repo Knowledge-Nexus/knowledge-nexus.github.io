@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 
-from nexus.domain.documents import Reason
+from nexus.domain.documents import FieldValue, Reason
 from nexus.pipeline.classify.scoring import Candidate, rank
 from nexus.pipeline.classify.signals import Signal
 
@@ -77,3 +78,36 @@ def score_years(signals: list[Signal], start_month: int) -> list[Candidate]:
                 add(label, LONE_POINTS * signal.weight, "year.lone", match.group(0),
                     signal.source)
     return rank(list(candidates.values()))
+
+
+def score_dates(signals: list[Signal]) -> FieldValue | None:
+    """Data da prova (AAAA-MM-DD): a primeira data completa do nome do ficheiro ou do
+    cabeçalho ("20-11-2024", "2024-11-20", "22 de novembro de 2023")."""
+    for source in ("filename", "header"):
+        for signal in (s for s in signals if s.source == source):
+            raw = signal.raw[:600] if source == "header" else signal.raw
+            found: list[tuple[int, str, str]] = []
+            for match in _DATE.finditer(raw):
+                found.append((match.start(), _iso(int(match.group(3)), int(match.group(2)),
+                                                  int(match.group(1))), match.group(0)))
+            for match in _ISO_DATE.finditer(raw):
+                found.append((match.start(), _iso(int(match.group(1)), int(match.group(2)),
+                                                  int(match.group(3))), match.group(0)))
+            for match in _NAMED_DATE.finditer(raw):
+                found.append((match.start(), _iso(int(match.group(3)),
+                                                  _MONTHS[match.group(2)],
+                                                  int(match.group(1))), match.group(0)))
+            valid = sorted((pos, iso, text) for pos, iso, text in found if iso)
+            if valid:
+                _, iso, text = valid[0]
+                return FieldValue(value=iso, confidence=0.9 if source == "header" else 0.8,
+                                  reasons=[Reason(code="date.found", params={"text": text},
+                                                  source=source)])
+    return None
+
+
+def _iso(year: int, month: int, day: int) -> str:
+    try:
+        return dt.date(year, month, day).isoformat()
+    except ValueError:
+        return ""

@@ -85,8 +85,8 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
     .getByRole("link", { name: /Análise Matemática I/ })
     .first()
     .click();
-  await expect(page.getByText("2023-2024_exame-recurso-enunciado.pdf")).toBeVisible();
-  await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
+  await expect(page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf")).toBeVisible();
+  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
 
   // Documento: classificação explicada + PDF renderizado pelo pdf.js
   await expect(page.getByText("Enunciados de avaliação")).toBeVisible();
@@ -195,7 +195,7 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Análise Matemática I/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Álgebra Linear/ })).toHaveCount(0);
   await page.getByRole("link", { name: /Análise Matemática I/ }).click();
-  await page.getByText("2023-2024_exame-recurso-enunciado.pdf").click();
+  await page.getByText("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.getByRole("link", { name: "Corrigir classificação" })).toHaveCount(0);
   await expect(page.getByText("Notas pessoais")).toHaveCount(0);

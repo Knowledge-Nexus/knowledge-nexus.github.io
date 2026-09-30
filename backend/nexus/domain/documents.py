@@ -49,6 +49,8 @@ CLASSIFICATION_FIELDS: tuple[str, ...] = (
     "role",
     "solution_origin",
     "topics",
+    "date",
+    "variant",
 )
 
 
@@ -95,6 +97,9 @@ class Classification(Record):
     role: FieldValue | None = None
     solution_origin: FieldValue | None = None
     topics: FieldValue | None = None
+    # Avaliações: data da prova (AAAA-MM-DD) e versão/turno ("A", "B"…), para nomes únicos.
+    date: FieldValue | None = None
+    variant: FieldValue | None = None
 
     def value(self, name: str) -> Any:
         field: FieldValue | None = getattr(self, name)

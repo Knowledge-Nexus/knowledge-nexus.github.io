@@ -44,7 +44,7 @@ def test_exam_is_filed_and_leaves_deposit(catalog_root: Path) -> None:
     assert len(report.new_documents) == 1 and report.filed == report.new_documents
     [doc] = docs(catalog_root)
     assert doc["status"] == "filed"
-    assert doc["filed_name"] == "2023-2024_exame-recurso-enunciado.pdf"
+    assert doc["filed_name"] == "2023-2024_exame-recurso-2024-02-05-enunciado.pdf"
     sha = doc["blob"]["sha256"]
     assert (catalog_root / "originais" / sha[:2] / f"{sha}.pdf").exists()
     assert (catalog_root / "texto" / sha / "paginas" / "0001.md").exists()
@@ -250,7 +250,7 @@ def test_export_tree(catalog_root: Path, tmp_path: Path) -> None:
     report = export_tree(DataRepo(catalog_root), tmp_path / "arvore")
     rel = sorted(p.relative_to(tmp_path / "arvore").as_posix() for p in report.written)
     assert rel == [
-        "lei/am1/enunciados-avaliacao/2023-2024_exame-recurso-enunciado.pdf",
+        "lei/am1/enunciados-avaliacao/2023-2024_exame-recurso-2024-02-05-enunciado.pdf",
         "lei/am1/resolucoes-avaliacao/2023-2024_exame-recurso-resolucao.pdf",
     ]
 

@@ -67,7 +67,7 @@ from nexus.pipeline.filetypes import (
     extension_of,
     mime_of,
 )
-from nexus.pipeline.filing import filed_name
+from nexus.pipeline.filing import filed_name, unique_name
 from nexus.pipeline.hashing import sha256_file
 from nexus.pipeline.intake import DepositItem, scan_deposit
 from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
@@ -645,7 +645,13 @@ class Pipeline:
                 doc.review.status = "resolved"
                 doc.review.resolved_at = self.now
                 doc.review.resolved_by = "pipeline"
-            doc.filed_name = filed_name(doc, self.repo.vocabularies)
+            # Os documentos são reconciliados por ordem de id: cada um só compete com os
+            # anteriores da mesma cadeira, por isso o nome é estável entre execuções.
+            unit = doc.classification.value("unit")
+            taken = {d.filed_name for d in self.repo.documents.values()
+                     if d.id < doc.id and d.owner == doc.owner and d.filed_name
+                     and d.classification.value("unit") == unit}
+            doc.filed_name = unique_name(filed_name(doc, self.repo.vocabularies), taken)
             if not doc.reached(Status.FILED):
                 self.report.filed.append(doc.id)
             doc.advance(Status.FILED, self.now)

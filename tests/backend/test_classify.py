@@ -172,3 +172,30 @@ def test_unit_name_is_not_a_role_signal(catalog_root: Path) -> None:
                             []).classification
     assert c.value("unit") == "ufe/mrn"
     assert c.value("role") == "statement"
+
+
+def test_assessment_date_variant_and_ordinal(catalog_root: Path) -> None:
+    classifier, repo = _classifier(catalog_root)
+    pages = ["Ano lectivo 2024/25   Primeira Frequência de Análise Matemática I D\n"
+             "Lic.ª Eng. Informática   20-11-2024   Duração: 1:30\n1. (a) Calcule…"]
+    c = classifier.classify(_doc("AM1/fre1_AM1-24DD.pdf"), None, pages, None, []).classification
+    assert c.value("assessment_type") == "frequencia"
+    assert c.value("date") == "2024-11-20"
+    assert c.value("variant") == "D"
+    assert c.value("assessment_number") == 1
+
+    from nexus.pipeline.filing import filed_name
+    doc = _doc("AM1/fre1_AM1-24DD.pdf").model_copy(update={"classification": c})
+    assert filed_name(doc, repo.vocabularies) == \
+        "2024-2025_frequencia-1-2024-11-20-d-enunciado.pdf"
+    pages = ["Exame de Recurso B de Análise Matemática I\n24-1-2025\nDuração: 2:30"]
+    c = classifier.classify(_doc("AM1/exameB.pdf"), None, pages, None, []).classification
+    assert c.value("variant") == "B" and c.value("date") == "2025-01-24"
+
+
+def test_unique_name() -> None:
+    from nexus.pipeline.filing import unique_name
+
+    taken = {"a.pdf", "a-2.pdf"}
+    assert unique_name("b.pdf", taken) == "b.pdf"
+    assert unique_name("a.pdf", taken) == "a-3.pdf"

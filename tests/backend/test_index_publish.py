@@ -108,7 +108,7 @@ def test_push_rejected_is_retried_without_losing_files(git_root: Path, tmp_path:
     result = process_and_publish(git_root)
     assert result.pushed and result.attempts == 2
     names = {d.display_name for d in DataRepo(git_root).documents.values()}
-    assert "2023-2024_exame-recurso-enunciado.pdf" in names
+    assert "2023-2024_exame-recurso-2024-02-05-enunciado.pdf" in names
     assert any("matrizes" in n for n in names), "o ficheiro enviado pelo outro clone também"
 
 

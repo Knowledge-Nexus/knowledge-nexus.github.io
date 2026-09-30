@@ -56,5 +56,11 @@
     "header": "cabeçalho",
     "body": "texto",
     "metadata": "metadados"
+  },
+  "date": {
+    "found": "Data «{{text}}» em {{source}}"
+  },
+  "variant": {
+    "found": "Versão «{{text}}» no título"
   }
 }

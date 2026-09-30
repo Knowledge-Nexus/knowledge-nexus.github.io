@@ -22,7 +22,7 @@ from nexus.domain.documents import (
     Reason,
 )
 from nexus.domain.extraction import ExtractionMeta
-from nexus.domain.text import contains_phrase, normalize
+from nexus.domain.text import contains_phrase, fix_spacing_accents, normalize
 from nexus.domain.users import User
 from nexus.domain.vocab import ROLE_SOLUTION, ROLE_STATEMENT, Term, Vocabularies
 from nexus.pipeline.classify import proposals
@@ -38,12 +38,13 @@ from nexus.pipeline.classify.scoring import (
 )
 from nexus.pipeline.classify.signals import Signal, collect_signals
 from nexus.pipeline.classify.units import UnitFeatures, compile_unit, score_units
-from nexus.pipeline.classify.years import score_years
+from nexus.pipeline.classify.years import score_dates, score_years
 
 # Sobe quando a lógica muda de forma a justificar reclassificar o que não foi revisto.
 # 2: enunciado/resolução decidido só pelo nome, pastas, metadados e título (as primeiras
 #    palavras da página 1); abreviaturas nos vocabulários (res_, corr_, fre1…).
-CLASSIFIER_VERSION = 2
+# 3: data e versão (A/B…) das provas; "Primeira Frequência" → número 1.
+CLASSIFIER_VERSION = 3
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
@@ -54,8 +55,16 @@ CODE_PROJECT_BOOST = 1.5
 FORMAT_BOOST = 1.5
 _NUMBER_RE = re.compile(
     r"\b(?:mini teste|miniteste|teste|frequencia|exame|trabalho|projeto|ficha|tp)"
-    r" (?:n )?(\d{1,2})\b|\b(\d{1,2}) o (?:mini teste|teste|frequencia|trabalho)\b"
+    r" (?:n )?(\d{1,2})\b|\b(\d{1,2}) [oa] (?:mini teste|teste|frequencia|trabalho)\b"
 )
+_ORDINALS = {"primeir": 1, "segund": 2, "terceir": 3, "quart": 4, "quint": 5}
+_ORDINAL_RE = re.compile(r"\b(primeir|segund|terceir|quart|quint)[oa] "
+                         r"(?:mini teste|teste|frequencia|exame|trabalho)\b")
+# Versão/turno da prova: "Teste 1A", "Exame de Recurso B", "Versão C", "<cadeira> D".
+_VARIANT_RE = re.compile(
+    r"\b(?:Teste|Exame|Frequ[êe]ncia|Prova|Mini-?teste)(?:\s+de\s+Recurso|\s+Recurso)?"
+    r"\s*\d{0,2}\s*([A-F])(?![\w.])"
+    r"|\b(?:Vers[ãa]o|Tipo|Variante|Modelo|Turno)\s+([A-Z0-9]{1,2})\b")
 
 
 @dataclass
@@ -129,6 +138,8 @@ class Classifier:
             result.assessment_type = to_field(score_terms(self.assessment_types, signals), prior)
             result.exam_season = to_field(score_terms(self.seasons, signals), prior)
             result.assessment_number = self._number(signals)
+            result.date = score_dates(signals)
+            result.variant = self._variant(pages, result.unit)
 
         if result.role is not None and result.role.value == ROLE_SOLUTION and solution_score > 0:
             origin = to_field(score_terms(self.origins, signals), prior)
@@ -296,13 +307,34 @@ class Classifier:
         for signal in signals:
             if signal.source not in {"filename", "header", "path"}:
                 continue
-            match = _NUMBER_RE.search(signal.norm)
-            if match:
-                number = int(match.group(1) or match.group(2))
+            text = signal.norm[:400] if signal.source == "header" else signal.norm
+            match = _NUMBER_RE.search(text)
+            ordinal = _ORDINAL_RE.search(text)
+            if match or ordinal:
+                if match:
+                    number, found = int(match.group(1) or match.group(2)), match.group(0)
+                else:
+                    assert ordinal is not None
+                    number, found = _ORDINALS[ordinal.group(1)], ordinal.group(0)
                 return FieldValue(value=number, confidence=0.8, reasons=[Reason(
-                    code="number.pattern", params={"text": match.group(0)},
-                    source=signal.source)])
+                    code="number.pattern", params={"text": found}, source=signal.source)])
         return None
+
+    def _variant(self, pages: list[str], unit: FieldValue | None) -> FieldValue | None:
+        """Letra da versão da prova, no título da 1.ª página."""
+        if not pages:
+            return None
+        title = " ".join(fix_spacing_accents(pages[0][:400]).split())
+        match = _VARIANT_RE.search(title)
+        value = (match.group(1) or match.group(2)) if match else None
+        found = unit.value if unit else None
+        if value is None and found and (u := self.catalog.units.get(str(found))):
+            after = re.search(re.escape(u.name) + r"\s+([A-F])(?![\w.])", title)
+            value = after.group(1) if after else None
+        if not value:
+            return None
+        return FieldValue(value=value, confidence=0.7, reasons=[Reason(
+            code="variant.found", params={"text": value}, source="header")])
 
     def _topics(self, unit_key: str, signals: list[Signal]) -> FieldValue | None:
         unit = self.catalog.units.get(unit_key)
