@@ -182,7 +182,8 @@
     "selected": "{{count}} seleccionado(s)",
     "make_public": "Tornar públicos",
     "make_private": "Tornar privados",
-    "clear_selection": "Limpar selecção"
+    "clear_selection": "Limpar selecção",
+    "documents_units": "{{count}} cadeira(s)"
   },
   "document": {
     "not_found": "Documento não encontrado.",
@@ -426,5 +427,14 @@
     "will_dissolve": "Com menos de dois ficheiros, o conjunto desfaz-se.",
     "save": "Guardar conjunto",
     "make_lead": "Tornar principal"
+  },
+  "shelves": {
+    "hint": "Arrasta as cadeiras para os cursos (e para o ano certo). Uma cadeira pode estar em vários cursos; para a tirar de um curso, arrasta-a para fora dele.",
+    "proposed": "proposto pelo material",
+    "empty": "Larga aqui uma cadeira para a juntar a este curso.",
+    "empty_readonly": "Ainda sem cadeiras.",
+    "no_year": "Ano por indicar",
+    "year_targets": "Largar num ano:",
+    "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição."
   }
 }

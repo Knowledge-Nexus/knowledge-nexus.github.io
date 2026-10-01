@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import YAML from "yaml";
 import { FakeGitHub } from "../../src/data/github/fake";
 
@@ -388,4 +388,52 @@ test("conjuntos: o código segue o enunciado e juntar ficheiros à mão", async 
   const bundles = commit.paths.map((p) => YAML.parse(fake.text(REPO, p)!).bundle);
   expect(bundles[0]).toMatchObject({ name: "Trabalho de grafos", method: "user" });
   expect(bundles[1].id).toBe(bundles[0].id);
+});
+
+/** Arrastar e largar com eventos HTML5 (o mesmo DataTransfer em todos os passos): o
+ * arrastar com o rato do Playwright é instável quando a página tem de deslocar. */
+async function dragAndDrop(page: Page, source: Locator, target: Locator) {
+  const data = await page.evaluateHandle(() => new DataTransfer());
+  await source.dispatchEvent("dragstart", { dataTransfer: data });
+  await target.dispatchEvent("dragenter", { dataTransfer: data });
+  await target.dispatchEvent("dragover", { dataTransfer: data });
+  await target.dispatchEvent("drop", { dataTransfer: data });
+  // A cadeira pode já ter mudado de sítio (e o elemento de origem ter desaparecido).
+  await source.dispatchEvent("dragend", { dataTransfer: data }, { timeout: 1000 }).catch(() => {});
+}
+
+test("arrastar cadeiras entre cursos e anos", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  const lei = page.getByRole("region", { name: "Licenciatura em Engenharia Informática" });
+  await expect(lei.getByRole("group", { name: "1.º ano" })).toBeVisible();
+  await expect(lei.getByRole("group", { name: "2.º ano" })).toBeVisible();
+
+  // Arrastar AM1 para o 3.º ano (dentro do mesmo curso).
+  const am1 = lei.getByRole("link", { name: /Análise Matemática I/ });
+  await dragAndDrop(page, am1, lei.getByRole("group", { name: "3.º ano" }));
+  await expect(page.getByText(/biblioteca é actualizada/)).toBeVisible();
+  let bundle = YAML.parse(fake.text(REPO, fake.repos.get(REPO)!.commits.at(-1)!.paths[0]!)!);
+  let units = bundle.institutions[0].courses[0].units;
+  expect(units.find((u: { unit: string }) => u.unit === "am1")).toMatchObject({
+    curricular_year: 3,
+  });
+  await expect(
+    lei.getByRole("group", { name: "3.º ano" }).getByText("Análise Matemática I"),
+  ).toBeVisible();
+
+  // Arrastar BD para fora do curso: sai do curso e vai para "Sem curso".
+  await dragAndDrop(
+    page,
+    lei.getByRole("link", { name: /Bases de Dados/ }),
+    page.getByRole("heading", { name: "Biblioteca" }),
+  );
+  await expect(
+    page.getByRole("region", { name: "Sem curso" }).getByText("Bases de Dados"),
+  ).toBeVisible();
+  bundle = YAML.parse(fake.text(REPO, fake.repos.get(REPO)!.commits.at(-1)!.paths[0]!)!);
+  units = bundle.institutions[0].courses[0].units.map((u: { unit: string }) => u.unit);
+  expect(units).not.toContain("bd");
+  expect(units).toContain("am1");
 });

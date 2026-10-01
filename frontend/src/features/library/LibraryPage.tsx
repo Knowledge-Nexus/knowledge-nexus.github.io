@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { FileBadge } from "../../components/FileBadge";
@@ -27,6 +27,7 @@ import { joinBundle, separateBundle, suggestBundleName } from "../../lib/bundles
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { Shelves } from "./Shelves";
 import { UnitCourses } from "./UnitCourses";
 
 export function DocumentLink(props: {
@@ -455,35 +456,6 @@ export function LibraryPage() {
   const [organizing, setOrganizing] = useState(false);
   const selectedUnit = params.get("uc") ?? "";
 
-  const shelves = useMemo(() => {
-    if (!meta) return [];
-    const stats = meta.unitStats(login);
-    const links = meta.courseUnits();
-    const unitMap = new Map(labels.units.map((u) => [u.key, u]));
-    const shelves = meta.courses().map((course) => ({
-      key: course.key,
-      name: course.name,
-      books: links
-        .filter((l) => l.course_key === course.key && unitMap.has(l.unit_key))
-        .map((l) => ({
-          unit: unitMap.get(l.unit_key)!,
-          count: stats.get(l.unit_key)?.filed ?? 0,
-          subtitle: [
-            l.curricular_year ? t("library.year_group", { year: l.curricular_year }) : null,
-            l.semester ? t("library.semester", { semester: l.semester }) : null,
-          ]
-            .filter(Boolean)
-            .join(", "),
-        })),
-    }));
-    const linked = new Set(links.map((l) => l.unit_key));
-    const loose = labels.units
-      .filter((u) => !linked.has(u.key))
-      .map((u) => ({ unit: u, count: stats.get(u.key)?.filed ?? 0, subtitle: "" }));
-    if (loose.length) shelves.push({ key: "", name: t("library.no_course"), books: loose });
-    return shelves;
-  }, [meta, login, labels.units, t]);
-
   if (indexError) return <ErrorBox error={indexError} />;
   if (indexLoading) return <Spinner />;
   if (!meta) return <Empty>{t("pipeline.no_indices")}</Empty>;
@@ -526,22 +498,8 @@ export function LibraryPage() {
           <strong>{t("library.unfiled")}</strong> ({unfiled.length}): {t("library.unfiled_help")}
         </Link>
       )}
-      {shelves.length === 0 && <Empty>{t("library.empty")}</Empty>}
-      {shelves.map((shelf) => (
-        <section key={shelf.key || "loose"}>
-          <h2 className="mb-3 font-serif text-xl font-semibold text-ink">{shelf.name}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {shelf.books.map((book) => (
-              <UnitBook
-                key={book.unit.key}
-                unit={book.unit}
-                count={book.count}
-                subtitle={book.subtitle}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {labels.units.length === 0 && <Empty>{t("library.empty")}</Empty>}
+      <Shelves units={labels.units} />
     </div>
   );
 }

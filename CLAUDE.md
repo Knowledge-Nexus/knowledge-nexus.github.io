@@ -142,6 +142,12 @@ Dependências de sistema (Ubuntu/WSL2):
     vêem-se com `components/DocumentViewer.tsx` (documento e «A rever»). Descarga em zip no
     browser: `lib/download.ts`
     (fflate, sem compressão).
+  - Biblioteca em estantes curso → ano (`features/library/Shelves.tsx`): as cadeiras
+    arrastam-se para os cursos e anos (ficam também onde estavam); arrastar para fora de
+    um curso tira-as dele. Os cursos propostos pelo material aparecem como estantes e
+    criam-se ao largar uma cadeira. Cor de cada curso: a cor tradicional da área (fitas de
+    Coimbra, `course_colors` em `data/reference/pt.json`, `lib/courseColors.ts`), com tons
+    diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome.
   - Cursos de cada cadeira: "Editar cursos" na cadeira ou "Organizar por curso" na
     Biblioteca (`features/library/UnitCourses.tsx`); grava um pedido de catálogo com a
     lista completa das cadeiras de cada curso alterado (o motor só escreve os campos que
