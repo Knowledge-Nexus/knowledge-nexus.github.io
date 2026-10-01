@@ -76,6 +76,13 @@ export interface DocumentRow {
   parent: string | null;
   /** Cópia (mesmo texto) deste documento; não aparece nas listas. */
   duplicate_of: string | null;
+  /** Conjunto de ficheiros que vão juntos (enunciado + código + imagens). */
+  bundle_id: string | null;
+  bundle_name: string | null;
+  /** user (juntados por ti) | heuristic (pasta de projecto reconhecida) */
+  bundle_method: string | null;
+  /** Documento principal do conjunto; os outros são arrumados com ele. */
+  bundle_lead: string | null;
   /** Visibilidade efectiva: private | public | (reservadas) link | user:<login> | group:… */
   visibility: string;
   /** true = segue a escolha feita para a cadeira (ou a predefinição, privado). */

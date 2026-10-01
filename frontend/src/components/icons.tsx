@@ -149,3 +149,11 @@ export const IconDownload = (p: IconProps) => (
     <path d="M5 19h14" />
   </Svg>
 );
+
+export const IconStack = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m12 4 8 4-8 4-8-4z" />
+    <path d="m4 12 8 4 8-4" />
+    <path d="m4 16 8 4 8-4" />
+  </Svg>
+);

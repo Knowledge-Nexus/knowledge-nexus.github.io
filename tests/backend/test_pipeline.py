@@ -402,3 +402,52 @@ def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path:
     again = DataRepo(catalog_root).documents[copy.id]
     assert again.duplicate_of is None and (again.filed_name or again.needs_review), \
         "volta a ser um documento separado (arrumado ou em «A rever»)"
+
+
+def test_project_folder_is_a_bundle_filed_with_its_statement(catalog_root: Path) -> None:
+    gerar.pdf_nativo(deposit(catalog_root, "Trabalho/Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    deposit(catalog_root, "Trabalho/resolucao.py").write_text(
+        "def soma(a, b):\n    return a + b\n\nprint(soma(1, 2))\n")
+    Pipeline(DataRepo(catalog_root)).run()
+    docs = {d.sources[0].path: d for d in DataRepo(catalog_root).documents.values()}
+    lead, member = docs["Trabalho/Exame_Recurso_2023-24.pdf"], docs["Trabalho/resolucao.py"]
+    assert lead.bundle is not None and member.bundle == lead.bundle
+    assert lead.bundle.name == "Trabalho" and lead.bundle.lead == lead.id
+    assert lead.status is Status.FILED, (lead.review, lead.classification)
+    assert member.classification.value("unit") == "ufe/am1"
+    assert member.classification.unit.reasons[0].code == "bundle.inherited"
+    assert not member.needs_review and member.status is Status.FILED
+    assert member.filed_name == lead.filed_name.rsplit(".", 1)[0] + "/resolucao.py"
+
+    before = {p.name: p.read_text() for p in (catalog_root / "documentos").glob("*.yaml")}
+    Pipeline(DataRepo(catalog_root)).run()
+    after = {p.name: p.read_text() for p in (catalog_root / "documentos").glob("*.yaml")}
+    assert before == after, "o pipeline é idempotente com conjuntos"
+
+    # "Separar": o código deixa de herdar e volta a ser classificado sozinho.
+    repo = DataRepo(catalog_root)
+    separated = repo.documents[member.id].model_copy(update={"bundle": None,
+                                                             "bundle_dismissed": True})
+    repo.save_document(separated)
+    Pipeline(DataRepo(catalog_root)).run()
+    member = DataRepo(catalog_root).documents[member.id]
+    assert member.bundle is None and member.classification.value("unit") != "ufe/am1"
+    assert DataRepo(catalog_root).documents[lead.id].bundle is None, "um só não é conjunto"
+
+
+def test_user_bundle_is_kept_and_named(catalog_root: Path) -> None:
+    from nexus.domain.documents import BundleRef
+
+    gerar.pdf_nativo(deposit(catalog_root, "AM1/Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    deposit(catalog_root, "Outra/notas.txt").write_text("apontamentos soltos " * 20)
+    Pipeline(DataRepo(catalog_root)).run()
+    repo = DataRepo(catalog_root)
+    ref = BundleRef(id="meu-conjunto", name="Exame e notas")
+    for doc in repo.documents.values():
+        repo.save_document(doc.model_copy(update={"bundle": ref}))
+    Pipeline(DataRepo(catalog_root)).run()
+    docs = {d.sources[0].path: d for d in DataRepo(catalog_root).documents.values()}
+    exam, notes = docs["AM1/Exame_Recurso_2023-24.pdf"], docs["Outra/notas.txt"]
+    assert exam.bundle and exam.bundle.lead == exam.id and exam.bundle.method == "user"
+    assert notes.bundle == exam.bundle and notes.classification.value("unit") == "ufe/am1"
+    assert notes.filed_name and notes.filed_name.endswith("/notas.txt")

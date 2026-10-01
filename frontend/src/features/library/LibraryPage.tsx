@@ -2,7 +2,13 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { FileBadge } from "../../components/FileBadge";
-import { IconArrowRight, IconDownload, IconGlobe, IconLock } from "../../components/icons";
+import {
+  IconArrowRight,
+  IconDownload,
+  IconGlobe,
+  IconLock,
+  IconStack,
+} from "../../components/icons";
 import {
   Badge,
   Button,
@@ -17,6 +23,7 @@ import {
 import { isPublic, PublicBadge, TypeVisibility, UnitVisibility } from "../../components/Visibility";
 import { useApp } from "../../data/context";
 import type { DocumentRow, UnitRow } from "../../data/types";
+import { joinBundle, separateBundle, suggestBundleName } from "../../lib/bundles";
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
@@ -112,6 +119,60 @@ export function UnitBook(props: { unit: UnitRow; count: number; subtitle?: strin
   );
 }
 
+/** Um conjunto aparece como uma só entrada: o principal, com os outros por baixo. */
+export function bundleEntries(docs: DocumentRow[]): { doc: DocumentRow; members: DocumentRow[] }[] {
+  const groups = new Map<string, DocumentRow[]>();
+  for (const doc of docs) {
+    if (doc.bundle_id) groups.set(doc.bundle_id, [...(groups.get(doc.bundle_id) ?? []), doc]);
+  }
+  const out: { doc: DocumentRow; members: DocumentRow[] }[] = [];
+  const seen = new Set<string>();
+  for (const doc of docs) {
+    if (seen.has(doc.id)) continue;
+    const group = doc.bundle_id ? (groups.get(doc.bundle_id) ?? []) : [];
+    if (group.length > 1) {
+      const lead = group.find((d) => d.id === d.bundle_lead) ?? group[0]!;
+      out.push({ doc: lead, members: group.filter((d) => d.id !== lead.id) });
+      for (const d of group) seen.add(d.id);
+    } else {
+      out.push({ doc, members: [] });
+      seen.add(doc.id);
+    }
+  }
+  return out;
+}
+
+/** Os outros ficheiros de um conjunto, por baixo do principal. */
+export function BundleMembers(props: { lead: DocumentRow; members: DocumentRow[] }) {
+  const { t } = useTranslation();
+  const { to } = useApp();
+  if (props.members.length === 0) return null;
+  return (
+    <div className="mb-2 ml-11 border-l-2 border-gold/50 pl-3">
+      <p className="flex items-center gap-1 text-xs text-muted">
+        <IconStack size={13} />
+        {t("bundle.label", { name: props.lead.bundle_name, count: props.members.length + 1 })}
+      </p>
+      <ul className="mt-1 space-y-0.5">
+        {props.members.map((m) => (
+          <li key={m.id}>
+            <Link
+              to={to(`/documento/${m.id}`)}
+              className="flex items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-ink-soft hover:bg-paper hover:text-pen"
+              title={m.display_name}
+            >
+              <span className="scale-75">
+                <FileBadge ext={m.ext} kind={m.kind} />
+              </span>
+              <span className="truncate">{originalName(m)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Ordem dentro de um tipo: mais recentes primeiro (ano, data da prova), depois o título. */
 function byRecency(a: DocumentRow, b: DocumentRow): number {
   const key = (d: DocumentRow) =>
@@ -163,6 +224,27 @@ function UnitDetail(props: { unitKey: string }) {
       await downloadZip(source, list, labels, name, (done, total) =>
         setBusy(t("library.zipping", { done, total })),
       );
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function bundle(list: DocumentRow[], action: "join" | "separate") {
+    let name = "";
+    if (action === "join") {
+      name = window.prompt(t("bundle.name_prompt"), suggestBundleName(list))?.trim() ?? "";
+      if (!name) return;
+    }
+    setError(null);
+    setBusy(t("common.saving"));
+    try {
+      if (action === "join") await joinBundle(source, list, name);
+      else await separateBundle(source, list);
+      notifyCommit();
+      setSelected(new Set());
+      setNotice(t(action === "join" ? "bundle.joined" : "bundle.separated"));
     } catch (err) {
       setError(err);
     } finally {
@@ -297,15 +379,20 @@ function UnitDetail(props: { unitKey: string }) {
                   </div>
                 )}
                 <div className="divide-y divide-line">
-                  {sorted.map((doc) => (
-                    <DocumentLink
-                      key={doc.id}
-                      doc={doc}
-                      groupedByType
-                      selected={selected.has(doc.id)}
-                      onSelect={(on) => select([doc.id], on)}
-                    />
-                  ))}
+                  {bundleEntries(sorted).map(({ doc, members }) => {
+                    const ids = [doc.id, ...members.map((m) => m.id)];
+                    return (
+                      <div key={doc.id}>
+                        <DocumentLink
+                          doc={doc}
+                          groupedByType
+                          selected={ids.every((id) => selected.has(id))}
+                          onSelect={(on) => select(ids, on)}
+                        />
+                        <BundleMembers lead={doc} members={members} />
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             );
@@ -337,6 +424,16 @@ function UnitDetail(props: { unitKey: string }) {
                       <IconLock size={15} /> {t("library.make_private")}
                     </Button>
                   </>
+                )}
+                {!readOnly && chosen.length >= 2 && (
+                  <Button variant="secondary" onClick={() => void bundle(chosen, "join")}>
+                    <IconStack size={15} /> {t("bundle.join")}
+                  </Button>
+                )}
+                {!readOnly && chosen.some((d) => d.bundle_id) && (
+                  <Button variant="secondary" onClick={() => void bundle(chosen, "separate")}>
+                    {t("bundle.separate")}
+                  </Button>
                 )}
                 <Button variant="ghost" onClick={() => setSelected(new Set())}>
                   <span className="text-gold-light">{t("library.clear_selection")}</span>

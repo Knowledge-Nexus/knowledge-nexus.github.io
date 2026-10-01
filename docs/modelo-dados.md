@@ -24,6 +24,12 @@
   biblioteca, na pesquisa nem em "A rever". Qualquer diferença no texto mantém os dois
   (são versões diferentes). "Não são iguais" (`near_duplicates_dismissed`) desfaz a
   ligação. Os originais nunca se apagam.
+- **Conjuntos** (`bundle: {id, name, method, lead}`): ficheiros que só fazem sentido
+  juntos (enunciado + código + imagens). O motor propõe-nos a partir das pastas de projecto
+  (`method: heuristic`) e o utilizador junta-os à mão (`method: user`). O principal (`lead`)
+  é escolhido pelo pipeline; os outros herdam dele os campos de classificação que não são
+  do utilizador e ficam arrumados como `<principal>/<nome original>`. "Separar" grava
+  `bundle_dismissed: true` (formato 4).
 
 **Regras de partilha e visibilidade:**
 - O conteúdo derivado (texto, e mais tarde resumos e perguntas) é calculado por blob e

@@ -60,6 +60,16 @@ Ficha de exercícios 2
 2. Determine uma árvore abrangente do grafo da figura.
 """
 
+TRABALHO_FG = """Universidade Fictícia de Exemplo
+Unidade Curricular: Física Geral
+Trabalho prático 1: lançamento de projécteis
+Ano Lectivo 2023/2024
+
+Enunciado do trabalho prático. Escreva um programa que simule o movimento de um projéctil
+lançado com velocidade inicial v0 e ângulo theta, desprezando a resistência do ar.
+Represente a trajectória e calcule o alcance máximo. Entregue o código e um relatório.
+"""
+
 APONTAMENTOS_FG = """Física Geral - apontamentos das aulas
 Cinemática: a velocidade é a derivada da posição em ordem ao tempo.
 Dinâmica: a segunda lei de Newton relaciona a força com a aceleração.
@@ -236,6 +246,11 @@ def pasta_exemplo(dest: Path) -> Path:
     docx_com_equacao(lote / "apontamentos_FG.docx", APONTAMENTOS_FG)
     pdf_nativo(lote / "grafos_ficha2.pdf", FICHA_DESCONHECIDA)
     projecto_codigo(lote / "trabalho-p1")
+    # Pasta de projecto: o enunciado e o código só fazem sentido juntos (um conjunto).
+    pdf_nativo(lote / "FG" / "Projecteis" / "Trabalho_pratico_1_2023-24.pdf", TRABALHO_FG)
+    (lote / "FG" / "Projecteis" / "projectil.py").write_text(
+        "import math\n\n\ndef alcance(v0, theta, g=9.8):\n"
+        "    return v0 ** 2 * math.sin(2 * theta) / g\n", encoding="utf-8")
     return lote
 
 

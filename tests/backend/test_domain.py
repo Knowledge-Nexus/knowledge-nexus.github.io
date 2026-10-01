@@ -103,7 +103,7 @@ def test_catalog_import_rejects_bad_slug(data_root: Path) -> None:
 def test_migrations_apply_in_order(data_root: Path) -> None:
     calls: list[int] = []
     layout = Layout(data_root)
-    text = layout.settings_file.read_text().replace("format_version: 3", "format_version: 0")
+    text = layout.settings_file.read_text().replace("format_version: 4", "format_version: 0")
     layout.settings_file.write_text(text)
     applied = migrate(data_root, target=1, migrations={0: lambda root: calls.append(0)})
     assert applied == [0] and calls == [0]

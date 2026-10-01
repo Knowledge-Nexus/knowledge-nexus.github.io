@@ -15,7 +15,7 @@ import type {
 } from "../types";
 import type { ReadonlyDb } from "./db";
 
-export const SUPPORTED_SCHEMA_VERSION = 3;
+export const SUPPORTED_SCHEMA_VERSION = 4;
 
 const JSON_DOC_COLUMNS = [
   "review_reasons",
@@ -119,6 +119,17 @@ export class MetaIndex {
           sharing: parse(u.sharing, {}),
         }) as UserRow,
     );
+  }
+
+  /** Documentos de um conjunto (o principal primeiro). */
+  bundleMembers(bundleId: string): DocumentRow[] {
+    return this.db
+      .all<Record<string, unknown>>(
+        `SELECT * FROM documents WHERE bundle_id = ? AND duplicate_of IS NULL
+         ORDER BY (id = bundle_lead) DESC, id`,
+        [bundleId],
+      )
+      .map(toDocument);
   }
 
   /** Cópias de um documento: outros ficheiros com exactamente o mesmo texto. */

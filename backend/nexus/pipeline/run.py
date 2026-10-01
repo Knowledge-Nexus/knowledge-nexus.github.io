@@ -36,6 +36,7 @@ from nexus.domain.documents import (
     METHOD_HEURISTIC,
     METHOD_USER,
     BlobRef,
+    BundleRef,
     Document,
     DocumentKind,
     HistoryEntry,
@@ -48,6 +49,13 @@ from nexus.domain.documents import (
 from nexus.domain.proposals import CatalogProposal, Evidence
 from nexus.domain.text import normalize, slugify
 from nexus.pipeline import codeproject
+from nexus.pipeline.bundles import (
+    INHERITED,
+    choose_lead,
+    inherit,
+    member_name,
+    project_folders,
+)
 from nexus.pipeline.classify.classifier import CLASSIFIER_VERSION, Classifier
 from nexus.pipeline.classify.proposals import ProposalCandidate
 from nexus.pipeline.classify.signals import GENERATED_BATCH_RE
@@ -512,14 +520,70 @@ class Pipeline:
         classifier = Classifier(self.repo.vocabularies, self.repo.catalog,
                                 self.settings.classification)
         self._content_seen = {}
+        self._assign_bundles()
         for doc_id in sorted(self.repo.documents):
-            try:
-                self._reconcile(self.repo.documents[doc_id].model_copy(deep=True), classifier)
-            except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
-                self.report.skipped.append((doc_id, str(exc)))
-            except Exception as exc:
-                log.exception("falhou a reconciliação de %s", doc_id)
-                self.report.errors.append((doc_id, f"{type(exc).__name__}: {exc}"))
+            self._reconcile_one(doc_id, classifier)
+        # Os conjuntos vêem-se com tudo já classificado: os membros (não principais) são
+        # reconciliados outra vez, agora com o principal desta execução.
+        for doc_id in sorted(self._assign_bundles()):
+            if doc_id in self.report.review:
+                self.report.review.remove(doc_id)
+            self._reconcile_one(doc_id, classifier)
+
+    def _reconcile_one(self, doc_id: str, classifier: Classifier) -> None:
+        try:
+            self._reconcile(self.repo.documents[doc_id].model_copy(deep=True), classifier)
+        except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
+            self.report.skipped.append((doc_id, str(exc)))
+        except Exception as exc:
+            log.exception("falhou a reconciliação de %s", doc_id)
+            self.report.errors.append((doc_id, f"{type(exc).__name__}: {exc}"))
+
+    # --- conjuntos ------------------------------------------------------------------
+
+    def _assign_bundles(self) -> list[str]:
+        """Conjuntos das pastas de projecto e documento principal de cada conjunto.
+        Devolve os membros que não são o principal."""
+        code = set(self.settings.code_projects.code_extensions)
+        docs = self.repo.documents
+        proposed = project_folders(docs.values(), code)
+        wanted: dict[str, BundleRef | None] = {}
+        for doc in docs.values():
+            if doc.bundle is not None and doc.bundle.method != METHOD_HEURISTIC:
+                wanted[doc.id] = doc.bundle
+            else:
+                wanted[doc.id] = proposed.get(doc.id)
+        groups: dict[str, list[Document]] = {}
+        for doc_id, ref in wanted.items():
+            if ref is not None and not docs[doc_id].duplicate_of:
+                groups.setdefault(ref.id, []).append(docs[doc_id])
+        members: list[str] = []
+        for doc_id in sorted(wanted):
+            doc, ref = docs[doc_id], wanted[doc_id]
+            group = groups.get(ref.id, []) if ref is not None else []
+            if ref is not None and ref.method == METHOD_HEURISTIC and len(group) < 2:
+                ref = None
+            if ref is not None and group:
+                lead = choose_lead(group, code)
+                ref = ref.model_copy(update={"lead": lead.id})
+                if lead.id != doc_id:
+                    members.append(doc_id)
+            if ref != doc.bundle:
+                updated = doc.model_copy(deep=True)
+                updated.bundle = ref
+                if ref is None:
+                    updated.classifier_version = None  # deixa de herdar: classifica-se outra vez
+                self.repo.save_document(updated)
+        return members
+
+    def _bundle_lead(self, doc: Document) -> Document | None:
+        """O principal do conjunto, se já estiver arrumado (só então se herda dele)."""
+        if doc.bundle is None or not doc.bundle.lead or doc.bundle.lead == doc.id:
+            return None
+        lead = self.repo.documents.get(doc.bundle.lead)
+        if lead is None or not lead.filed_name or lead.needs_review or lead.duplicate_of:
+            return None
+        return lead
 
     def _archive_names(self, doc: Document) -> list[str]:
         names: list[str] = []
@@ -556,6 +620,11 @@ class Pipeline:
             or doc.classifier_version != CLASSIFIER_VERSION
             or not doc.reached(Status.CLASSIFIED)
             or doc.needs_review
+            or (self._bundle_lead(doc) is None and any(
+                r.code == INHERITED
+                for name in CLASSIFICATION_FIELDS
+                if (f := getattr(doc.classification, name)) is not None
+                for r in f.reasons))
         )
 
     def _content_key(self, doc: Document) -> str | None:
@@ -572,6 +641,8 @@ class Pipeline:
         cópia (ficheiro diferente, conteúdo igual). A ordem por id torna isto estável."""
         key = self._content_key(doc)
         found = self._content_seen.get((doc.owner, key)) if key else None
+        if found == doc.id:
+            found = None
         if found and found not in doc.near_duplicates_dismissed and doc.id not in \
                 self.repo.documents[found].near_duplicates_dismissed:
             doc.duplicate_of = found
@@ -601,6 +672,10 @@ class Pipeline:
             doc.advance(Status.CLASSIFIED, self.now)
             weak = self._weak(doc, classifier)
             proposal_ids = self._record_proposals(doc, outcome.proposals, weak)
+        lead = self._bundle_lead(doc)
+        if lead is not None:
+            inherit(doc, lead)
+            proposal_ids = []
         self._review_and_file(doc, classifier, meta is not None, proposal_ids)
 
     def _weak(self, doc: Document, classifier: Classifier) -> list[str]:
@@ -682,10 +757,14 @@ class Pipeline:
             # Os documentos são reconciliados por ordem de id: cada um só compete com os
             # anteriores da mesma cadeira, por isso o nome é estável entre execuções.
             unit = doc.classification.value("unit")
-            taken = {d.filed_name for d in self.repo.documents.values()
-                     if d.id < doc.id and d.owner == doc.owner and d.filed_name
-                     and d.classification.value("unit") == unit}
-            doc.filed_name = unique_name(filed_name(doc, self.repo.vocabularies), taken)
+            lead = self._bundle_lead(doc)
+            if lead is not None and lead.filed_name:
+                doc.filed_name = member_name(lead.filed_name, doc)
+            else:
+                taken = {d.filed_name for d in self.repo.documents.values()
+                         if d.id < doc.id and d.owner == doc.owner and d.filed_name
+                         and d.classification.value("unit") == unit}
+                doc.filed_name = unique_name(filed_name(doc, self.repo.vocabularies), taken)
             if not doc.reached(Status.FILED):
                 self.report.filed.append(doc.id)
             doc.advance(Status.FILED, self.now)

@@ -397,5 +397,22 @@
     "organize_title": "Cursos de cada cadeira",
     "organize_help": "Uma cadeira pode pertencer a vários cursos (e ter anos ou semestres diferentes em cada um). As alterações aparecem na biblioteca depois do próximo processamento (1 a 3 minutos).",
     "organize_close": "Fechar"
+  },
+  "bundle": {
+    "label": "Conjunto «{{name}}» · {{count}} ficheiros",
+    "title": "Conjunto «{{name}}»",
+    "lead": "principal",
+    "by_folder": "Reconhecido pela pasta (enunciado, código e imagens juntos).",
+    "by_user": "Juntados por ti.",
+    "explain": "Os ficheiros são arrumados juntos, com o principal: herdam a cadeira, o ano e o tipo dele (excepto o que corrigiste).",
+    "separate_this": "Separar este ficheiro do conjunto",
+    "join": "Juntar num conjunto",
+    "separate": "Separar",
+    "name_prompt": "Nome do conjunto (ex.: Projecto final, Trabalho 1):",
+    "joined": "Conjunto criado. Confirma o documento principal e os outros são arrumados com ele.",
+    "separated": "Separados. Cada ficheiro volta a ser classificado sozinho.",
+    "followers": "+ {{count}} do conjunto «{{name}}»",
+    "review_lead": "Este é o principal do conjunto «{{name}}» ({{count}} ficheiros). Ao confirmá-lo, os outros são arrumados com ele.",
+    "review_member": "Faz parte do conjunto «{{name}}» ({{count}} ficheiros): segue o documento principal."
   }
 }

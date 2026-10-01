@@ -3,9 +3,11 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { IconStack } from "../../components/icons";
 import { Button, Card, ErrorBox } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { ClassificationField, DocumentRow } from "../../data/types";
+import { joinBundle, suggestBundleName } from "../../lib/bundles";
 import { academicYears, FIELD_VOCAB, type Labels } from "../../lib/labels";
 import { applyCorrection, type Draft, EDITABLE, initialDraft } from "./ReviewForm";
 
@@ -39,6 +41,7 @@ export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState(false);
+  const [joined, setJoined] = useState(false);
 
   const fields: ClassificationField[] = [
     "unit",
@@ -56,6 +59,23 @@ export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?
     return kind ? labels.vocab[kind].map((v) => ({ value: v.slug, label: v.label })) : [];
   };
   const missing = docs.filter((d) => !bulkDraft(d, common, labels).unit).length;
+
+  /** Juntar num conjunto: confirmas só o principal e os outros vão com ele. */
+  async function join() {
+    const name = window.prompt(t("bundle.name_prompt"), suggestBundleName(docs))?.trim();
+    if (!name) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await joinBundle(source, docs, name);
+      notifyCommit();
+      setJoined(true);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function confirm() {
     setBusy(true);
@@ -78,6 +98,14 @@ export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?
     }
   }
 
+  if (joined)
+    return (
+      <Card>
+        <p className="text-sm text-sage">
+          ✓ {t("bundle.joined")} {t("common.pending_sync")}
+        </p>
+      </Card>
+    );
   if (done)
     return (
       <Card>
@@ -126,6 +154,9 @@ export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?
       <div className="mt-4">
         <Button onClick={() => void confirm()} disabled={busy || missing > 0}>
           {t("review.bulk_confirm", { count: docs.length })}
+        </Button>
+        <Button variant="secondary" onClick={() => void join()} disabled={busy}>
+          <IconStack size={15} /> {t("bundle.join")}
         </Button>
       </div>
     </Card>

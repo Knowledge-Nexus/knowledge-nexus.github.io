@@ -141,7 +141,7 @@ def test_migration_1_to_2_makes_default_private_inherit(catalog_root: Path) -> N
     settings = read_yaml(layout.settings_file)
     settings["format_version"] = 1
     write_yaml_if_changed(layout.settings_file, settings)
-    assert migrate(catalog_root) == [1, 2]
+    assert migrate(catalog_root) == [1, 2, 3]
     assert "visibility" not in read_yaml(path)
 
 

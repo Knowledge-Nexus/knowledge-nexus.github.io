@@ -180,6 +180,12 @@ Dependências de sistema (Ubuntu/WSL2):
   "Análise Matemática II" (nem "AM" a "AM_II"/"AM2"); os nomes das cadeiras comparam-se com
   `contains_unit_phrase` (`domain/text.py`), e uma continuação que ainda não existe gera
   uma proposta ("Análise Matemática II", sigla "AM II").
+- **Conjuntos** (`pipeline/bundles.py`, campo `bundle` dos documentos): ficheiros que só
+  fazem sentido juntos. O motor reconhece pastas de projecto (código + enunciado ou
+  imagens) e o utilizador junta/separa na interface (`lib/bundles.ts`). O principal é
+  escolhido pelo pipeline; os outros herdam dele a classificação (só campos heurísticos,
+  razão `bundle.inherited`) e ficam arrumados como `<principal sem extensão>/<nome original>`.
+  "Separar" grava `bundle_dismissed: true`.
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso
   reclassifica o que não foi revisto pelo utilizador.
 - **Testes:**

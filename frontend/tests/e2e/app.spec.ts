@@ -240,10 +240,10 @@ test("confirmar vários documentos de uma vez em «A rever»", async ({ page }) 
     .getByRole("link", { name: /A rever/ })
     .first()
     .click();
-  const boxes = page.locator("ul input[type=checkbox]");
-  await expect(boxes).toHaveCount(2);
-  await boxes.nth(0).check();
-  await boxes.nth(1).check();
+  // O conjunto «Projecteis» aparece como um item (o código segue o enunciado).
+  await expect(page.locator("ul input[type=checkbox]")).toHaveCount(3);
+  await page.getByRole("checkbox", { name: "grafos_ficha2.pdf" }).check();
+  await page.getByRole("checkbox", { name: "trabalho-p1" }).check();
   await expect(page.getByText("Confirmar 2 documentos de uma vez")).toBeVisible();
   await page.getByLabel("Cadeira", { exact: true }).selectOption("ufe/fg");
   await page.getByRole("button", { name: "Confirmar 2 documentos" }).click();
@@ -325,4 +325,29 @@ test("editar os cursos de uma cadeira", async ({ page }) => {
     (c: { name: string }) => c.name === "Licenciatura em Matemática",
   );
   expect(novo.units).toEqual([{ unit: "am1", curricular_year: 1, semester: 2 }]);
+});
+
+test("conjuntos: o código segue o enunciado e juntar ficheiros à mão", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page
+    .getByRole("link", { name: /A rever/ })
+    .first()
+    .click();
+  await expect(page.getByText("+ 1 do conjunto «Projecteis»")).toBeVisible();
+  await page.getByRole("button", { name: /Trabalho_pratico_1_2023-24\.pdf/ }).click();
+  await expect(page.getByText(/Este é o principal do conjunto «Projecteis»/)).toBeVisible();
+
+  // Juntar dois ficheiros num conjunto (com nome).
+  await page.getByRole("checkbox", { name: "grafos_ficha2.pdf" }).check();
+  await page.getByRole("checkbox", { name: "trabalho-p1" }).check();
+  page.once("dialog", (dialog) => void dialog.accept("Trabalho de grafos"));
+  await page.getByRole("button", { name: "Juntar num conjunto" }).click();
+  await expect(page.getByText(/Conjunto criado/)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.paths).toHaveLength(2);
+  const bundles = commit.paths.map((p) => YAML.parse(fake.text(REPO, p)!).bundle);
+  expect(bundles[0]).toMatchObject({ name: "Trabalho de grafos", method: "user" });
+  expect(bundles[1].id).toBe(bundles[0].id);
 });

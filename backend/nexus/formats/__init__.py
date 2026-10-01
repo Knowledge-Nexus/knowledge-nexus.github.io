@@ -32,8 +32,12 @@ def _v2_duplicate_of(root: Path) -> None:
     """2 → 3: novo campo opcional `duplicate_of` nos documentos (calculado pelo pipeline)."""
 
 
+def _v3_bundles(root: Path) -> None:
+    """3 → 4: novos campos opcionais `bundle` e `bundle_dismissed` nos documentos."""
+
+
 # {versão de origem: função que migra para a versão seguinte}
-MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits, 2: _v2_duplicate_of}
+MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits, 2: _v2_duplicate_of, 3: _v3_bundles}
 
 
 def current_version(root: Path) -> int:

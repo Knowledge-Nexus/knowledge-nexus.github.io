@@ -21,8 +21,10 @@ export async function downloadZip(
   const used = new Set<string>();
   let done = 0;
   for (const doc of docs) {
-    const folder = doc.document_type ? safe(labels.term("document_types", doc.document_type)) : "";
-    const base = safe(doc.display_name || originalName(doc));
+    const type = doc.document_type ? safe(labels.term("document_types", doc.document_type)) : "";
+    // Um conjunto fica numa pasta própria, com os nomes originais dos ficheiros.
+    const folder = doc.bundle_name ? [type, safe(doc.bundle_name)].filter(Boolean).join("/") : type;
+    const base = safe(doc.bundle_name ? originalName(doc) : doc.display_name || originalName(doc));
     const first = folder ? `${folder}/${base}` : base;
     let path = first;
     for (let n = 2; used.has(path); n++) path = first.replace(/(\.[^./]+)?$/, `-${n}$1`);

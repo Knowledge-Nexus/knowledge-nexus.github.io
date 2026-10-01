@@ -7,12 +7,13 @@ import {
   Card,
   Empty,
   ErrorBox,
+  Notice,
   PageHeader,
   ReasonList,
   Spinner,
 } from "../../components/ui";
 import { useApp } from "../../data/context";
-import type { CatalogBundle, ProposalRow } from "../../data/types";
+import type { CatalogBundle, DocumentRow, ProposalRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
 import { BulkReview } from "./BulkReview";
@@ -295,7 +296,18 @@ export function ReviewPage() {
   if (indexLoading) return <Spinner />;
   if (!meta) return <Empty>{t("pipeline.no_indices")}</Empty>;
 
-  const queue = meta.reviewQueue(login);
+  const fullQueue = meta.reviewQueue(login);
+  const inQueue = new Set(fullQueue.map((d) => d.id));
+  // Os outros ficheiros de um conjunto seguem o principal: aparecem por baixo dele e são
+  // arrumados com ele quando o confirmares.
+  const followers = new Map<string, DocumentRow[]>();
+  const queue = fullQueue.filter((d) => {
+    if (d.bundle_lead && d.bundle_lead !== d.id && inQueue.has(d.bundle_lead)) {
+      followers.set(d.bundle_lead, [...(followers.get(d.bundle_lead) ?? []), d]);
+      return false;
+    }
+    return true;
+  });
   // Grupos de documentos "idênticos": mesma sugestão de cadeira, tipo e papel.
   const groupMap = new Map<string, { key: string; label: string; docs: typeof queue }>();
   for (const doc of queue) {
@@ -380,6 +392,16 @@ export function ReviewPage() {
                           <span className="block truncate">
                             {doc.source_path?.split("/").pop() ?? doc.display_name}
                           </span>
+                          {followers.has(doc.id) && (
+                            <span
+                              className={`block truncate text-xs ${doc.id === selected?.id && checked.size < 2 ? "text-white/80" : "text-muted"}`}
+                            >
+                              {t("bundle.followers", {
+                                count: followers.get(doc.id)?.length ?? 0,
+                                name: doc.bundle_name,
+                              })}
+                            </span>
+                          )}
                         </button>
                       </li>
                     ))}
@@ -405,6 +427,19 @@ export function ReviewPage() {
               }
             >
               <div className="space-y-4">
+                {selected.bundle_id && (
+                  <Notice>
+                    {t(
+                      selected.bundle_lead === selected.id
+                        ? "bundle.review_lead"
+                        : "bundle.review_member",
+                      {
+                        name: selected.bundle_name,
+                        count: meta.bundleMembers(selected.bundle_id).length,
+                      },
+                    )}
+                  </Notice>
+                )}
                 {selected.review_reasons.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted">{t("review.reasons")}</p>

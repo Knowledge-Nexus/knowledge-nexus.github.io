@@ -153,6 +153,19 @@ class Manifest(Record):
     ignored: list[ManifestIgnored] = Field(default_factory=list)
 
 
+class BundleRef(Record):
+    """Conjunto de ficheiros que só fazem sentido juntos (enunciado + código + imagens).
+
+    `method`: `user` (juntados por ti) ou `heuristic` (pasta de projecto reconhecida pelo
+    motor). `lead`: o documento principal, calculado pelo pipeline; os outros herdam dele a
+    cadeira, o ano e o tipo (se não tiverem valores teus) e são arrumados com ele."""
+
+    id: str
+    name: str
+    method: str = "user"
+    lead: str | None = None
+
+
 class Document(Record):
     id: str
     owner: str
@@ -174,6 +187,9 @@ class Document(Record):
     # o mesmo PDF guardado de novo). Fica só esse na biblioteca; o original nunca se apaga.
     # "Não são iguais" (near_duplicates_dismissed) desfaz a ligação.
     duplicate_of: str | None = None
+    bundle: BundleRef | None = None
+    # "Separar": o motor deixa de propor conjuntos para este documento.
+    bundle_dismissed: bool = False
     manifest: Manifest | None = None
     created_at: dt.datetime | None = None
 

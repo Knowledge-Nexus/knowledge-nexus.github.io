@@ -62,5 +62,8 @@
   },
   "variant": {
     "found": "Versão «{{text}}» no título"
+  },
+  "bundle": {
+    "inherited": "Faz parte do conjunto «{{name}}»: segue o documento principal"
   }
 }
