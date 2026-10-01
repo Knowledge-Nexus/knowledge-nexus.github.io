@@ -51,3 +51,38 @@ export function separateBundle(source: DataSource, docs: DocumentRow[]) {
     `conjunto: separar ${docs.length} ficheiro(s)`,
   );
 }
+
+/**
+ * Guarda as alterações a um conjunto (ficheiros acrescentados ou retirados). O conjunto
+ * passa a ser teu (`method: user`): o motor deixa de o recalcular a partir das pastas.
+ * Com menos de dois ficheiros, desfaz-se.
+ */
+export function saveBundle(
+  source: DataSource,
+  bundle: { id: string; name: string },
+  members: DocumentRow[],
+  removed: DocumentRow[],
+) {
+  const dissolve = members.length < 2;
+  const ref = { id: bundle.id, name: bundle.name.trim(), method: "user" };
+  const leaving = dissolve ? [...removed, ...members] : removed;
+  return source.patchDocuments(
+    [
+      ...(dissolve ? [] : members).map((d) => ({
+        id: d.id,
+        patch: (record: Record<string, unknown>) => {
+          record.bundle = { ...ref };
+          delete record.bundle_dismissed;
+        },
+      })),
+      ...leaving.map((d) => ({
+        id: d.id,
+        patch: (record: Record<string, unknown>) => {
+          delete record.bundle;
+          record.bundle_dismissed = true;
+        },
+      })),
+    ],
+    `conjunto: ${ref.name} (${dissolve ? "desfeito" : `${members.length} ficheiros`})`,
+  );
+}

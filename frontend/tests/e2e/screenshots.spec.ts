@@ -76,6 +76,10 @@ test("capturas", async ({ page }) => {
   await page.getByText(/Cadeira em falta/).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/4-a-rever.png`, fullPage: true });
+  await page.getByRole("button", { name: /Trabalho_pratico_1_2023-24\.pdf/ }).click();
+  await page.getByText("Ficheiros do conjunto (2)").waitFor();
+  await page.getByLabel("Acrescentar um ficheiro ao conjunto").fill("grafos");
+  await page.screenshot({ path: `${out}/4c-conjunto.png`, fullPage: true });
   const boxes = page.locator("ul input[type=checkbox]");
   await boxes.nth(0).check();
   await boxes.nth(1).check();

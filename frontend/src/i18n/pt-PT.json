@@ -413,6 +413,17 @@
     "separated": "Separados. Cada ficheiro volta a ser classificado sozinho.",
     "followers": "+ {{count}} do conjunto «{{name}}»",
     "review_lead": "Este é o principal do conjunto «{{name}}» ({{count}} ficheiros). Ao confirmá-lo, os outros são arrumados com ele.",
-    "review_member": "Faz parte do conjunto «{{name}}» ({{count}} ficheiros): segue o documento principal."
+    "review_member": "Faz parte do conjunto «{{name}}» ({{count}} ficheiros): segue o documento principal.",
+    "members_title": "Ficheiros do conjunto ({{count}})",
+    "new": "a acrescentar",
+    "remove": "Retirar",
+    "undo": "Desfazer",
+    "add": "Acrescentar",
+    "add_label": "Acrescentar um ficheiro ao conjunto",
+    "add_placeholder": "Escreve parte do nome ou da pasta…",
+    "add_none": "Nenhum ficheiro encontrado com esse nome.",
+    "name_label": "Nome do conjunto",
+    "will_dissolve": "Com menos de dois ficheiros, o conjunto desfaz-se.",
+    "save": "Guardar conjunto"
   }
 }

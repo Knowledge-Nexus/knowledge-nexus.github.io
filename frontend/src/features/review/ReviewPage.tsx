@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
+import { BundleEditor } from "../../components/BundleEditor";
 import { DocumentPreview } from "../../components/DocumentViewer";
 import {
   Button,
@@ -440,6 +441,7 @@ export function ReviewPage() {
                     )}
                   </Notice>
                 )}
+                {selected.bundle_id && <BundleEditor key={selected.id} doc={selected} />}
                 {selected.review_reasons.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-muted">{t("review.reasons")}</p>

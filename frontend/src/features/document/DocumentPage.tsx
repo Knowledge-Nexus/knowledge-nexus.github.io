@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams } from "react-router";
+import { BundleEditor } from "../../components/BundleEditor";
 import {
   hasOriginalView as canShowOriginal,
   IMAGE_EXTS,
@@ -21,7 +22,6 @@ import {
 import { DocumentVisibility, PublicBadge } from "../../components/Visibility";
 import { useApp } from "../../data/context";
 import { CLASSIFICATION_FIELDS } from "../../data/types";
-import { separateBundle } from "../../lib/bundles";
 import { formatBytes } from "../../lib/files";
 import { formatWhen, useLabels } from "../../lib/labels";
 
@@ -70,7 +70,6 @@ export function DocumentPage() {
   const duplicates = meta?.nearDuplicates(doc.id) ?? [];
   const copies = meta?.copiesOf(doc.id) ?? [];
   const copyOf = doc.duplicate_of ? meta?.document(doc.duplicate_of) : undefined;
-  const bundle = doc.bundle_id ? (meta?.bundleMembers(doc.bundle_id) ?? []) : [];
 
   /** "Não são iguais": a cópia passa a documento separado na próxima execução. */
   function notSame(copyId: string, originalId: string) {
@@ -184,41 +183,9 @@ export function DocumentPage() {
               </Button>
             </Card>
           )}
-          {bundle.length > 1 && (
+          {doc.bundle_id && (
             <Card title={t("bundle.title", { name: doc.bundle_name })}>
-              <p className="mb-2 text-xs text-muted">
-                {t(doc.bundle_method === "user" ? "bundle.by_user" : "bundle.by_folder")}{" "}
-                {t("bundle.explain")}
-              </p>
-              <ul className="space-y-1 text-sm">
-                {bundle.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between gap-2">
-                    {m.id === doc.id ? (
-                      <span className="truncate font-medium">
-                        {m.source_path?.split("/").pop() ?? m.display_name}
-                      </span>
-                    ) : (
-                      <Link className="truncate underline" to={to(`/documento/${m.id}`)}>
-                        {m.source_path?.split("/").pop() ?? m.display_name}
-                      </Link>
-                    )}
-                    {m.id === doc.bundle_lead && <Badge tone="info">{t("bundle.lead")}</Badge>}
-                  </li>
-                ))}
-              </ul>
-              {isOwner && (
-                <button
-                  type="button"
-                  className="mt-3 text-xs text-muted underline"
-                  onClick={() =>
-                    void separateBundle(source, [doc]).then(notifyCommit, (err: unknown) =>
-                      setError(err),
-                    )
-                  }
-                >
-                  {t("bundle.separate_this")}
-                </button>
-              )}
+              <BundleEditor key={doc.id} doc={doc} />
             </Card>
           )}
           {copies.length > 0 && (

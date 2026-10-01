@@ -184,7 +184,8 @@ Dependências de sistema (Ubuntu/WSL2):
   uma proposta ("Análise Matemática II", sigla "AM II").
 - **Conjuntos** (`pipeline/bundles.py`, campo `bundle` dos documentos): ficheiros que só
   fazem sentido juntos. O motor reconhece pastas de projecto (código + enunciado ou
-  imagens) e o utilizador junta/separa na interface (`lib/bundles.ts`). O principal é
+  imagens) e o utilizador junta, separa, acrescenta ou retira ficheiros na interface
+  (`lib/bundles.ts`, `components/BundleEditor.tsx`; editar torna o conjunto `method: user`). O principal é
   escolhido pelo pipeline; os outros herdam dele a classificação (só campos heurísticos,
   razão `bundle.inherited`) e ficam arrumados como `<principal sem extensão>/<nome original>`.
   "Separar" grava `bundle_dismissed: true`.

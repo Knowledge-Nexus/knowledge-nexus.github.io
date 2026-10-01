@@ -124,7 +124,12 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
 test("depositar ficheiros cria um único commit no depósito", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
-  await page.getByRole("link", { name: "Depositar" }).click();
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "principal" })
+    .getByRole("link", { name: "Depositar" })
+    .click();
+  await expect(page.getByTestId("pick-files")).toBeAttached({ timeout: 30_000 });
   await page.getByTestId("pick-files").setInputFiles([
     { name: "resumo_fg.txt", mimeType: "text/plain", buffer: Buffer.from("Física Geral: energia") },
     { name: "Thumbs.db", mimeType: "application/octet-stream", buffer: Buffer.from("x") },
@@ -338,6 +343,32 @@ test("conjuntos: o código segue o enunciado e juntar ficheiros à mão", async 
   await expect(page.getByText("+ 1 do conjunto «Projecteis»")).toBeVisible();
   await page.getByRole("button", { name: /Trabalho_pratico_1_2023-24\.pdf/ }).click();
   await expect(page.getByText(/Este é o principal do conjunto «Projecteis»/)).toBeVisible();
+  // Os ficheiros do conjunto estão à vista; acrescenta-se um, retira-se outro.
+  await expect(page.getByText("Ficheiros do conjunto (2)")).toBeVisible();
+  await expect(page.getByRole("link", { name: "projectil.py" })).toBeVisible();
+  await page.getByLabel("Acrescentar um ficheiro ao conjunto").fill("grafos");
+  await page.getByRole("button", { name: "Acrescentar", exact: true }).click();
+  await expect(page.getByText("Ficheiros do conjunto (3)")).toBeVisible();
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "projectil.py" })
+    .getByRole("button", {
+      name: "Retirar",
+    })
+    .click();
+  await page.getByRole("button", { name: "Guardar conjunto" }).click();
+  await expect(page.getByText(/biblioteca é actualizada/)).toBeVisible();
+  const edit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(edit.paths).toHaveLength(3);
+  const records = edit.paths.map((p) => YAML.parse(fake.text(REPO, p)!));
+  const kept = records.filter((r) => r.bundle);
+  expect(kept).toHaveLength(2);
+  expect(kept.every((r) => r.bundle.method === "user" && r.bundle.name === "Projecteis")).toBe(
+    true,
+  );
+  const out = records.find((r) => !r.bundle);
+  expect(out.bundle_dismissed).toBe(true);
+  expect(out.sources[0].path).toBe("FG/Projecteis/projectil.py");
 
   // Juntar dois ficheiros num conjunto (com nome).
   await page.getByRole("checkbox", { name: "grafos_ficha2.pdf" }).check();
