@@ -65,7 +65,7 @@ test("capturas", async ({ page }) => {
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByRole("button", { name: "Editar cursos" }).click();
   await page.getByRole("button", { name: "Acrescentar curso" }).click();
-  await page.getByLabel("Nome do curso").fill("Licenciatura em Mat");
+  await page.getByLabel("Nome do curso").fill("Mat");
   await page.screenshot({ path: `${out}/2d-cursos-cadeira.png`, fullPage: true });
   await page.getByRole("button", { name: "Cancelar" }).click();
   await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();

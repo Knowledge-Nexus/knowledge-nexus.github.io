@@ -5,11 +5,13 @@
 
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ErrorBox, Notice } from "../../components/ui";
+import { Link as RouterLink } from "react-router";
+import { ErrorBox, Notice, unitColor } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
 import { type CourseColor, courseColors } from "../../lib/courseColors";
 import { normalize, slugify } from "../../lib/normalize";
+import { courseTitle, degreeOf } from "../../lib/reference";
 import { UnitBook } from "./LibraryPage";
 
 const DRAG_TYPE = "application/x-nexus-unit";
@@ -107,16 +109,19 @@ export function Shelves(props: { units: UnitRow[] }) {
     const institutions = meta.institutions();
     if (!readOnly && institutions.length === 1) {
       const inst = institutions[0]!;
-      const known = new Set(courses.map((c) => normalize(c.name)));
+      // "Licenciatura em Engenharia Informática" é o mesmo curso que "Engenharia Informática".
+      const known = new Set(courses.map((c) => normalize(courseTitle(c.name))));
       for (const p of meta.proposals("open").filter((x) => x.kind === "course")) {
-        if (known.has(normalize(p.name))) continue;
-        const slug = slugify(p.name.replace(/^licenciatura em /i, ""), 40);
+        const name = courseTitle(p.name);
+        if (known.has(normalize(name))) continue;
+        known.add(normalize(name));
+        const slug = slugify(name, 40);
         courses.push({
           key: `${inst.slug}/${slug}`,
           institution: inst.slug,
           slug,
-          name: p.name,
-          degree: /^licenciatura/i.test(p.name) ? "licenciatura" : null,
+          name,
+          degree: degreeOf(p.name),
           proposalId: p.id,
         });
       }
@@ -256,125 +261,174 @@ export function Shelves(props: { units: UnitRow[] }) {
     </div>
   );
 
-  return (
-    <div className="space-y-10">
-      {!readOnly && <p className="text-sm text-muted">{t("shelves.hint")}</p>}
-      {error ? <ErrorBox error={error} /> : null}
-      {saved && <Notice>{t("common.pending_sync")}</Notice>}
-      {shelves.map((shelf) => {
-        const key = shelf.course.key;
-        const links = linksOf(key).filter((l) => unitMap.has(l.unit_key));
-        const years = [...new Set(links.map((l) => l.curricular_year))].sort(
-          (a, b) => (a ?? 99) - (b ?? 99),
-        );
-        const { color, secondary, label } = shelf.color;
-        return (
-          <section
-            key={key}
-            onDragOver={allow(key)}
-            onDrop={(e) => dropOn(e, { course: key, year: null })}
-            aria-label={shelf.course.name}
-            className={`overflow-hidden rounded-3xl border bg-sheet/70 transition ${hover === key ? "border-gold shadow-[0_0_0_3px_var(--color-gold)]" : "border-line"}`}
-          >
-            <header
-              className="flex flex-wrap items-center gap-3 px-5 py-3 text-white"
-              style={{
-                background: secondary
-                  ? `linear-gradient(90deg, ${color} 0 85%, ${secondary} 85% 92%, ${color} 92%)`
-                  : color,
+  const looseList = loose.length > 0 && (
+    <aside
+      aria-label={t("library.no_course")}
+      className="rounded-2xl border border-line bg-sheet/80 p-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto"
+    >
+      <h2 className="font-serif text-lg font-semibold text-ink">{t("library.no_course")}</h2>
+      {!readOnly && <p className="mb-2 text-xs text-muted">{t("shelves.loose_hint")}</p>}
+      <ul className="space-y-1.5">
+        {loose.map((u) => (
+          <li key={u.key}>
+            <LooseUnit
+              unit={u}
+              count={stats.get(u.key)?.filed ?? 0}
+              draggable={!readOnly}
+              onDragStart={(e) => {
+                e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ unit: u.key, from: null }));
+                e.dataTransfer.effectAllowed = "all";
               }}
-              title={label}
+            />
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      <div className="space-y-10">
+        {!readOnly && <p className="text-sm text-muted">{t("shelves.hint")}</p>}
+        {error ? <ErrorBox error={error} /> : null}
+        {saved && <Notice>{t("common.pending_sync")}</Notice>}
+        {shelves.map((shelf) => {
+          const key = shelf.course.key;
+          const links = linksOf(key).filter((l) => unitMap.has(l.unit_key));
+          const years = [...new Set(links.map((l) => l.curricular_year))].sort(
+            (a, b) => (a ?? 99) - (b ?? 99),
+          );
+          const { color, label } = shelf.color;
+          return (
+            <section
+              key={key}
+              onDragOver={allow(key)}
+              onDrop={(e) => dropOn(e, { course: key, year: null })}
+              aria-label={courseTitle(shelf.course.name)}
+              className={`overflow-hidden rounded-3xl border bg-sheet/70 transition ${hover === key ? "border-gold shadow-[0_0_0_3px_var(--color-gold)]" : "border-line"}`}
             >
-              <h2 className="font-serif text-xl font-semibold drop-shadow-sm">
-                {shelf.course.name}
-              </h2>
-              {shelf.proposalId && (
-                <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs">
-                  {t("shelves.proposed")}
+              <header
+                className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3"
+                title={label}
+              >
+                <h2 className="font-serif text-xl font-semibold" style={{ color }}>
+                  {courseTitle(shelf.course.name)}
+                </h2>
+                {shelf.proposalId && (
+                  <span className="rounded-full bg-marker-soft px-2 py-0.5 text-xs text-ink-soft">
+                    {t("shelves.proposed")}
+                  </span>
+                )}
+                <span className="ml-auto text-xs text-muted">
+                  {t("library.documents_units", { count: links.length })}
                 </span>
-              )}
-              <span className="ml-auto text-xs opacity-90">
-                {t("library.documents_units", { count: links.length })}
-              </span>
-            </header>
-            <div className="space-y-5 p-5">
-              {links.length === 0 && (
-                <p className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">
-                  {t(readOnly ? "shelves.empty_readonly" : "shelves.empty")}
-                </p>
-              )}
-              {years.map((year) => {
-                const zoneKey = `${key}#${year ?? "sem-ano"}`;
-                const inYear = links
-                  .filter((l) => l.curricular_year === year)
-                  .sort((a, b) => (a.semester ?? 9) - (b.semester ?? 9));
-                return (
-                  // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
-                  <div
-                    key={zoneKey}
-                    role="group"
-                    aria-label={year ? t("library.year_group", { year }) : t("shelves.no_year")}
-                    onDrop={(e) => dropOn(e, { course: key, year })}
-                    onDragOver={allow(zoneKey)}
-                    onDragLeave={() => setHover((h) => (h === zoneKey ? null : h))}
-                    className={`rounded-2xl p-1 transition ${hover === zoneKey ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
-                  >
-                    <h3
-                      className="mb-2 flex items-center gap-2 text-sm font-semibold tracking-wide uppercase"
-                      style={{ color }}
+              </header>
+              <div className="space-y-5 p-5">
+                {links.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">
+                    {t(readOnly ? "shelves.empty_readonly" : "shelves.empty")}
+                  </p>
+                )}
+                {years.map((year) => {
+                  const zoneKey = `${key}#${year ?? "sem-ano"}`;
+                  const inYear = links
+                    .filter((l) => l.curricular_year === year)
+                    .sort((a, b) => (a.semester ?? 9) - (b.semester ?? 9));
+                  return (
+                    // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
+                    <div
+                      key={zoneKey}
+                      role="group"
+                      aria-label={year ? t("library.year_group", { year }) : t("shelves.no_year")}
+                      onDrop={(e) => dropOn(e, { course: key, year })}
+                      onDragOver={allow(zoneKey)}
+                      onDragLeave={() => setHover((h) => (h === zoneKey ? null : h))}
+                      className={`rounded-2xl p-1 transition ${hover === zoneKey ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
                     >
-                      {year ? t("library.year_group", { year }) : t("shelves.no_year")}
-                    </h3>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {inYear.map((l) =>
-                        book(
-                          unitMap.get(l.unit_key)!,
-                          key,
-                          l.semester ? t("library.semester", { semester: l.semester }) : "",
-                        ),
-                      )}
+                      <h3
+                        className="mb-2 flex items-center gap-2 text-sm font-semibold tracking-wide uppercase"
+                        style={{ color }}
+                      >
+                        {year ? t("library.year_group", { year }) : t("shelves.no_year")}
+                      </h3>
+                      <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                        {inYear.map((l) =>
+                          book(
+                            unitMap.get(l.unit_key)!,
+                            key,
+                            l.semester ? t("library.semester", { semester: l.semester }) : "",
+                          ),
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+                {!readOnly && links.length > 0 && (
+                  <div className="flex flex-wrap gap-2 text-xs text-muted">
+                    <span>{t("shelves.year_targets")}</span>
+                    {[1, 2, 3, 4, 5]
+                      .filter((y) => !years.includes(y))
+                      .map((y) => {
+                        const zoneKey = `${key}#novo-${y}`;
+                        return (
+                          // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
+                          <span
+                            key={zoneKey}
+                            role="group"
+                            aria-label={t("library.year_group", { year: y })}
+                            onDragOver={allow(zoneKey)}
+                            onDragLeave={() => setHover((h) => (h === zoneKey ? null : h))}
+                            onDrop={(e) => dropOn(e, { course: key, year: y })}
+                            className={`rounded-full border border-dashed px-3 py-1 ${hover === zoneKey ? "border-gold bg-marker-soft text-ink" : "border-line-strong"}`}
+                          >
+                            {t("library.year_group", { year: y })}
+                          </span>
+                        );
+                      })}
                   </div>
-                );
-              })}
-              {!readOnly && links.length > 0 && (
-                <div className="flex flex-wrap gap-2 text-xs text-muted">
-                  <span>{t("shelves.year_targets")}</span>
-                  {[1, 2, 3, 4, 5]
-                    .filter((y) => !years.includes(y))
-                    .map((y) => {
-                      const zoneKey = `${key}#novo-${y}`;
-                      return (
-                        // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
-                        <span
-                          key={zoneKey}
-                          role="group"
-                          aria-label={t("library.year_group", { year: y })}
-                          onDragOver={allow(zoneKey)}
-                          onDragLeave={() => setHover((h) => (h === zoneKey ? null : h))}
-                          onDrop={(e) => dropOn(e, { course: key, year: y })}
-                          className={`rounded-full border border-dashed px-3 py-1 ${hover === zoneKey ? "border-gold bg-marker-soft text-ink" : "border-line-strong"}`}
-                        >
-                          {t("library.year_group", { year: y })}
-                        </span>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })}
-      {loose.length > 0 && (
-        <section aria-label={t("library.no_course")}>
-          <h2 className="mb-3 font-serif text-xl font-semibold text-ink">
-            {t("library.no_course")}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {loose.map((u) => book(u, null, ""))}
-          </div>
-        </section>
-      )}
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      {looseList}
     </div>
+  );
+}
+
+/** Uma cadeira sem curso, em formato compacto (para arrastar para um curso). */
+function LooseUnit(props: {
+  unit: UnitRow;
+  count: number;
+  draggable: boolean;
+  onDragStart: (event: DragEvent) => void;
+}) {
+  const { t } = useTranslation();
+  const { to } = useApp();
+  const { unit } = props;
+  return (
+    <RouterLink
+      to={to(`/biblioteca?uc=${encodeURIComponent(unit.key)}`)}
+      draggable={props.draggable}
+      onDragStart={props.onDragStart}
+      className={`flex items-stretch overflow-hidden rounded-xl border border-line bg-sheet text-sm transition hover:border-gold ${props.draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+    >
+      <span className="w-1.5 shrink-0" style={{ backgroundColor: unitColor(unit.key) }} />
+      <span className="min-w-0 flex-1 px-2.5 py-1.5">
+        <span
+          className="block text-[11px] font-semibold tracking-wider uppercase"
+          style={{ color: unitColor(unit.key) }}
+        >
+          {unit.acronym ?? unit.code ?? unit.slug}
+        </span>
+        <span className="block truncate font-medium text-ink" title={unit.name}>
+          {unit.name}
+        </span>
+        <span className="block text-[11px] text-muted">
+          {t("library.documents", { count: props.count })}
+        </span>
+      </span>
+    </RouterLink>
   );
 }

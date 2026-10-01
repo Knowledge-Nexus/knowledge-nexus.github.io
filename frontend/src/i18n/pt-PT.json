@@ -435,6 +435,7 @@
     "empty_readonly": "Ainda sem cadeiras.",
     "no_year": "Ano por indicar",
     "year_targets": "Largar num ano:",
-    "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição."
+    "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição.",
+    "loose_hint": "Arrasta-as para o curso (e o ano) certo."
   }
 }

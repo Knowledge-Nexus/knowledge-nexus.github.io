@@ -42,7 +42,8 @@ function shade(hex: string, amount: number): string {
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
-const STEPS = [0, -0.28, 0.3, -0.48, 0.5];
+// Só escurecer: a cor é usada no nome (texto sobre o papel), tem de se ler bem.
+const STEPS = [-0.12, -0.38, -0.55, -0.25, -0.65];
 
 /** Cores de todos os cursos (os que partilham a cor da área ficam com tons diferentes). */
 export function courseColors(courses: Pick<CourseRow, "key" | "name">[]): Map<string, CourseColor> {

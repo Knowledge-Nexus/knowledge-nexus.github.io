@@ -145,7 +145,10 @@ Dependências de sistema (Ubuntu/WSL2):
   - Biblioteca em estantes curso → ano (`features/library/Shelves.tsx`): as cadeiras
     arrastam-se para os cursos e anos (ficam também onde estavam); arrastar para fora de
     um curso tira-as dele. Os cursos propostos pelo material aparecem como estantes e
-    criam-se ao largar uma cadeira. Cor de cada curso: a cor tradicional da área (fitas de
+    criam-se ao largar uma cadeira. As cadeiras sem curso ficam numa lista à direita (fixa
+    ao deslocar), para se arrastarem. Os cursos mostram-se sem o grau ("Engenharia
+    Informática"; `courseTitle`/`degreeOf` em `lib/reference.ts`), e um curso novo é gravado
+    assim, com o grau em `degree`. Cor de cada curso (só no nome): a cor tradicional da área (fitas de
     Coimbra, `course_colors` em `data/reference/pt.json`, `lib/courseColors.ts`), com tons
     diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome.
   - Cursos de cada cadeira: "Editar cursos" na cadeira ou "Organizar por curso" na

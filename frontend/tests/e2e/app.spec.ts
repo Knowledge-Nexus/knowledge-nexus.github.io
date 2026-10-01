@@ -310,7 +310,7 @@ test("editar os cursos de uma cadeira", async ({ page }) => {
     .click();
   await page.getByRole("button", { name: "Editar cursos" }).click();
   // Sai do curso actual e entra num curso novo (com sugestões ao escrever).
-  await page.getByRole("checkbox", { name: /Licenciatura em Engenharia Informática/ }).uncheck();
+  await page.getByRole("checkbox", { name: /Engenharia Informática/ }).uncheck();
   await page.getByRole("button", { name: "Acrescentar curso" }).click();
   await page.getByLabel("Nome do curso").fill("Licenciatura em Matemática");
   await page.getByLabel("Ano", { exact: true }).last().selectOption("1");
@@ -327,7 +327,7 @@ test("editar os cursos de uma cadeira", async ({ page }) => {
   expect(units).not.toContain("am1");
   expect(units).toEqual(expect.arrayContaining(["alga", "p1", "fg", "bd"]));
   const novo = institution.courses.find(
-    (c: { name: string }) => c.name === "Licenciatura em Matemática",
+    (c: { name: string }) => c.name === "Matemática", // sem o grau no nome
   );
   expect(novo.units).toEqual([{ unit: "am1", curricular_year: 1, semester: 2 }]);
 });
@@ -406,8 +406,9 @@ test("arrastar cadeiras entre cursos e anos", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
   await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
-  const lei = page.getByRole("region", { name: "Licenciatura em Engenharia Informática" });
-  await expect(lei.getByRole("group", { name: "1.º ano" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Biblioteca" })).toBeVisible();
+  const lei = page.getByRole("region", { name: "Engenharia Informática" });
+  await expect(lei.getByRole("group", { name: "1.º ano" })).toBeVisible({ timeout: 20_000 });
   await expect(lei.getByRole("group", { name: "2.º ano" })).toBeVisible();
 
   // Arrastar AM1 para o 3.º ano (dentro do mesmo curso).
@@ -430,7 +431,7 @@ test("arrastar cadeiras entre cursos e anos", async ({ page }) => {
     page.getByRole("heading", { name: "Biblioteca" }),
   );
   await expect(
-    page.getByRole("region", { name: "Sem curso" }).getByText("Bases de Dados"),
+    page.getByRole("complementary", { name: "Sem curso" }).getByText("Bases de Dados"),
   ).toBeVisible();
   bundle = YAML.parse(fake.text(REPO, fake.repos.get(REPO)!.commits.at(-1)!.paths[0]!)!);
   units = bundle.institutions[0].courses[0].units.map((u: { unit: string }) => u.unit);

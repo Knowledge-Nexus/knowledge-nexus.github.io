@@ -9,7 +9,7 @@ import { Badge, Button, ErrorBox, Notice } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
 import { normalize, slugify } from "../../lib/normalize";
-import { courseSuggestions, DEGREES } from "../../lib/reference";
+import { courseSuggestions, courseTitle, DEGREES } from "../../lib/reference";
 
 interface Link {
   on: boolean;
@@ -62,7 +62,7 @@ export function UnitCourses(props: { unit: UnitRow }) {
           const detail = courseLabel(t, link.curricular_year, link.semester);
           return (
             <Badge key={course.key} tone="info">
-              {course.name}
+              {courseTitle(course.name)}
               {detail ? ` · ${detail}` : ""}
             </Badge>
           );
@@ -177,14 +177,15 @@ function CoursesEditor(props: {
       const used = new Set(courses.map((c) => c.slug));
       const accept: string[] = [];
       for (const course of added.filter((c) => c.name.trim())) {
-        let slug = slugify(course.name, 40);
+        const title = courseTitle(course.name.trim());
+        let slug = slugify(title, 40);
         while (used.has(slug)) slug = `${slug}-2`;
         used.add(slug);
-        const proposal = proposals.find((p) => normalize(p.name) === normalize(course.name));
+        const proposal = proposals.find((p) => normalize(courseTitle(p.name)) === normalize(title));
         if (proposal) accept.push(proposal.id);
         bundleCourses.push({
           slug,
-          name: course.name.trim(),
+          name: title,
           ...(course.degree ? { degree: course.degree } : {}),
           units: [linkOf(own, course)],
         });
@@ -261,7 +262,7 @@ function CoursesEditor(props: {
                   checked={link.on}
                   onChange={(e) => patch(course.key, { on: e.target.checked })}
                 />
-                <span className="truncate">{course.name}</span>
+                <span className="truncate">{courseTitle(course.name)}</span>
               </label>
               {link.on && (
                 <>
