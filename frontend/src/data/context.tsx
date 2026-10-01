@@ -5,7 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 import type { WorkflowRun } from "./github/client";
 import type { DataSource } from "./source";
 import { ReadonlyDb } from "./sqlite/db";
-import { MetaIndex, SUPPORTED_SCHEMA_VERSION } from "./sqlite/queries";
+import { MetaIndex, MIN_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION } from "./sqlite/queries";
 import { SearchIndex } from "./sqlite/search";
 import type { IndexManifest } from "./types";
 
@@ -84,7 +84,8 @@ export function DataProvider(props: {
       const meta = new MetaIndex(
         await ReadonlyDb.open(await source.indexFile("meta.db", metaSha!)),
       );
-      if (meta.schemaVersion() !== SUPPORTED_SCHEMA_VERSION) {
+      const version = meta.schemaVersion();
+      if (version < MIN_SCHEMA_VERSION || version > SUPPORTED_SCHEMA_VERSION) {
         throw new Error(
           `índice com esquema ${meta.schemaVersion()}, esta interface suporta o ${SUPPORTED_SCHEMA_VERSION}`,
         );

@@ -55,6 +55,23 @@ def build(out: Path) -> None:
             "search_other_viewer": [[h.doc_id, h.page] for h in search.search("sucessao", "x")],
         }
         (out / "esperado.json").write_text(json.dumps(expected, indent=2), encoding="utf-8")
+        _previous_schema(out)
+
+
+def _previous_schema(out: Path) -> None:
+    """Cópia no esquema 3 (sem as colunas dos conjuntos): a interface tem de continuar a ler
+    os índices antigos até o repositório de dados voltar a ser processado."""
+    import shutil
+    import sqlite3
+
+    target = out / "meta-v3.db"
+    shutil.copyfile(out / "meta.db", target)
+    con = sqlite3.connect(target)
+    for column in ("bundle_id", "bundle_name", "bundle_method", "bundle_lead"):
+        con.execute(f"ALTER TABLE documents DROP COLUMN {column}")
+    con.execute("UPDATE meta SET value = '3' WHERE key = 'schema_version'")
+    con.commit()
+    con.close()
 
 
 if __name__ == "__main__":

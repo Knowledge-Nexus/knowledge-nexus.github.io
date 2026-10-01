@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalize } from "../../lib/normalize";
 import { ReadonlyDb } from "./db";
-import { MetaIndex, SUPPORTED_SCHEMA_VERSION } from "./queries";
+import { MetaIndex, MIN_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION } from "./queries";
 import { SearchIndex } from "./search";
 
 const dir = resolve(__dirname, "../../../test-fixtures/contrato");
@@ -31,6 +31,15 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
         search_other_viewer: [string, number][];
       })
     : null;
+
+  it("continua a ler um índice do esquema anterior (sem conjuntos)", async () => {
+    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta-v3.db"))));
+    expect(meta.schemaVersion()).toBe(MIN_SCHEMA_VERSION);
+    const docs = meta.documents({ includeArchives: true });
+    expect(docs.map((d) => d.id).sort()).toEqual(expected!.documents);
+    expect(docs.every((d) => d.bundle_id === null && d.bundle_lead === null)).toBe(true);
+    expect(meta.reviewQueue().length).toBeGreaterThan(0);
+  });
 
   it("lê meta.db com o esquema suportado", async () => {
     const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta.db"))));

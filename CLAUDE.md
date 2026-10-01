@@ -169,7 +169,9 @@ Dependências de sistema (Ubuntu/WSL2):
   - subir `SCHEMA_VERSION` (`index/schema.py`);
   - actualizar `frontend/src/data/sqlite/queries.ts` e `SUPPORTED_SCHEMA_VERSION`;
   - regenerar o contrato;
-  - criar uma revisão Alembic em `backend/nexus/index/alembic/versions/`.
+  - criar uma revisão Alembic em `backend/nexus/index/alembic/versions/`;
+  - manter `MIN_SCHEMA_VERSION` a ler o esquema anterior (índices ainda por reconstruir),
+    com a cópia `meta-v3.db` do contrato.
 - **Mudar o formato dos ficheiros do repositório de dados:** subir `FORMAT_VERSION`
   (`nexus/__init__.py`) e registar a migração em `nexus/formats`.
 - **Novo tipo de documento, avaliação ou época:** só dados (`config/vocabularios.yaml`),

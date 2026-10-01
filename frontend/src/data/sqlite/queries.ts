@@ -16,6 +16,9 @@ import type {
 import type { ReadonlyDb } from "./db";
 
 export const SUPPORTED_SCHEMA_VERSION = 4;
+/** O esquema 3 só não tem as colunas dos conjuntos (lidas como vazias): enquanto o
+ * repositório de dados não voltar a ser processado, a interface continua a funcionar. */
+export const MIN_SCHEMA_VERSION = 3;
 
 const JSON_DOC_COLUMNS = [
   "review_reasons",
@@ -44,6 +47,9 @@ function toDocument(row: Record<string, unknown>): DocumentRow {
   }
   out.needs_review = Boolean(row.needs_review);
   out.visibility_inherited = Boolean(row.visibility_inherited);
+  for (const column of ["bundle_id", "bundle_name", "bundle_method", "bundle_lead"]) {
+    out[column] = row[column] ?? null;
+  }
   return out as unknown as DocumentRow;
 }
 
