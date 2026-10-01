@@ -451,3 +451,25 @@ def test_user_bundle_is_kept_and_named(catalog_root: Path) -> None:
     assert exam.bundle and exam.bundle.lead == exam.id and exam.bundle.method == "user"
     assert notes.bundle == exam.bundle and notes.classification.value("unit") == "ufe/am1"
     assert notes.filed_name and notes.filed_name.endswith("/notas.txt")
+
+
+def test_user_chooses_the_bundle_lead(catalog_root: Path) -> None:
+    gerar.pdf_nativo(deposit(catalog_root, "Trabalho/Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    deposit(catalog_root, "Trabalho/resolucao.py").write_text("print(1 + 2)\n" * 5)
+    Pipeline(DataRepo(catalog_root)).run()
+    repo = DataRepo(catalog_root)
+    docs = {d.sources[0].path: d for d in repo.documents.values()}
+    exam, code = docs["Trabalho/Exame_Recurso_2023-24.pdf"], docs["Trabalho/resolucao.py"]
+    assert exam.bundle and exam.bundle.lead == exam.id
+    ref = exam.bundle.model_copy(update={"method": "user", "lead_choice": code.id})
+    for doc in (exam, code):
+        repo.save_document(doc.model_copy(update={"bundle": ref}))
+    Pipeline(DataRepo(catalog_root)).run()
+    docs = {d.sources[0].path: d for d in DataRepo(catalog_root).documents.values()}
+    exam, code = docs["Trabalho/Exame_Recurso_2023-24.pdf"], docs["Trabalho/resolucao.py"]
+    assert exam.bundle and code.bundle and exam.bundle.lead == code.id == code.bundle.lead
+    assert exam.bundle.lead_choice == code.id
+    # O exame deixa de herdar (o principal escolhido ainda não está arrumado) e mantém o
+    # seu próprio nome; nada se perde.
+    assert exam.classification.value("unit") == "ufe/am1"
+    assert exam.filed_name and "/" not in exam.filed_name

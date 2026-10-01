@@ -59,12 +59,18 @@ export function separateBundle(source: DataSource, docs: DocumentRow[]) {
  */
 export function saveBundle(
   source: DataSource,
-  bundle: { id: string; name: string },
+  bundle: { id: string; name: string; leadChoice?: string | null },
   members: DocumentRow[],
   removed: DocumentRow[],
 ) {
   const dissolve = members.length < 2;
-  const ref = { id: bundle.id, name: bundle.name.trim(), method: "user" };
+  const lead = members.some((m) => m.id === bundle.leadChoice) ? bundle.leadChoice : null;
+  const ref = {
+    id: bundle.id,
+    name: bundle.name.trim(),
+    method: "user",
+    ...(lead ? { lead_choice: lead } : {}),
+  };
   const leaving = dissolve ? [...removed, ...members] : removed;
   return source.patchDocuments(
     [

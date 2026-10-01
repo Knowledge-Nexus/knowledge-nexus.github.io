@@ -564,8 +564,12 @@ class Pipeline:
             if ref is not None and ref.method == METHOD_HEURISTIC and len(group) < 2:
                 ref = None
             if ref is not None and group:
-                lead = choose_lead(group, code)
-                ref = ref.model_copy(update={"lead": lead.id})
+                ids = {d.id for d in group}
+                chosen = sorted({d.bundle.lead_choice for d in group
+                                 if d.bundle is not None and d.bundle.lead_choice in ids})
+                lead = docs[chosen[0]] if chosen else choose_lead(group, code)
+                ref = ref.model_copy(update={
+                    "lead": lead.id, "lead_choice": chosen[0] if chosen else None})
                 if lead.id != doc_id:
                     members.append(doc_id)
             if ref != doc.bundle:

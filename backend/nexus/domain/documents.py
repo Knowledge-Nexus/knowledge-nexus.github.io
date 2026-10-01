@@ -164,6 +164,8 @@ class BundleRef(Record):
     name: str
     method: str = "user"
     lead: str | None = None
+    # Principal escolhido por ti (manda sobre a escolha do motor, se ainda for do conjunto).
+    lead_choice: str | None = None
 
 
 class Document(Record):

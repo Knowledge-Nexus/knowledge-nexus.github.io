@@ -36,8 +36,17 @@ def _v3_bundles(root: Path) -> None:
     """3 → 4: novos campos opcionais `bundle` e `bundle_dismissed` nos documentos."""
 
 
+def _v4_bundle_lead_choice(root: Path) -> None:
+    """4 → 5: novo campo opcional `bundle.lead_choice` (principal escolhido por ti)."""
+
+
 # {versão de origem: função que migra para a versão seguinte}
-MIGRATIONS: dict[int, Migration] = {1: _v1_visibility_inherits, 2: _v2_duplicate_of, 3: _v3_bundles}
+MIGRATIONS: dict[int, Migration] = {
+    1: _v1_visibility_inherits,
+    2: _v2_duplicate_of,
+    3: _v3_bundles,
+    4: _v4_bundle_lead_choice,
+}
 
 
 def current_version(root: Path) -> int:

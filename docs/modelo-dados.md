@@ -29,7 +29,8 @@
   (`method: heuristic`) e o utilizador junta-os à mão (`method: user`). O principal (`lead`)
   é escolhido pelo pipeline; os outros herdam dele os campos de classificação que não são
   do utilizador e ficam arrumados como `<principal>/<nome original>`. "Separar" grava
-  `bundle_dismissed: true` (formato 4).
+  `bundle_dismissed: true` (formato 4). "Tornar principal" grava `bundle.lead_choice`, que
+  manda sobre a escolha do motor (formato 5).
 
 **Regras de partilha e visibilidade:**
 - O conteúdo derivado (texto, e mais tarde resumos e perguntas) é calculado por blob e

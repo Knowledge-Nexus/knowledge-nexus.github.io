@@ -30,6 +30,7 @@ export function BundleEditor(props: { doc: DocumentRow }) {
   const [added, setAdded] = useState<DocumentRow[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [name, setName] = useState(doc.bundle_name ?? "");
+  const [lead, setLead] = useState<string | null>(doc.bundle_lead);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -39,7 +40,11 @@ export function BundleEditor(props: { doc: DocumentRow }) {
 
   const members = [...current, ...added];
   const kept = members.filter((m) => !removed.has(m.id));
-  const changed = added.length > 0 || removed.size > 0 || name.trim() !== doc.bundle_name;
+  const changed =
+    added.length > 0 ||
+    removed.size > 0 ||
+    name.trim() !== doc.bundle_name ||
+    lead !== doc.bundle_lead;
   const inBundle = new Set(members.map((m) => m.id));
   const q = normalize(query);
   const candidates = q
@@ -57,7 +62,7 @@ export function BundleEditor(props: { doc: DocumentRow }) {
     try {
       await saveBundle(
         source,
-        { id: doc.bundle_id!, name: name.trim() || (doc.bundle_name ?? "") },
+        { id: doc.bundle_id!, name: name.trim() || (doc.bundle_name ?? ""), leadChoice: lead },
         kept,
         members.filter((m) => removed.has(m.id)),
       );
@@ -122,7 +127,23 @@ export function BundleEditor(props: { doc: DocumentRow }) {
                   {shortPath(m)}
                 </span>
               </span>
-              {m.id === doc.bundle_lead && <Badge tone="info">{t("bundle.lead")}</Badge>}
+              {m.id === lead && !out ? (
+                <Badge tone="info">{t("bundle.lead")}</Badge>
+              ) : (
+                !readOnly &&
+                !out && (
+                  <button
+                    type="button"
+                    className="shrink-0 text-xs text-pen underline-offset-2 hover:underline"
+                    onClick={() => {
+                      edit();
+                      setLead(m.id);
+                    }}
+                  >
+                    {t("bundle.make_lead")}
+                  </button>
+                )
+              )}
               {added.some((a) => a.id === m.id) && <Badge tone="warn">{t("bundle.new")}</Badge>}
               {!readOnly && (
                 <button

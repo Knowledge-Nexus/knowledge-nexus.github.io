@@ -356,6 +356,11 @@ test("conjuntos: o código segue o enunciado e juntar ficheiros à mão", async 
       name: "Retirar",
     })
     .click();
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "grafos_ficha2.pdf" })
+    .getByRole("button", { name: "Tornar principal" })
+    .click();
   await page.getByRole("button", { name: "Guardar conjunto" }).click();
   await expect(page.getByText(/biblioteca é actualizada/)).toBeVisible();
   const edit = fake.repos.get(REPO)!.commits.at(-1)!;
@@ -366,6 +371,8 @@ test("conjuntos: o código segue o enunciado e juntar ficheiros à mão", async 
   expect(kept.every((r) => r.bundle.method === "user" && r.bundle.name === "Projecteis")).toBe(
     true,
   );
+  const grafos = kept.find((r) => r.sources[0].path === "grafos_ficha2.pdf");
+  expect(kept.every((r) => r.bundle.lead_choice === grafos.id)).toBe(true);
   const out = records.find((r) => !r.bundle);
   expect(out.bundle_dismissed).toBe(true);
   expect(out.sources[0].path).toBe("FG/Projecteis/projectil.py");
