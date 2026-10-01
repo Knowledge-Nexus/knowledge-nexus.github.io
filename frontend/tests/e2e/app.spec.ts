@@ -438,3 +438,30 @@ test("arrastar cadeiras entre cursos e anos", async ({ page }) => {
   expect(units).not.toContain("bd");
   expect(units).toContain("am1");
 });
+
+test("depositar: as cópias são detectadas logo e não são enviadas", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "principal" })
+    .getByRole("link", { name: "Depositar" })
+    .click();
+  // Um ficheiro que já está na biblioteca (o mesmo conteúdo, com outro nome).
+  const original = Object.keys(snapshot.main).find((p) => p.startsWith("originais/"))!;
+  const existing = Buffer.from(snapshot.main[original]!, "base64");
+  const texto = Buffer.from("Física Geral: energia cinética e potencial");
+  await page.getByTestId("pick-files").setInputFiles([
+    { name: "resumo.txt", mimeType: "text/plain", buffer: texto },
+    { name: "resumo (1).txt", mimeType: "text/plain", buffer: texto },
+    { name: "outro-nome.bin", mimeType: "application/octet-stream", buffer: existing },
+  ]);
+  await expect(page.getByText("2 cópia(s) não vão ser enviadas.")).toBeVisible();
+  await expect(page.getByText("igual a resumo.txt")).toBeVisible();
+  await expect(page.getByText("já na biblioteca (não enviada)")).toBeVisible();
+  await page.getByRole("button", { name: "Enviar 1 ficheiro(s)" }).click();
+  await expect(page.getByText(/Enviado\./)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.paths).toHaveLength(1);
+  expect(commit.paths[0]).toMatch(/\/resumo\.txt$/);
+});

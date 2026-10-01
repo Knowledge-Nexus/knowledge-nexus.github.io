@@ -144,9 +144,14 @@
       "junk": "lixo do sistema (ignorado)",
       "ignored_dir": "pasta gerada (ignorada)",
       "invalid": "caminho inválido",
-      "duplicate": "repetido neste lote"
+      "copy_batch": "cópia (não enviada)",
+      "copy_library": "já na biblioteca (não enviada)"
     },
-    "sending_progress": "A enviar… {{done}} de {{total}}"
+    "sending_progress": "A enviar… {{done}} de {{total}}",
+    "copies_title": "{{count}} cópia(s) não vão ser enviadas.",
+    "copies_detail": "Têm exactamente o mesmo conteúdo que outro ficheiro: {{batch}} repetida(s) nesta selecção e {{library}} já na tua biblioteca (mesmo com outro nome).",
+    "include_copies": "Enviar também as cópias (só para registar o nome e a pasta de origem; o conteúdo não é guardado duas vezes)",
+    "copy_of": "igual a {{name}}"
   },
   "pipeline": {
     "none": "Ainda sem actividade.",

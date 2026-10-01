@@ -25,21 +25,42 @@ import {
   sha256Hex,
 } from "../../lib/files";
 
-type State = "new" | "known" | "too_big" | "junk" | "ignored_dir" | "invalid" | "duplicate";
+type State =
+  | "new"
+  | "known"
+  | "too_big"
+  | "junk"
+  | "ignored_dir"
+  | "invalid"
+  | "copy_batch"
+  | "copy_library";
 
 interface Row {
   path: string;
   size: number;
   state: State;
   entry?: UploadEntry;
+  /** Cópia de quê: o outro ficheiro da selecção ou o documento que já tens. */
+  copyOf?: string;
+  /** Para "Enviar também as cópias" (só referência, sem voltar a enviar os bytes). */
+  copyEntry?: UploadEntry;
 }
 
+export type Known = (sha: string) => { mine?: string; elsewhere: boolean };
+
+/**
+ * Prepara os ficheiros escolhidos: calcula o SHA-256 de cada um e separa logo as cópias
+ * (o mesmo conteúdo, com qualquer nome), que não são enviadas:
+ * - iguais a outro ficheiro desta selecção (ou de uma escolha anterior ainda na lista);
+ * - iguais a um documento que já tens na biblioteca.
+ */
 export async function prepareUpload(
   files: PickedFile[],
-  known: (sha: string) => boolean,
+  known: Known,
+  earlier: Map<string, string> = new Map(),
 ): Promise<Row[]> {
   const rows: Row[] = [];
-  const seen = new Set<string>();
+  const seen = new Map(earlier);
   for (const picked of files) {
     const path = safeRelativePath(picked.relativePath);
     const size = picked.file.size;
@@ -61,18 +82,23 @@ export async function prepareUpload(
     }
     const bytes = new Uint8Array(await picked.file.arrayBuffer());
     const sha256 = await sha256Hex(bytes);
-    const key = `${path}:${sha256}`;
-    if (seen.has(key)) {
-      rows.push({ path, size, state: "duplicate" });
+    const reference: UploadEntry = { relativePath: path, sha256 };
+    const twin = seen.get(sha256);
+    if (twin !== undefined) {
+      rows.push({ path, size, state: "copy_batch", copyOf: twin, copyEntry: reference });
       continue;
     }
-    seen.add(key);
-    const reused = known(sha256);
+    seen.set(sha256, path);
+    const found = known(sha256);
+    if (found.mine) {
+      rows.push({ path, size, state: "copy_library", copyOf: found.mine, copyEntry: reference });
+      continue;
+    }
     rows.push({
       path,
       size,
-      state: reused ? "known" : "new",
-      entry: { relativePath: path, sha256, ...(reused ? {} : { bytes }) },
+      state: found.elsewhere ? "known" : "new",
+      entry: found.elsewhere ? reference : { ...reference, bytes },
     });
   }
   return rows;
@@ -80,7 +106,7 @@ export async function prepareUpload(
 
 export function UploadPage() {
   const { t } = useTranslation();
-  const { source, meta, notifyCommit } = useApp();
+  const { source, meta, login, notifyCommit } = useApp();
   const [rows, setRows] = useState<Row[]>([]);
   const [hashing, setHashing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -88,6 +114,7 @@ export function UploadPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [over, setOver] = useState(false);
+  const [includeCopies, setIncludeCopies] = useState(false);
   const folderInput = useRef<HTMLInputElement>(null);
 
   async function add(files: PickedFile[]) {
@@ -95,7 +122,20 @@ export function UploadPage() {
     setError(null);
     setHashing(true);
     try {
-      const prepared = await prepareUpload(files, (sha) => meta?.knownSha(sha) ?? false);
+      const earlier = new Map(
+        rows.flatMap((r) => (r.entry ? [[r.entry.sha256, r.path] as [string, string]] : [])),
+      );
+      const prepared = await prepareUpload(
+        files,
+        (sha) => {
+          const mine = meta?.ownedSha(login, sha);
+          return {
+            ...(mine ? { mine: mine.source_path ?? mine.display_name } : {}),
+            elsewhere: meta?.knownSha(sha) ?? false,
+          };
+        },
+        earlier,
+      );
       setRows((current) => [...current, ...prepared]);
     } catch (err) {
       setError(err);
@@ -110,7 +150,11 @@ export function UploadPage() {
     await add(await filesFromDrop(event.dataTransfer));
   }
 
-  const entries = rows.flatMap((r) => (r.entry ? [r.entry] : []));
+  const copies = rows.filter((r) => r.state === "copy_batch" || r.state === "copy_library");
+  const copiesInBatch = copies.filter((r) => r.state === "copy_batch").length;
+  const entries = rows.flatMap((r) =>
+    r.entry ? [r.entry] : includeCopies && r.copyEntry ? [r.copyEntry] : [],
+  );
 
   async function send() {
     setSending(true);
@@ -172,6 +216,25 @@ export function UploadPage() {
       {hashing && <Spinner label={t("upload.hashing")} />}
       {error ? <ErrorBox error={error} /> : null}
       {sent && <Notice>✓ {t("upload.sent")}</Notice>}
+      {copies.length > 0 && (
+        <div className="space-y-2 rounded-2xl border border-marker/60 bg-marker-soft p-4 text-sm">
+          <p>
+            <strong>{t("upload.copies_title", { count: copies.length })}</strong>{" "}
+            {t("upload.copies_detail", {
+              batch: copiesInBatch,
+              library: copies.length - copiesInBatch,
+            })}
+          </p>
+          <label className="flex items-center gap-2 text-xs text-ink-soft">
+            <input
+              type="checkbox"
+              checked={includeCopies}
+              onChange={(e) => setIncludeCopies(e.target.checked)}
+            />
+            {t("upload.include_copies")}
+          </label>
+        </div>
+      )}
       {rows.length > 0 && (
         <Card
           actions={
@@ -195,11 +258,24 @@ export function UploadPage() {
                 key={`${row.path}-${row.entry?.sha256 ?? row.state}`}
                 className="flex items-center justify-between gap-3 py-1.5"
               >
-                <span className="truncate font-mono text-xs">{row.path}</span>
+                <span className="min-w-0">
+                  <span className="block truncate font-mono text-xs">{row.path}</span>
+                  {row.copyOf && (
+                    <span className="block truncate text-xs text-muted">
+                      {t("upload.copy_of", { name: row.copyOf })}
+                    </span>
+                  )}
+                </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="text-xs text-muted">{formatBytes(row.size)}</span>
                   <Badge
-                    tone={row.state === "new" ? "ok" : row.state === "known" ? "info" : "warn"}
+                    tone={
+                      row.state === "new"
+                        ? "ok"
+                        : row.state === "known" || (includeCopies && row.copyEntry !== undefined)
+                          ? "info"
+                          : "warn"
+                    }
                   >
                     {t(`upload.state.${row.state}`)}
                   </Badge>

@@ -227,6 +227,15 @@ export class MetaIndex {
     );
   }
 
+  /** O documento deste dono com exactamente este conteúdo (para avisar de cópias). */
+  ownedSha(owner: string, sha256: string): DocumentRow | undefined {
+    const row = this.db.get<Record<string, unknown>>(
+      "SELECT * FROM documents WHERE sha256 = ? AND owner = ? ORDER BY duplicate_of IS NOT NULL, id LIMIT 1",
+      [sha256, owner],
+    );
+    return row ? toDocument(row) : undefined;
+  }
+
   knownSha(sha256: string): boolean {
     return Boolean(this.db.get("SELECT 1 AS x FROM documents WHERE sha256 = ? LIMIT 1", [sha256]));
   }
