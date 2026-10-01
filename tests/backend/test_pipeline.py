@@ -473,3 +473,54 @@ def test_user_chooses_the_bundle_lead(catalog_root: Path) -> None:
     # seu próprio nome; nada se perde.
     assert exam.classification.value("unit") == "ufe/am1"
     assert exam.filed_name and "/" not in exam.filed_name
+
+
+def _lote(files: dict[str, bytes]) -> bytes:
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for name, data in files.items():
+            zf.writestr(name, data)
+    return buffer.getvalue()
+
+
+def test_lote_is_opened_as_if_files_were_deposited_one_by_one(catalog_root: Path,
+                                                              tmp_path: Path) -> None:
+    pdf = gerar.pdf_nativo(tmp_path / "x.pdf", gerar.EXAME_AM1).read_bytes()
+    deposit(catalog_root, "_lote-001.nexus-lote.zip").write_bytes(_lote({
+        "AM1/Exame_Recurso_2023-24.pdf": pdf,
+        "AM1/notas.txt": b"apontamentos de limites " * 20,
+    }))
+    report = Pipeline(DataRepo(catalog_root)).run()
+    docs = DataRepo(catalog_root).documents.values()
+    assert sorted(d.sources[0].path for d in docs) == ["AM1/Exame_Recurso_2023-24.pdf",
+                                                       "AM1/notas.txt"]
+    assert all(d.kind is DocumentKind.FILE and d.parent is None for d in docs)
+    assert not list((catalog_root / "deposito").rglob("*.nexus-lote.zip"))
+    assert any("lote aberto" in w for w in report.warnings)
+
+
+def test_lote_in_parts_waits_until_complete(catalog_root: Path) -> None:
+    import yaml
+
+    data = _lote({"AM1/a.txt": b"texto " * 50, "AM1/b.txt": b"outro " * 50})
+    half = len(data) // 2
+    base = "_lote-001.nexus-lote.zip"
+    deposit(catalog_root, f"{base}.nexus-part-0001").write_bytes(data[:half])
+    deposit(catalog_root, f"{base}.nexus-parts.yaml").write_text(yaml.safe_dump({
+        "parts": 2, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}))
+    report = Pipeline(DataRepo(catalog_root)).run()
+    assert not DataRepo(catalog_root).documents and report.skipped
+    deposit(catalog_root, f"{base}.nexus-part-0002").write_bytes(data[half:])
+    Pipeline(DataRepo(catalog_root)).run()
+    assert len(DataRepo(catalog_root).documents) == 2
+    assert not list((catalog_root / "deposito").rglob("*nexus-*"))
+
+
+def test_lote_with_path_traversal_is_refused(catalog_root: Path) -> None:
+    deposit(catalog_root, "_lote.nexus-lote.zip").write_bytes(_lote({"../fora.txt": b"x"}))
+    report = Pipeline(DataRepo(catalog_root)).run()
+    assert report.errors and not (catalog_root / "deposito" / "aluna" / "fora.txt").exists()
+    assert not (catalog_root / "fora.txt").exists()

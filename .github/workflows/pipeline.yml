@@ -54,6 +54,10 @@ jobs:
           if find deposito -type f -name '*.nexus-parts.yaml' 2>/dev/null | grep -q .; then
             office=true; archives=true
           fi
+          # Depósitos grandes chegam num lote (zip): o conteúdo só se conhece ao abrir.
+          if find deposito -type f -name '*.nexus-lote.zip*' 2>/dev/null | grep -q .; then
+            office=true; archives=true
+          fi
           echo "office=$office" >> "$GITHUB_OUTPUT"
           echo "archives=$archives" >> "$GITHUB_OUTPUT"
 

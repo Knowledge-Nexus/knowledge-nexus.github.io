@@ -56,23 +56,42 @@ export class GitHubClient {
     private readonly token: string,
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
     private readonly base = "https://api.github.com",
+    private readonly maxAttempts = 5,
+    private readonly baseDelayMs = 2000,
+    private readonly sleep: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms)),
   ) {}
 
+  /**
+   * Um pedido, com novas tentativas para falhas passageiras: rede ("Failed to fetch"),
+   * limites de ritmo do GitHub (403/429 com "rate limit", que muitas vezes chegam ao browser
+   * como erro de rede) e erros 5xx. Espera o que o GitHub pedir (Retry-After), ou cada vez
+   * mais tempo.
+   */
   private async send(method: string, path: string, body?: unknown, accept?: string) {
-    const response = await this.fetchImpl(`${this.base}${path}`, {
-      method,
-      headers: {
-        Accept: accept ?? "application/vnd.github+json",
-        Authorization: `Bearer ${this.token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      cache: "no-store",
-    });
-    const expiration = response.headers.get("github-authentication-token-expiration");
-    if (expiration) this.tokenExpiration = expiration;
-    if (!response.ok) {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
+      if (attempt > 0) await this.sleep(this.backoff(attempt, lastError));
+      let response: Response;
+      try {
+        response = await this.fetchImpl(`${this.base}${path}`, {
+          method,
+          headers: {
+            Accept: accept ?? "application/vnd.github+json",
+            Authorization: `Bearer ${this.token}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+            ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+          },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+          cache: "no-store",
+        });
+      } catch (error) {
+        lastError = error; // falha de rede (ou resposta sem CORS): tenta outra vez
+        continue;
+      }
+      const expiration = response.headers.get("github-authentication-token-expiration");
+      if (expiration) this.tokenExpiration = expiration;
+      if (response.ok) return response;
       let message = response.statusText;
       try {
         const data = (await response.json()) as { message?: string };
@@ -80,9 +99,24 @@ export class GitHubClient {
       } catch {
         // corpo sem JSON
       }
-      throw new GitHubError(response.status, message);
+      const error = new GitHubError(response.status, message);
+      const limited =
+        response.status === 429 || (response.status === 403 && /rate limit/i.test(message));
+      if (!limited && response.status < 500) throw error;
+      const retryAfter = Number(response.headers.get("retry-after"));
+      lastError = Object.assign(error, {
+        retryAfterMs: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : null,
+        limited,
+      });
     }
-    return response;
+    throw lastError;
+  }
+
+  private backoff(attempt: number, error: unknown): number {
+    const info = error as { retryAfterMs?: number | null; limited?: boolean } | undefined;
+    if (info?.retryAfterMs) return info.retryAfterMs;
+    if (info?.limited) return 60_000; // limite secundário do GitHub: esperar um minuto
+    return this.baseDelayMs * 2 ** (attempt - 1);
   }
 
   async json<T>(method: string, path: string, body?: unknown): Promise<T> {

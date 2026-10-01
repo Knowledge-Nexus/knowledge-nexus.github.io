@@ -1,7 +1,9 @@
 // Fonte de dados da interface. Fase 1: GitHubDataSource (repositório de dados privado).
 // Fase 5: uma ApiDataSource com a mesma interface, sobre o backend próprio.
 
+import { zipSync } from "fflate";
 import YAML from "yaml";
+import { sha256Hex } from "../lib/files";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
@@ -37,6 +39,52 @@ export function splitUpload(path: string, entry: UploadEntry): Change[] {
       parts: count,
     }),
   });
+  return changes;
+}
+
+/**
+ * A API do GitHub limita os pedidos que criam conteúdo (cerca de 80 por minuto e 500 por
+ * hora): centenas de ficheiros, um blob cada, esbarram nesse limite ("Failed to fetch").
+ * A partir de `LOTE_MIN_FILES` ficheiros, o envio vai em lotes zip (`_lote-NNN.nexus-lote.zip`,
+ * em partes se forem grandes); o motor abre-os como se os ficheiros tivessem vindo um a um
+ * (nexus.pipeline.lotes).
+ */
+export const LOTE_MIN_FILES = 20;
+export const LOTE_MAX_BYTES = 60 * 1024 * 1024;
+
+const refYaml = (entry: UploadEntry) =>
+  YAML.stringify({ sha256: entry.sha256, path: entry.relativePath });
+
+export async function buildLotes(entries: UploadEntry[], base: string): Promise<Change[]> {
+  const encoder = new TextEncoder();
+  const changes: Change[] = [];
+  let files: Record<string, [Uint8Array, { level: 0 }]> = {};
+  let size = 0;
+  let count = 0;
+  const flush = async () => {
+    if (Object.keys(files).length === 0) return;
+    count += 1;
+    // Sem compressão: PDFs, imagens e Office já vêm comprimidos, e é muito mais rápido.
+    const zip = zipSync(files);
+    const name = `_lote-${String(count).padStart(3, "0")}.nexus-lote.zip`;
+    changes.push(
+      ...splitUpload(`${base}/${name}`, {
+        relativePath: name,
+        sha256: await sha256Hex(zip),
+        bytes: zip,
+      }),
+    );
+    files = {};
+    size = 0;
+  };
+  for (const entry of entries) {
+    const name = entry.bytes ? entry.relativePath : `${entry.relativePath}.ref.yaml`;
+    const data = entry.bytes ?? encoder.encode(refYaml(entry));
+    if (size > 0 && size + data.length > LOTE_MAX_BYTES) await flush();
+    files[name] = [data, { level: 0 }];
+    size += data.length;
+  }
+  await flush();
   return changes;
 }
 
@@ -142,19 +190,30 @@ export class GitHubDataSource implements DataSource {
     return this.client.raw(this.repo.owner, this.repo.name, path, this.repo.branch);
   }
 
-  upload(
+  async upload(
     entries: UploadEntry[],
     batch: string,
     onProgress?: (done: number, total: number) => void,
   ): Promise<string> {
     const base = `deposito/${this.login}/${batch}`;
+    if (entries.length >= LOTE_MIN_FILES) {
+      const changes = await buildLotes(entries, base);
+      return commitChanges(
+        this.client,
+        this.repo,
+        changes,
+        `depósito: ${entries.length} ficheiro(s) num lote (${batch})`,
+        5,
+        onProgress,
+      );
+    }
     const changes: Change[] = entries.flatMap((entry): Change[] =>
       entry.bytes
         ? splitUpload(`${base}/${entry.relativePath}`, entry)
         : [
             {
               path: `${base}/${entry.relativePath}.ref.yaml`,
-              content: YAML.stringify({ sha256: entry.sha256, path: entry.relativePath }),
+              content: refYaml(entry),
             },
           ],
     );

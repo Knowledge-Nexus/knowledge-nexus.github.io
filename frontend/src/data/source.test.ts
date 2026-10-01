@@ -1,9 +1,11 @@
 // @vitest-environment node
+
+import { unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import YAML from "yaml";
 import { GitHubClient } from "./github/client";
 import { FakeGitHub } from "./github/fake";
-import { GitHubDataSource, splitUpload, UPLOAD_PART_BYTES } from "./source";
+import { GitHubDataSource, LOTE_MIN_FILES, splitUpload, UPLOAD_PART_BYTES } from "./source";
 
 const REPO = "aluna/estudo-dados";
 
@@ -23,6 +25,60 @@ function setup() {
 }
 
 describe("GitHubDataSource", () => {
+  it("muitos ficheiros vão num lote zip (poucos pedidos à API)", async () => {
+    const { fake, source } = setup();
+    const entries = Array.from({ length: LOTE_MIN_FILES + 5 }, (_, i) => ({
+      relativePath: `UC/POO/ficha${i}.pdf`,
+      sha256: String(i).padStart(64, "0"),
+      bytes: new TextEncoder().encode(`%PDF ficha ${i}`),
+    }));
+    entries.push({ relativePath: "UC/POO/copia.pdf", sha256: "c".repeat(64) } as never);
+    await source.upload(entries, "20251001T100000Z-abcd");
+    const repo = fake.repos.get(REPO)!;
+    const commit = repo.commits.at(-1)!;
+    expect(commit.paths).toEqual(["deposito/aluna/20251001T100000Z-abcd/_lote-001.nexus-lote.zip"]);
+    const zip = repo.branches.main![commit.paths[0]!] as Uint8Array;
+    const files = unzipSync(zip);
+    expect(Object.keys(files)).toHaveLength(LOTE_MIN_FILES + 6);
+    expect(new TextDecoder().decode(files["UC/POO/ficha3.pdf"])).toBe("%PDF ficha 3");
+    expect(YAML.parse(new TextDecoder().decode(files["UC/POO/copia.pdf.ref.yaml"]))).toEqual({
+      sha256: "c".repeat(64),
+      path: "UC/POO/copia.pdf",
+    });
+  });
+
+  it("volta a tentar depois de uma falha de rede e de um limite de ritmo", async () => {
+    const { fake } = setup();
+    let calls = 0;
+    const flaky = async (input: string, init?: RequestInit) => {
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      if (calls === 2)
+        return new Response(
+          JSON.stringify({ message: "You have exceeded a secondary rate limit" }),
+          {
+            status: 403,
+            headers: { "retry-after": "1" },
+          },
+        );
+      return fake.fetch(input, init);
+    };
+    const waits: number[] = [];
+    const client = new GitHubClient(
+      fake.token,
+      flaky,
+      "https://api.github.com",
+      5,
+      10,
+      async (ms) => {
+        waits.push(ms);
+      },
+    );
+    const user = await client.user();
+    expect(user.login).toBe("aluna");
+    expect(waits).toEqual([10, 1000]);
+  });
+
   it("envia um lote num só commit, com referência para conteúdo já conhecido", async () => {
     const { fake, source } = setup();
     await source.upload(

@@ -11,6 +11,8 @@ REF_SUFFIX = ".ref.yaml"
 # grandes): `<nome>.nexus-parts.yaml` + `<nome>.nexus-part-0001`, `-0002`…
 PARTS_SUFFIX = ".nexus-parts.yaml"
 PART_MARK = ".nexus-part-"
+# Lote: muitos ficheiros enviados juntos num zip (menos pedidos à API do GitHub).
+LOTE_SUFFIX = ".nexus-lote.zip"
 LOG_SUFFIX = ".log"
 
 

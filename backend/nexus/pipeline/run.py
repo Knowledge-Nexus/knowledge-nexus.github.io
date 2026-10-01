@@ -79,6 +79,7 @@ from nexus.pipeline.filetypes import (
 from nexus.pipeline.filing import filed_name, unique_name
 from nexus.pipeline.hashing import sha256_file
 from nexus.pipeline.intake import DepositItem, scan_deposit
+from nexus.pipeline.lotes import expand_lotes
 from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
 from nexus.review import set_proposal_status
 from nexus.storage.blobstore import GitRepoBlobStore
@@ -175,6 +176,11 @@ class Pipeline:
         self.repo.check_format()
         with tempfile.TemporaryDirectory(prefix="nexus-") as tmp:
             self.workdir = Path(tmp)
+            lotes = expand_lotes(self.layout.deposit_root, self.workdir,
+                                 self.settings.archives, self.settings.limits.max_file_bytes)
+            self.report.warnings += [f"lote aberto: {x}" for x in lotes.expanded]
+            self.report.skipped += [(x, "lote ainda incompleto") for x in lotes.pending]
+            self.report.errors += [(f"deposito/{x}", e) for x, e in lotes.errors]
             scan = scan_deposit(self.layout.deposit_root, set(self.repo.users),
                                 self.default_owner, self.settings.code_projects)
             self._catalog_requests()

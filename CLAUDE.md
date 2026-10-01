@@ -28,6 +28,11 @@ convenções ou comandos.
   - **Ficheiros grandes (> 10 MB):** a API recusa blobs grandes, por isso a interface e o
     `nexus vigiar` enviam-nos em partes (`*.nexus-part-NNNN` + `*.nexus-parts.yaml`) e o
     motor junta-as e confirma o SHA-256 (`Pipeline._intake_parts`). Limite final: 95 MB.
+  - **Muitos ficheiros (≥ 20):** a API limita os pedidos que criam conteúdo (~80/min,
+    500/hora), por isso a interface envia-os em lotes zip (`_lote-NNN.nexus-lote.zip`,
+    em partes se preciso; `buildLotes` em `data/source.ts`) e o motor abre-os antes de
+    tudo, como se tivessem vindo um a um (`pipeline/lotes.py`). O cliente da API volta a
+    tentar em falhas de rede, limites de ritmo e erros 5xx.
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
