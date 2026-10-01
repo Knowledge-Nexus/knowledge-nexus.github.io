@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { useApp } from "../data/context";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { Brand } from "./Brand";
@@ -110,7 +110,7 @@ function PublicLayout(props: { children: ReactNode }) {
           {items}
         </nav>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">{props.children}</main>
+      <Main>{props.children}</Main>
     </div>
   );
 }
@@ -194,7 +194,21 @@ export function Layout(props: { children: ReactNode }) {
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
         </nav>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">{props.children}</main>
+      <Main>{props.children}</Main>
     </div>
+  );
+}
+
+/** Área principal. A biblioteca usa a largura toda (estantes e cartões enchem o ecrã);
+ * as outras páginas ficam numa coluna mais estreita, melhor para ler. */
+function Main(props: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const wide = pathname.startsWith("/biblioteca") || pathname.startsWith("/publico");
+  return (
+    <main
+      className={`mx-auto w-full px-4 py-8 sm:px-8 ${wide ? "max-w-[120rem] 2xl:px-12" : "max-w-6xl"}`}
+    >
+      {props.children}
+    </main>
   );
 }

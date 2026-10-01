@@ -287,7 +287,7 @@ export function Shelves(props: { units: UnitRow[] }) {
   );
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="space-y-10">
         {!readOnly && <p className="text-sm text-muted">{t("shelves.hint")}</p>}
         {error ? <ErrorBox error={error} /> : null}
@@ -351,7 +351,7 @@ export function Shelves(props: { units: UnitRow[] }) {
                       >
                         {year ? t("library.year_group", { year }) : t("shelves.no_year")}
                       </h3>
-                      <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4">
                         {inYear.map((l) =>
                           book(
                             unitMap.get(l.unit_key)!,

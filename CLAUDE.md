@@ -150,7 +150,8 @@ Dependências de sistema (Ubuntu/WSL2):
     Informática"; `courseTitle`/`degreeOf` em `lib/reference.ts`), e um curso novo é gravado
     assim, com o grau em `degree`. Cor de cada curso (só no nome): a cor tradicional da área (fitas de
     Coimbra, `course_colors` em `data/reference/pt.json`, `lib/courseColors.ts`), com tons
-    diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome.
+    diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome. A
+    biblioteca (e a pública) usa a largura toda do ecrã (`Main` em `components/Layout.tsx`).
   - Cursos de cada cadeira: "Editar cursos" na cadeira ou "Organizar por curso" na
     Biblioteca (`features/library/UnitCourses.tsx`); grava um pedido de catálogo com a
     lista completa das cadeiras de cada curso alterado (o motor só escreve os campos que

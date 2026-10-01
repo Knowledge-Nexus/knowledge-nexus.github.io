@@ -336,7 +336,7 @@ function UnitDetail(props: { unitKey: string }) {
       {error ? <ErrorBox error={error} /> : null}
       {notice && <Notice>{notice}</Notice>}
       {docs.length === 0 && <Empty>{t("library.empty")}</Empty>}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,28rem),1fr))] gap-4">
         {[...byType.entries()]
           .sort(([a], [b]) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
           .map(([type, list]) => {
