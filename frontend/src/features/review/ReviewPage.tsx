@@ -56,6 +56,8 @@ interface UnitChoice {
   proposal: ProposalRow;
   slug: string;
   acronym: string;
+  /** Nome escolhido; se for outro, o nome proposto fica como nome alternativo. */
+  name?: string;
 }
 
 const proposalAcronym = (p: ProposalRow) =>
@@ -74,11 +76,15 @@ function catalogBundle(institution: InstitutionChoice, units: UnitChoice[]): Cat
         slug: institution.slug,
         name: institution.name,
         ...(institution.acronym ? { acronym: institution.acronym } : {}),
-        units: units.map((u) => ({
-          slug: u.slug,
-          name: u.proposal.name,
-          ...(u.acronym ? { acronym: u.acronym } : {}),
-        })),
+        units: units.map((u) => {
+          const name = u.name?.trim() || u.proposal.name;
+          return {
+            slug: u.slug,
+            name,
+            ...(u.acronym ? { acronym: u.acronym } : {}),
+            ...(name !== u.proposal.name ? { aliases: [u.proposal.name] } : {}),
+          };
+        }),
       },
     ],
     proposals: {
@@ -174,6 +180,7 @@ function ProposalCard(props: { proposal: ProposalRow; choices: InstitutionChoice
   const { proposal, choices } = props;
   const [slug, setSlug] = useState(defaultSlug(proposal));
   const [acronym, setAcronym] = useState(proposalAcronym(proposal));
+  const [name, setName] = useState(proposal.name);
   const suggested = choices.find((c) => c.slug === proposal.data.institution) ?? choices[0];
   const [institutionKey, setInstitutionKey] = useState(suggested?.key ?? "");
   const [busy, setBusy] = useState(false);
@@ -188,15 +195,24 @@ function ProposalCard(props: { proposal: ProposalRow; choices: InstitutionChoice
         const inst = choices.find((c) => c.key === institutionKey);
         if (!inst) throw new Error(t("review.institution_select"));
         await source.catalogRequest(
-          catalogBundle(inst, [{ proposal, slug, acronym }]),
-          `catálogo: criar cadeira ${proposal.name}`,
+          catalogBundle(inst, [{ proposal, slug, acronym, name }]),
+          `catálogo: criar cadeira ${name.trim() || proposal.name}`,
         );
       } else if (accept && proposal.kind === "institution") {
         await source.catalogRequest(
           {
             format: "nexus-catalogo",
             version: 1,
-            institutions: [{ slug, name: proposal.name, ...(acronym ? { acronym } : {}) }],
+            institutions: [
+              {
+                slug,
+                name: name.trim() || proposal.name,
+                ...(acronym ? { acronym } : {}),
+                ...(name.trim() && name.trim() !== proposal.name
+                  ? { aliases: [proposal.name] }
+                  : {}),
+              },
+            ],
             proposals: { accept: [proposal.id] },
           },
           `catálogo: criar instituição ${proposal.name}`,
@@ -231,6 +247,14 @@ function ProposalCard(props: { proposal: ProposalRow; choices: InstitutionChoice
           <Evidence proposal={proposal} />
           {editable && (
             <div className="flex flex-wrap gap-3">
+              <label>
+                {t("review.name")}{" "}
+                <input
+                  className={`${input} w-80 max-w-full`}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
               <label>
                 {t("review.acronym")}{" "}
                 <input

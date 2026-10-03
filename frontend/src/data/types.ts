@@ -235,6 +235,7 @@ export interface CatalogUnitInput {
   name: string;
   code?: string;
   acronym?: string;
+  aliases?: string[];
   ects?: number;
   lecturers?: string[];
 }
@@ -246,6 +247,7 @@ export interface CatalogBundle {
     slug: string;
     name: string;
     acronym?: string;
+    aliases?: string[];
     courses?: {
       slug: string;
       name: string;
