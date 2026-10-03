@@ -213,6 +213,11 @@ Dependências de sistema (Ubuntu/WSL2):
   se a cadeira não existir, proposta). O que está numa subpasta ou arquivo dentro da cadeira
   fica num conjunto; as pastas de tipo de material (nome que corresponde a um tipo de
   documento do vocabulário, ex.: "Material Prático") não agrupam, só ajudam no tipo.
+- **Editar ou remover uma cadeira** (`features/library/UnitEditor.tsx`): pedido de catálogo
+  com `units_remove: [{unit, merge_into?}]` (`remove_unit` em `datarepo/catalog_io.py`,
+  `Pipeline._remove_unit`). Juntar passa os documentos, os cursos e os nomes (como nomes
+  alternativos) para a outra; sem destino, os documentos voltam a ser classificados. Mudar o
+  slug é criar a nova e remover a antiga com `merge_into`.
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso

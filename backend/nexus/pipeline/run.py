@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nexus import clock
-from nexus.datarepo.catalog_io import import_bundle
+from nexus.datarepo.catalog_io import import_bundle, remove_unit
 from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX
 from nexus.datarepo.store import DataRepo
 from nexus.datarepo.yamlio import read_yaml, write_text_if_changed
@@ -208,6 +208,8 @@ class Pipeline:
                 raw = read_yaml(request) or {}
                 if raw.get("institutions"):
                     import_bundle(self.layout, raw)
+                for item in raw.get("units_remove") or []:
+                    self._remove_unit(str(item["unit"]), item.get("merge_into"))
                 decisions = raw.get("proposals") or {}
                 for pid in decisions.get("accept", []):
                     set_proposal_status(self.repo, str(pid), "accepted")
@@ -223,6 +225,23 @@ class Pipeline:
                                       f"{type(exc).__name__}: {exc}\n")
                 self.report.errors.append((f"catalogo/{request.name}", str(exc)))
         self.repo.reload_catalog()
+
+    def _remove_unit(self, key: str, merge_into: str | None) -> None:
+        """Apaga a cadeira; os documentos dela passam para `merge_into` ou voltam a ser
+        classificados (os campos teus nessa cadeira são retirados)."""
+        if not remove_unit(self.layout, key, merge_into):
+            return
+        for doc in list(self.repo.documents.values()):
+            unit = doc.classification.unit
+            if unit is None or unit.value != key:
+                continue
+            updated = doc.model_copy(deep=True)
+            if merge_into:
+                updated.classification.unit = unit.model_copy(update={"value": merge_into})
+            else:
+                updated.classification.unit = None
+            updated.classifier_version = None
+            self.repo.save_document(updated)
 
     # --- recepção -------------------------------------------------------------------
 

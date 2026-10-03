@@ -485,3 +485,30 @@ test("arrastar um documento para outro tipo", async ({ page }) => {
   const record = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
   expect(record.classification.document_type.method).toBe("user");
 });
+
+test("editar e remover uma cadeira", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Editar cadeira" }).click();
+  await page.getByLabel("Sigla", { exact: true }).fill("AM I");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText(/actualiza|sincroniz/i).first()).toBeVisible();
+  let commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  let request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(request.institutions[0].units[0]).toMatchObject({ slug: "am1", acronym: "AM I" });
+
+  await page.getByRole("button", { name: "Editar cadeira" }).click();
+  await page.getByLabel("Os documentos dela passam para:").selectOption({ index: 1 });
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "Remover cadeira" }).click();
+  await expect(page.getByRole("button", { name: "Editar cadeira" })).toBeVisible();
+  commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(request.units_remove[0].unit).toBe("ufe/am1");
+  expect(request.units_remove[0].merge_into).toBeTruthy();
+});

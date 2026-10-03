@@ -29,6 +29,7 @@ import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
 import { Shelves } from "./Shelves";
 import { UnitCourses } from "./UnitCourses";
+import { UnitEditor } from "./UnitEditor";
 
 const DOC_DRAG = "application/x-nexus-docs";
 
@@ -360,6 +361,11 @@ function UnitDetail(props: { unitKey: string }) {
             {unit && (
               <div className="mt-3">
                 <UnitCourses key={props.unitKey} unit={unit} />
+              </div>
+            )}
+            {unit && (
+              <div className="mt-3">
+                <UnitEditor key={props.unitKey} unit={unit} />
               </div>
             )}
             <div className="mt-4">

@@ -445,5 +445,21 @@
     "year_targets": "Largar num ano:",
     "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição.",
     "loose_hint": "Arrasta-as para o curso (e o ano) certo."
+  },
+  "unit_edit": {
+    "open": "Editar cadeira",
+    "name": "Nome",
+    "acronym": "Sigla",
+    "slug": "Identificador (slug)",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "slug_taken": "Já existe uma cadeira com este identificador. Para juntar as duas, usa «Remover cadeira» e escolhe-a abaixo.",
+    "slug_hint": "Ao mudar o identificador, a cadeira antiga é substituída e os documentos passam para a nova.",
+    "remove_title": "Remover cadeira",
+    "merge_into": "Os documentos dela passam para:",
+    "merge_none": "Nenhuma (voltam a ser classificados)",
+    "remove": "Remover cadeira",
+    "remove_confirm": "Remover «{{name}}»? Os documentos dela voltam a ser classificados (podem ir para «A rever»). Os ficheiros não são apagados.",
+    "remove_merge_confirm": "Remover «{{name}}» e passar os documentos para «{{target}}»? O nome antigo fica como nome alternativo de «{{target}}». Os ficheiros não são apagados."
   }
 }

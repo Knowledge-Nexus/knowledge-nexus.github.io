@@ -549,3 +549,33 @@ def test_source_layout_gives_year_unit_type_and_groups(catalog_root: Path) -> No
     assert docs["a.php"].bundle.name == "exemplos"
     assert docs["aula1.txt"].needs_review
     assert "unit-programacao-web-ii" in report.proposals, report
+
+
+def test_remove_unit_merging_and_not(catalog_root: Path) -> None:
+    gerar.pdf_nativo(deposit(catalog_root, "Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    run(catalog_root)
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "a.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\ninstitutions:\n"
+        "  - slug: ufe\n    name: Universidade Fictícia de Exemplo\n"
+        "    units:\n      - slug: calculo\n        name: Cálculo\n"
+        "units_remove:\n  - { unit: ufe/am1, merge_into: ufe/calculo }\n")
+    run(catalog_root)
+    repo = DataRepo(catalog_root)
+    assert "ufe/am1" not in repo.catalog.units
+    merged = repo.catalog.units["ufe/calculo"]
+    assert "Análise Matemática I" in merged.aliases
+    course = next(iter(repo.catalog.courses.values()))
+    assert "calculo" in [link.unit for link in course.units]
+    assert "am1" not in [link.unit for link in course.units]
+    [doc] = docs(catalog_root)
+    assert doc["classification"]["unit"]["value"] == "ufe/calculo"
+    assert doc.get("filed_name"), doc
+
+    (requests / "b.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\nunits_remove:\n  - { unit: ufe/calculo }\n")
+    run(catalog_root)
+    assert "ufe/calculo" not in DataRepo(catalog_root).catalog.units
+    [doc] = docs(catalog_root)
+    assert (doc["classification"].get("unit") or {}).get("value") != "ufe/calculo"

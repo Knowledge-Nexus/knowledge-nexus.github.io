@@ -243,6 +243,8 @@ export interface CatalogUnitInput {
 export interface CatalogBundle {
   format: "nexus-catalogo";
   version: 1;
+  /** Cadeiras a apagar; os documentos passam para `merge_into` ou voltam a ser classificados. */
+  units_remove?: { unit: string; merge_into?: string }[];
   institutions?: {
     slug: string;
     name: string;

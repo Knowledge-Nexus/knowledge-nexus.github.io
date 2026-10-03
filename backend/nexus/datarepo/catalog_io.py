@@ -13,6 +13,7 @@ from nexus.domain.catalog import (
     Catalog,
     CatalogBundle,
     Course,
+    CourseUnitLink,
     CurricularUnit,
     Institution,
     InstitutionBundle,
@@ -152,3 +153,38 @@ def write_unit(layout: Layout, unit: CurricularUnit) -> bool:
     _check_slug("UC", unit.slug)
     path = layout.catalog_dir / unit.institution / UNITS_DIR / f"{unit.slug}.yaml"
     return write_yaml_if_changed(path, unit)
+
+
+def remove_unit(layout: Layout, key: str, merge_into: str | None = None) -> bool:
+    """Apaga uma cadeira do catálogo (criada por engano ou repetida). Com `merge_into`, os
+    nomes dela passam a nomes alternativos da outra e os cursos passam a apontar para a
+    outra. Os documentos tratam-se no pipeline. Devolve False se não existir."""
+    catalog = load_catalog(layout)
+    unit = catalog.units.get(key)
+    if unit is None:
+        return False
+    target = catalog.units.get(merge_into) if merge_into else None
+    if merge_into and target is None:
+        raise CatalogError(f"cadeira inexistente: {merge_into}")
+    if target is not None:
+        names = [unit.name, *([unit.acronym] if unit.acronym else []), *unit.aliases]
+        known = {n.casefold() for n in (target.name, target.acronym or "", *target.aliases)}
+        extra = [n for n in dict.fromkeys(names) if n.casefold() not in known]
+        if extra:
+            write_unit(layout, target.model_copy(update={"aliases": [*target.aliases, *extra]}))
+    for course in catalog.courses.values():
+        if course.institution != unit.institution or not any(
+                link.unit == unit.slug for link in course.units):
+            continue
+        links: list[CourseUnitLink] = []
+        for link in course.units:
+            if link.unit == unit.slug:
+                if target is None or target.institution != course.institution or any(
+                        other.unit == target.slug for other in course.units):
+                    continue
+                link = link.model_copy(update={"unit": target.slug})
+            links.append(link)
+        path = layout.catalog_dir / course.institution / COURSES_DIR / f"{course.slug}.yaml"
+        write_yaml_if_changed(path, course.model_copy(update={"units": links}))
+    (layout.catalog_dir / unit.institution / UNITS_DIR / f"{unit.slug}.yaml").unlink()
+    return True
