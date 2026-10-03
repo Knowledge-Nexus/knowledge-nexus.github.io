@@ -39,6 +39,8 @@ class SourceWeights(_Section):
     header: float = 1.0
     body: float = 0.35
     metadata: float = 0.7
+    # Pastas do ano lectivo e da cadeira na organização da origem (<ano>/<semestre>/<cadeira>).
+    layout: float = 2.0
 
 
 class ClassificationSettings(_Section):

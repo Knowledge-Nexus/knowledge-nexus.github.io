@@ -524,3 +524,28 @@ def test_lote_with_path_traversal_is_refused(catalog_root: Path) -> None:
     report = Pipeline(DataRepo(catalog_root)).run()
     assert report.errors and not (catalog_root / "deposito" / "aluna" / "fora.txt").exists()
     assert not (catalog_root / "fora.txt").exists()
+
+
+def test_source_layout_gives_year_unit_type_and_groups(catalog_root: Path) -> None:
+    base = "UFE/2020_2021/2º Semestre/Álgebra Linear e Geometria Analítica"
+    deposit(catalog_root, f"{base}/Material Prático/ficha_vectores.txt").write_text(
+        "Considere os vectores u e v. Calcule u + v.\n")
+    deposit(catalog_root, f"{base}/Material Prático/ficha_matrizes.txt").write_text(
+        "Considere as matrizes A e B. Calcule AB.\n")
+    deposit(catalog_root, f"{base}/exemplos/a.php").write_text("<?php echo 1; ?>\n")
+    deposit(catalog_root, f"{base}/exemplos/b.php").write_text("<?php echo 2; ?>\n")
+    deposit(catalog_root, "UFE/2020_2021/2º Semestre/Programação Web II/aula1.txt").write_text(
+        "Introdução ao PHP e datas.\n")
+    report = Pipeline(DataRepo(catalog_root)).run()
+    docs = {d.sources[0].path.rsplit("/", 1)[-1]: d
+            for d in DataRepo(catalog_root).documents.values()}
+    sheet = docs["ficha_vectores.txt"]
+    assert sheet.classification.value("unit") == "ufe/alga", sheet.classification
+    assert sheet.classification.value("academic_year") == "2020-2021"
+    assert sheet.classification.value("document_type") == "fichas-exercicios"
+    assert sheet.bundle is None and docs["ficha_matrizes.txt"].bundle is None, \
+        "pastas de material não formam conjuntos"
+    assert docs["a.php"].bundle is not None and docs["a.php"].bundle == docs["b.php"].bundle
+    assert docs["a.php"].bundle.name == "exemplos"
+    assert docs["aula1.txt"].needs_review
+    assert "unit-programacao-web-ii" in report.proposals, report

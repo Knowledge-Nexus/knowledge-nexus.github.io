@@ -21,19 +21,22 @@ document_types:
     # Formatos que, por si só, são indício deste tipo.
     extensions: [pptx, ppt, pps, ppsx, odp, key]
     keywords: [slides, diapositivos, teórica, teóricas, aula teórica, aulas teóricas,
-               apresentação, lecture, lectures, capítulo, chapter, sumário]
+               apresentação, lecture, lectures, capítulo, chapter, sumário,
+               material teórico]
   - slug: apontamentos
     labels: { pt-PT: "Apontamentos", en: "Notes" }
     role: any
     keywords: [apontamentos, resumo, resumos, sebenta, caderno, notes, summary,
-               textos de apoio, texto de apoio, notas de aula, lecture notes]
+               textos de apoio, texto de apoio, notas de aula, lecture notes,
+               material de apoio]
   - slug: fichas-exercicios
     labels: { pt-PT: "Fichas de exercícios", en: "Exercise sheets" }
     role: statement
     keywords: &exercise_keywords [ficha, fichas, ficha de exercícios, folha de exercícios,
                folha, folhas, caderno de exercícios, exercícios, exercício, problemas,
                exercises, problem set, aula prática, aulas práticas, prática, práticas,
-               prática laboratorial, práticas laboratoriais, tp, tp1, tp2, pl]
+               prática laboratorial, práticas laboratoriais, tp, tp1, tp2, pl,
+               material prático, prático, práticos]
   - slug: resolucoes-exercicios
     labels: { pt-PT: "Resoluções de exercícios", en: "Exercise solutions" }
     role: solution

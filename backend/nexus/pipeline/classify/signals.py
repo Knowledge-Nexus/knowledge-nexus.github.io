@@ -10,13 +10,14 @@ from nexus.config import ClassificationSettings
 from nexus.domain.documents import Document
 from nexus.domain.extraction import ExtractionMeta
 from nexus.domain.text import normalize, strip_accents
+from nexus.pipeline import layout
 
 GENERATED_BATCH_RE = re.compile(r"^\d{8}T\d{6}Z-[a-z0-9]{3,}$")
 
 
 @dataclass(frozen=True)
 class Signal:
-    source: str  # filename | path | archive | header | body | metadata
+    source: str  # filename | path | layout | archive | header | body | metadata
     norm: str  # normalizado (correspondência de palavras)
     raw: str  # minúsculas sem acentos, com pontuação (datas, anos)
     weight: float
@@ -51,6 +52,15 @@ def collect_signals(
         seen_paths.add(path.as_posix())
         stem = path.name.rsplit(".", 1)[0]
         signals.append(_signal("filename", stem, weights.filename))
+        found = layout.parse(layout.full_path(source.batch, source.path))
+        if found is not None:
+            # Ano lectivo e cadeira vêm das pastas; as restantes (material, subpastas,
+            # arquivos) contam como pastas normais.
+            signals.append(_signal("layout", f"{found.academic_year} {found.unit}",
+                                   weights.layout))
+            if len(found.rest) > 1:
+                signals.append(_signal("path", " / ".join(found.rest[:-1]), weights.path))
+            continue
         folders = list(path.parts[:-1])
         if source.batch and not GENERATED_BATCH_RE.match(source.batch):
             folders.insert(0, source.batch)

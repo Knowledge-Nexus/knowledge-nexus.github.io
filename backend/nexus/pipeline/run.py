@@ -56,7 +56,7 @@ from nexus.pipeline.bundles import (
     member_name,
     project_folders,
 )
-from nexus.pipeline.classify.classifier import CLASSIFIER_VERSION, Classifier
+from nexus.pipeline.classify.classifier import CLASSIFIER_VERSION, Classifier, material_folder
 from nexus.pipeline.classify.proposals import ProposalCandidate
 from nexus.pipeline.classify.signals import GENERATED_BATCH_RE
 from nexus.pipeline.extract import (
@@ -552,7 +552,8 @@ class Pipeline:
         Devolve os membros que não são o principal."""
         code = set(self.settings.code_projects.code_extensions)
         docs = self.repo.documents
-        proposed = project_folders(docs.values(), code)
+        proposed = project_folders(docs.values(), code,
+                                   material_folder(self.repo.vocabularies))
         wanted: dict[str, BundleRef | None] = {}
         for doc in docs.values():
             if doc.bundle is not None and doc.bundle.method != METHOD_HEURISTIC:

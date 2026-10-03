@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type DragEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { FileBadge } from "../../components/FileBadge";
@@ -29,6 +29,8 @@ import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
 import { Shelves } from "./Shelves";
 import { UnitCourses } from "./UnitCourses";
+
+const DOC_DRAG = "application/x-nexus-docs";
 
 export function DocumentLink(props: {
   doc: DocumentRow;
@@ -207,6 +209,7 @@ function UnitDetail(props: { unitKey: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dropType, setDropType] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const year = params.get("ano") ?? "";
   if (!meta) return null;
@@ -269,6 +272,47 @@ function UnitDetail(props: { unitKey: string }) {
     } finally {
       setBusy(null);
     }
+  }
+
+  /** Arrastar documentos para outro cartão muda o tipo (fica definido por ti). */
+  async function changeType(ids: string[], type: string) {
+    const list = docs.filter((d) => ids.includes(d.id) && d.document_type !== type);
+    if (list.length === 0) return;
+    setError(null);
+    setBusy(t("common.saving"));
+    try {
+      await source.patchDocuments(
+        list.map((d) => ({
+          id: d.id,
+          patch: (record) => {
+            const classification = (record.classification as Record<string, unknown>) ?? {};
+            classification.document_type = {
+              value: type,
+              confidence: 1,
+              method: "user",
+              reasons: [{ code: "user.set", params: { login } }],
+            };
+            record.classification = classification;
+          },
+        })),
+        `tipo: ${list.length} documento(s) → ${type}`,
+      );
+      notifyCommit();
+      setSelected(new Set());
+      setNotice(t("library.type_changed", { type: labels.term("document_types", type) }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function dropOnType(event: DragEvent, type: string) {
+    setDropType(null);
+    const raw = event.dataTransfer.getData(DOC_DRAG);
+    if (!raw) return;
+    event.preventDefault();
+    void changeType(JSON.parse(raw) as string[], type);
   }
 
   async function setVisibility(list: DocumentRow[], value: "public" | "private") {
@@ -354,6 +398,9 @@ function UnitDetail(props: { unitKey: string }) {
       {error ? <ErrorBox error={error} /> : null}
       {notice && <Notice>{notice}</Notice>}
       {docs.length === 0 && <Empty>{t("library.empty")}</Empty>}
+      {!readOnly && byType.size > 1 && (
+        <p className="-mb-2 text-xs text-muted">{t("library.drag_type_hint")}</p>
+      )}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,28rem),1fr))] gap-4">
         {[...byType.entries()]
           .sort(([a], [b]) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
@@ -363,57 +410,85 @@ function UnitDetail(props: { unitKey: string }) {
             const all = ids.every((id) => selected.has(id));
             const label = labels.term("document_types", type);
             return (
-              <Card
+              // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
+              <div
                 key={type}
-                title={
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-[var(--color-pen)]"
-                      checked={all}
-                      onChange={() => select(ids, !all)}
-                      aria-label={t("library.select_type", { type: label })}
-                    />
-                    {label}
-                    <span className="font-sans text-xs font-normal text-muted">{list.length}</span>
-                  </span>
-                }
-                actions={
-                  <button
-                    type="button"
-                    className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
-                    title={t("library.download_type", { type: label })}
-                    aria-label={t("library.download_type", { type: label })}
-                    disabled={busy !== null}
-                    onClick={() => void download(sorted, `${unitName} - ${label}`)}
-                  >
-                    <IconDownload size={16} />
-                  </button>
-                }
+                role="group"
+                aria-label={label}
+                onDragOver={(e) => {
+                  if (readOnly || !e.dataTransfer.types.includes(DOC_DRAG)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDropType(type);
+                }}
+                onDragLeave={() => setDropType((h) => (h === type ? null : h))}
+                onDrop={(e) => dropOnType(e, type)}
+                className={`rounded-2xl transition ${dropType === type ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
               >
-                {!readOnly && (
-                  <div className="-mt-2 mb-2 flex items-center gap-2 text-xs text-muted">
-                    <span>{t("visibility.type_row")}</span>
-                    <TypeVisibility unitKey={props.unitKey} documentType={type} />
+                <Card
+                  title={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[var(--color-pen)]"
+                        checked={all}
+                        onChange={() => select(ids, !all)}
+                        aria-label={t("library.select_type", { type: label })}
+                      />
+                      {label}
+                      <span className="font-sans text-xs font-normal text-muted">
+                        {list.length}
+                      </span>
+                    </span>
+                  }
+                  actions={
+                    <button
+                      type="button"
+                      className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
+                      title={t("library.download_type", { type: label })}
+                      aria-label={t("library.download_type", { type: label })}
+                      disabled={busy !== null}
+                      onClick={() => void download(sorted, `${unitName} - ${label}`)}
+                    >
+                      <IconDownload size={16} />
+                    </button>
+                  }
+                >
+                  {!readOnly && (
+                    <div className="-mt-2 mb-2 flex items-center gap-2 text-xs text-muted">
+                      <span>{t("visibility.type_row")}</span>
+                      <TypeVisibility unitKey={props.unitKey} documentType={type} />
+                    </div>
+                  )}
+                  <div className="divide-y divide-line">
+                    {bundleEntries(sorted).map(({ doc, members }) => {
+                      const ids = [doc.id, ...members.map((m) => m.id)];
+                      return (
+                        // biome-ignore lint/a11y/noStaticElementInteractions: o documento arrasta-se para outro tipo
+                        <div
+                          key={doc.id}
+                          draggable={!readOnly}
+                          onDragStart={(e) => {
+                            const moving = ids.some((id) => selected.has(id))
+                              ? [...new Set([...selected, ...ids])]
+                              : ids;
+                            e.dataTransfer.setData(DOC_DRAG, JSON.stringify(moving));
+                            e.dataTransfer.effectAllowed = "all";
+                          }}
+                        >
+                          <DocumentLink
+                            doc={doc}
+                            groupedByType
+                            selected={ids.every((id) => selected.has(id))}
+                            onSelect={(on) => select(ids, on)}
+                          />
+                          <BundleMembers lead={doc} members={members} />
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-                <div className="divide-y divide-line">
-                  {bundleEntries(sorted).map(({ doc, members }) => {
-                    const ids = [doc.id, ...members.map((m) => m.id)];
-                    return (
-                      <div key={doc.id}>
-                        <DocumentLink
-                          doc={doc}
-                          groupedByType
-                          selected={ids.every((id) => selected.has(id))}
-                          onSelect={(on) => select(ids, on)}
-                        />
-                        <BundleMembers lead={doc} members={members} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
+                </Card>
+              </div>
             );
           })}
       </div>

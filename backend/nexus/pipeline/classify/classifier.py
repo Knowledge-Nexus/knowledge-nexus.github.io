@@ -8,6 +8,7 @@ campos obrigatórios abaixo do limiar mandam o documento para "A rever"; nunca s
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -25,6 +26,7 @@ from nexus.domain.extraction import ExtractionMeta
 from nexus.domain.text import contains_phrase, fix_spacing_accents, normalize
 from nexus.domain.users import User
 from nexus.domain.vocab import ROLE_SOLUTION, ROLE_STATEMENT, Term, Vocabularies
+from nexus.pipeline import layout
 from nexus.pipeline.classify import proposals
 from nexus.pipeline.classify.scoring import (
     Candidate,
@@ -36,7 +38,7 @@ from nexus.pipeline.classify.scoring import (
     score_terms,
     to_field,
 )
-from nexus.pipeline.classify.signals import Signal, collect_signals
+from nexus.pipeline.classify.signals import Signal, _signal, collect_signals
 from nexus.pipeline.classify.units import UnitFeatures, compile_unit, score_units
 from nexus.pipeline.classify.years import score_dates, score_years
 
@@ -44,7 +46,8 @@ from nexus.pipeline.classify.years import score_dates, score_years
 # 2: enunciado/resolução decidido só pelo nome, pastas, metadados e título (as primeiras
 #    palavras da página 1); abreviaturas nos vocabulários (res_, corr_, fre1…).
 # 3: data e versão (A/B…) das provas; "Primeira Frequência" → número 1.
-CLASSIFIER_VERSION = 4
+# 5: organização da origem (<ano>/<semestre>/<cadeira>/…) e pastas de tipo de material.
+CLASSIFIER_VERSION = 5
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
@@ -65,6 +68,17 @@ _VARIANT_RE = re.compile(
     r"\b(?:Teste|Exame|Frequ[êe]ncia|Prova|Mini-?teste)(?:\s+de\s+Recurso|\s+Recurso)?"
     r"\s*\d{0,2}\s*([A-F])(?![\w.])"
     r"|\b(?:Vers[ãa]o|Tipo|Variante|Modelo|Turno)\s+([A-Z0-9]{1,2})\b")
+
+
+def material_folder(vocab: Vocabularies) -> Callable[[str], bool]:
+    """Uma pasta é de tipo de material quando o nome corresponde a um tipo de documento do
+    vocabulário ("Material Prático", "Teóricas", "Testes"…)."""
+    terms = compile_terms(vocab.document_types)
+
+    def check(name: str) -> bool:
+        signal = _signal("path", name, 1.0)
+        return signal is not None and bool(score_terms(terms, [signal]))
+    return check
 
 
 @dataclass
@@ -157,6 +171,11 @@ class Classifier:
         # ou de projectos de código, que citam caminhos e tamanhos).
         found = proposals.detect(pages, self.catalog, paths=[s.path for s in doc.sources]) \
             if pages and doc.kind is DocumentKind.FILE else []
+        if doc.kind is DocumentKind.FILE and (result.unit is None or "unit" in weak):
+            known = {normalize(c.name) for c in found}
+            found += [c for c in proposals.folder_units(
+                [layout.full_path(s.batch, s.path) for s in doc.sources], self.catalog)
+                if normalize(c.name) not in known]
         return Outcome(result, weak, found)
 
     def weak_fields(self, result: Classification, type_term: Term | None) -> list[str]:

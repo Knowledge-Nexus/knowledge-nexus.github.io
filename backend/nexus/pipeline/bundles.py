@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from nexus.domain.documents import (
@@ -26,6 +26,7 @@ from nexus.domain.documents import (
     FieldValue,
     Reason,
 )
+from nexus.pipeline import layout
 from nexus.pipeline.filetypes import Category, category_of
 
 INHERITED_FIELDS = ("unit", "document_type", "academic_year", "assessment_type",
@@ -79,9 +80,16 @@ def _qualifies(categories: list[Category]) -> bool:
             and documents <= MAX_DOCUMENTS)
 
 
-def project_folders(docs: Iterable[Document], code_extensions: set[str]) -> dict[str, BundleRef]:
-    """Conjuntos propostos pelas pastas: {id do documento: conjunto}. Determinístico."""
+def project_folders(docs: Iterable[Document], code_extensions: set[str],
+                    is_material: Callable[[str], bool] = lambda _: False,
+                    ) -> dict[str, BundleRef]:
+    """Conjuntos propostos pelas pastas: {id do documento: conjunto}. Determinístico.
+
+    Na organização `<ano>/<semestre>/<cadeira>/`, o que está numa subpasta ou num arquivo
+    dentro da cadeira fica junto (as pastas de material não contam); fora dela, só as
+    pastas de projecto (código + enunciado ou imagens)."""
     candidates: dict[tuple[str, str], set[str]] = defaultdict(set)
+    structured: set[tuple[str, str]] = set()
     category: dict[str, Category] = {}
     for doc in docs:
         if doc.kind is not DocumentKind.FILE or doc.duplicate_of or doc.bundle_dismissed:
@@ -90,16 +98,22 @@ def project_folders(docs: Iterable[Document], code_extensions: set[str]) -> dict
             continue
         category[doc.id] = category_of(doc.blob.ext, code_extensions)
         for source in doc.sources:
-            folder = folder_of(source.path)
+            found = layout.parse(layout.full_path(source.batch, source.path))
+            folder = layout.group_folder(found, is_material) if found else folder_of(source.path)
             if folder:
                 candidates[(doc.owner, folder)].add(doc.id)
+                if found:
+                    structured.add((doc.owner, folder))
     # As pastas maiores primeiro; um documento só entra num conjunto.
     order = sorted(candidates.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     taken: set[str] = set()
     out: dict[str, BundleRef] = {}
     for (owner, folder), ids in order:
         members = sorted(ids - taken)
-        if not _qualifies([category[i] for i in members]):
+        if (owner, folder) in structured:
+            if not 2 <= len(members) <= MAX_MEMBERS:
+                continue
+        elif not _qualifies([category[i] for i in members]):
             continue
         ref = BundleRef(id=bundle_id(owner, folder), name=folder_name(folder),
                         method=METHOD_HEURISTIC)

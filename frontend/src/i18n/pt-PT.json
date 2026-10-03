@@ -168,6 +168,8 @@
     "all_years": "Todos os anos",
     "empty": "Ainda não há documentos arrumados.",
     "unfiled": "Por arrumar",
+    "type_changed": "Tipo alterado para «{{type}}». A biblioteca actualiza-se depois do processamento.",
+    "drag_type_hint": "Arrasta um documento para outro cartão para lhe mudar o tipo.",
     "unfiled_help": "Documentos que aguardam revisão da classificação.",
     "no_course": "Sem curso",
     "no_unit": "Sem cadeira",

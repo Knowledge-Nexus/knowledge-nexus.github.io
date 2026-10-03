@@ -25,6 +25,7 @@ from nexus.domain.text import (
     sequel_after,
     series_number,
 )
+from nexus.pipeline import layout
 
 _SEP = r"\s*[:\-–—]\s*"
 _UNIT_RE = re.compile(
@@ -189,6 +190,19 @@ def _known_acronym(catalog: Catalog, kind: ProposalKind, acronym: str) -> bool:
     else:
         values = [v for i in catalog.institutions.values() for v in (i.acronym, i.slug) if v]
     return any(normalize(v) == normalize(acronym) for v in values)
+
+
+def folder_units(paths: list[str], catalog: Catalog) -> list[ProposalCandidate]:
+    """Cadeiras das pastas da organização da origem que ainda não estão no catálogo."""
+    out: dict[str, ProposalCandidate] = {}
+    for path in paths:
+        found = layout.parse(path)
+        if found is None or not _plausible_name(found.unit) \
+                or _known(catalog, "unit", found.unit):
+            continue
+        out.setdefault(normalize(found.unit), ProposalCandidate(
+            "unit", found.unit, found.unit_folder, None))
+    return list(out.values())
 
 
 def detect(pages: list[str], catalog: Catalog, max_pages: int = 2,

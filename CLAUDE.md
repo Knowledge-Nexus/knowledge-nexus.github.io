@@ -208,6 +208,13 @@ Dependências de sistema (Ubuntu/WSL2):
   o que escolheste (`bundle.lead_choice`, "Tornar principal") ou, sem escolha, o do pipeline; os outros herdam dele a classificação (só campos heurísticos,
   razão `bundle.inherited`) e ficam arrumados como `<principal sem extensão>/<nome original>`.
   "Separar" grava `bundle_dismissed: true`.
+- **Organização da origem** (`pipeline/layout.py`): em `<inst>/<AAAA_AAAA>/<Nº Semestre>/<cadeira>/…`
+  a pasta do ano dá o ano lectivo e a seguinte ao semestre a cadeira (sinal `layout`, forte;
+  se a cadeira não existir, proposta). O que está numa subpasta ou arquivo dentro da cadeira
+  fica num conjunto; as pastas de tipo de material (nome que corresponde a um tipo de
+  documento do vocabulário, ex.: "Material Prático") não agrupam, só ajudam no tipo.
+- **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
+  tipo na cadeira grava `document_type` com `method: user`.
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso
   reclassifica o que não foi revisto pelo utilizador.
 - **Testes:**

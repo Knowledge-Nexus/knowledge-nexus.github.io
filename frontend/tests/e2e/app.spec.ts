@@ -465,3 +465,23 @@ test("depositar: as cópias são detectadas logo e não são enviadas", async ({
   expect(commit.paths).toHaveLength(1);
   expect(commit.paths[0]).toMatch(/\/resumo\.txt$/);
 });
+
+test("arrastar um documento para outro tipo", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  const groups = page.getByRole("group").filter({ has: page.getByRole("checkbox") });
+  await expect(groups.nth(1)).toBeVisible({ timeout: 20_000 });
+  const target = groups.nth(1);
+  const label = (await target.getAttribute("aria-label")) ?? "";
+  const doc = groups.first().locator("[draggable=true]").first();
+  await dragAndDrop(page, doc, target);
+  await expect(page.getByText(`Tipo alterado para «${label}»`, { exact: false })).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  const record = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(record.classification.document_type.method).toBe("user");
+});
