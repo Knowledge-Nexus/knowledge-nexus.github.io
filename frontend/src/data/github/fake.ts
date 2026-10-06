@@ -33,8 +33,10 @@ export class FakeGitHub {
   private blobs = new Map<string, Uint8Array>();
   private trees = new Map<
     string,
-    { base: string | null; entries: { path: string; sha: string | null }[] }
+    { base: string | null; entries: { path: string; sha: string | null; type?: string }[] }
   >();
+  /** Árvores existentes vistas pela API (GET /git/trees/:sha): ficheiros sob um prefixo. */
+  private views = new Map<string, { files: Record<string, Uint8Array>; prefix: string }>();
   private commitTrees = new Map<
     string,
     { tree: string; parent: string | null; snapshot?: Record<string, Uint8Array> }
@@ -81,6 +83,7 @@ export class FakeGitHub {
     const tree = this.sha("t");
     this.trees.set(tree, { base: null, entries: [] });
     this.commitTrees.set(sha, { tree, parent: null, snapshot: { ...files } });
+    this.views.set(tree, { files: { ...files }, prefix: "" });
     this.heads.set(`${fullName}#${branch}`, sha);
     return sha;
   }
@@ -92,6 +95,19 @@ export class FakeGitHub {
       repo.branches[branch]![path] = encoder.encode(content);
     const sha = this.snapshotHead(fullName, branch);
     repo.commits.push({ sha, branch, message: "externo", paths: Object.keys(files) });
+  }
+
+  /** Entradas de uma árvore criada pela API, com caminhos completos (as subárvores novas
+   * expandem-se; as que vêm de `views` não mudaram). */
+  private flatten(sha: string, prefix = ""): { path: string; sha: string | null }[] {
+    const out: { path: string; sha: string | null }[] = [];
+    for (const entry of this.trees.get(sha)?.entries ?? []) {
+      if (entry.type === "tree") {
+        if (entry.sha && this.trees.has(entry.sha) && !this.views.has(entry.sha))
+          out.push(...this.flatten(entry.sha, `${prefix}${entry.path}/`));
+      } else out.push({ path: `${prefix}${entry.path}`, sha: entry.sha });
+    }
+    return out;
   }
 
   fetch = async (input: string, init: RequestInit = {}): Promise<Response> => {
@@ -156,8 +172,8 @@ export class FakeGitHub {
     if (rest === "/git/trees" && method === "POST") {
       const sha = this.sha("t");
       this.trees.set(sha, {
-        base: String(body.base_tree),
-        entries: body.tree as { path: string; sha: string | null }[],
+        base: body.base_tree ? String(body.base_tree) : null,
+        entries: body.tree as { path: string; sha: string | null; type?: string }[],
       });
       return json(201, { sha });
     }
@@ -169,7 +185,7 @@ export class FakeGitHub {
         sha,
         branch: "",
         message: String(body.message),
-        paths: this.trees.get(String(body.tree))!.entries.map((e) => e.path),
+        paths: this.flatten(String(body.tree)).map((e) => e.path),
       });
       return json(201, { sha });
     }
@@ -181,13 +197,13 @@ export class FakeGitHub {
       if (!commit || commit.parent !== head) {
         return json(422, { message: "Update is not a fast forward" });
       }
-      const tree = this.trees.get(commit.tree)!;
       const files = repo.branches[branch]!;
-      for (const entry of tree.entries) {
+      for (const entry of this.flatten(commit.tree)) {
         if (entry.sha === null) delete files[entry.path];
         else files[entry.path] = this.blobs.get(entry.sha)!;
       }
       commit.snapshot = { ...files };
+      this.views.set(commit.tree, { files: commit.snapshot, prefix: "" });
       this.heads.set(`${fullName}#${branch}`, String(body.sha));
       const record = repo.commits.find((c) => c.sha === body.sha);
       if (record) record.branch = branch;
@@ -195,6 +211,24 @@ export class FakeGitHub {
     }
     if (rest.startsWith("/git/trees/") && method === "GET") {
       const branch = rest.slice("/git/trees/".length);
+      const view = this.views.get(branch);
+      if (view) {
+        const children = new Map<string, { path: string; type: string; sha: string }>();
+        for (const path of Object.keys(view.files)) {
+          if (!path.startsWith(view.prefix)) continue;
+          const rel = path.slice(view.prefix.length);
+          const cut = rel.indexOf("/");
+          const head = cut < 0 ? rel : rel.slice(0, cut);
+          if (children.has(head)) continue;
+          if (cut < 0) children.set(head, { path: head, type: "blob", sha: this.sha("b") });
+          else {
+            const sub = this.sha("t");
+            this.views.set(sub, { files: view.files, prefix: `${view.prefix}${head}/` });
+            children.set(head, { path: head, type: "tree", sha: sub });
+          }
+        }
+        return json(200, { tree: [...children.values()] });
+      }
       const files = repo.branches[branch] ?? {};
       return json(200, { tree: Object.keys(files).map((p) => ({ path: p, type: "blob" })) });
     }

@@ -47,6 +47,42 @@ describe("GitHubDataSource", () => {
     });
   });
 
+  it("constrói a árvore pasta a pasta (sem caminhos completos) e mantém o resto", async () => {
+    const { fake, source } = setup();
+    const trees: { path: string }[][] = [];
+    const fetchImpl = fake.fetch;
+    fake.fetch = async (input: string, init: RequestInit = {}) => {
+      if (String(input).endsWith("/git/trees") && init.method === "POST")
+        trees.push(JSON.parse(String(init.body)).tree);
+      return fetchImpl(input, init);
+    };
+    const client = new GitHubClient(fake.token, fake.fetch);
+    const nested = new GitHubDataSource(
+      client,
+      { owner: "aluna", name: "estudo-dados", branch: "main" },
+      "aluna",
+    );
+    await nested.upload(
+      [{ relativePath: "UC/a.pdf", sha256: "a".repeat(64), bytes: new Uint8Array([1]) }],
+      "20251001T100000Z-abcd",
+    );
+    expect(trees.flat().every((e) => !e.path.includes("/"))).toBe(true);
+    const files = fake.repos.get(REPO)!.branches.main!;
+    expect(Object.keys(files).sort()).toEqual([
+      "deposito/aluna/20251001T100000Z-abcd/UC/a.pdf",
+      "documentos/d1.yaml",
+      "nexus.yaml",
+    ]);
+    await source.patchDocument(
+      "d1",
+      (d) => {
+        d.notes = "x";
+      },
+      "nota",
+    );
+    expect(Object.keys(fake.repos.get(REPO)!.branches.main!)).toHaveLength(3);
+  });
+
   it("volta a tentar depois de uma falha de rede e de um limite de ritmo", async () => {
     const { fake } = setup();
     let calls = 0;

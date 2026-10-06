@@ -33,8 +33,8 @@ export interface WorkflowRun {
 
 export interface TreeEntry {
   path: string;
-  mode: "100644" | "100755";
-  type: "blob";
+  mode: "100644" | "100755" | "040000";
+  type: "blob" | "tree";
   sha: string | null;
 }
 
@@ -171,12 +171,21 @@ export class GitHubClient {
     return blob.sha;
   }
 
-  async createTree(owner: string, name: string, baseTree: string, tree: TreeEntry[]) {
+  async createTree(owner: string, name: string, baseTree: string | null, tree: TreeEntry[]) {
     const result = await this.json<{ sha: string }>("POST", `/repos/${owner}/${name}/git/trees`, {
-      base_tree: baseTree,
+      ...(baseTree ? { base_tree: baseTree } : {}),
       tree,
     });
     return result.sha;
+  }
+
+  /** Entradas directas de uma árvore (sem recursão). */
+  async listTree(owner: string, name: string, sha: string) {
+    const result = await this.json<{ tree: { path: string; type: string; sha: string }[] }>(
+      "GET",
+      `/repos/${owner}/${name}/git/trees/${sha}`,
+    );
+    return result.tree;
   }
 
   async createCommit(owner: string, name: string, message: string, tree: string, parent: string) {

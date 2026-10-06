@@ -25,6 +25,37 @@ async function readCurrent(client: GitHubClient, repo: RepoRef, path: string, re
   }
 }
 
+/**
+ * Constrói a árvore nova pasta a pasta: cada pedido só traz as entradas de uma pasta, com a
+ * árvore actual dessa pasta como base. Uma árvore só com caminhos completos, sobre a raiz
+ * de um repositório grande, faz o GitHub desistir ("your request timed out").
+ */
+export async function buildTree(
+  client: GitHubClient,
+  repo: RepoRef,
+  base: string | null,
+  entries: TreeEntry[],
+): Promise<string> {
+  const level: TreeEntry[] = entries.filter((e) => !e.path.includes("/"));
+  const groups = new Map<string, TreeEntry[]>();
+  for (const entry of entries) {
+    const cut = entry.path.indexOf("/");
+    if (cut < 0) continue;
+    const dir = entry.path.slice(0, cut);
+    groups.set(dir, [...(groups.get(dir) ?? []), { ...entry, path: entry.path.slice(cut + 1) }]);
+  }
+  if (groups.size > 0) {
+    const existing = base ? await client.listTree(repo.owner, repo.name, base) : [];
+    for (const [dir, inner] of [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const current = existing.find((e) => e.path === dir && e.type === "tree")?.sha ?? null;
+      if (!current && inner.every((e) => e.sha === null)) continue; // nada a apagar
+      const sha = await buildTree(client, repo, current, inner);
+      level.push({ path: dir, mode: "040000", type: "tree", sha });
+    }
+  }
+  return client.createTree(repo.owner, repo.name, base, level);
+}
+
 export async function commitChanges(
   client: GitHubClient,
   repo: RepoRef,
@@ -68,7 +99,7 @@ export async function commitChanges(
       tree.push({ path: change.path, mode: "100644", type: "blob", sha: sha ?? null });
     }
     if (tree.length === 0) return head;
-    const treeSha = await client.createTree(repo.owner, repo.name, baseTree, tree);
+    const treeSha = await buildTree(client, repo, baseTree, tree);
     const commit = await client.createCommit(repo.owner, repo.name, message, treeSha, head);
     try {
       await client.updateRef(repo.owner, repo.name, repo.branch, commit);
