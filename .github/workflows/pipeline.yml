@@ -20,7 +20,7 @@ permissions:
 jobs:
   processar:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 360
     steps:
       - name: Recusar repositórios públicos
         if: ${{ github.event.repository.private != true }}
@@ -31,7 +31,7 @@ jobs:
       - name: Checkout dos dados (sem descarregar os originais)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
           sparse-checkout: |
@@ -85,7 +85,8 @@ jobs:
             "nexus @ git+https://github.com/Knowledge-Nexus/knowledge-nexus.github.io@${{ inputs.app-ref }}"
 
       - name: Cache de extracção
-        uses: actions/cache@v4
+        id: cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/nexus
           key: nexus-extract-${{ github.run_id }}
@@ -162,8 +163,17 @@ jobs:
         run: |
           before="${{ github.event.before }}"
           if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
+            # Checkout superficial: só vem o commit anterior (sem blobs) para comparar árvores.
+            git fetch -q --depth=1 --filter=blob:none origin "$before"
             if git diff --name-status --no-renames "$before" HEAD -- originais | grep -v '^A'; then
               echo "::error::Há alterações ou remoções em originais/: proibido."
               exit 1
             fi
           fi
+
+      - name: Guardar a cache de extracção (mesmo se o trabalho falhar ou for cortado)
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/nexus
+          key: nexus-extract-${{ github.run_id }}-${{ github.run_attempt }}
