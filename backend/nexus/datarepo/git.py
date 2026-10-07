@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -9,6 +10,7 @@ from pathlib import Path
 
 BOT_NAME = "nexus-bot"
 BOT_EMAIL = "nexus-bot@users.noreply.github.com"
+log = logging.getLogger("nexus.git")
 
 
 class GitError(RuntimeError):
@@ -88,6 +90,7 @@ class Git:
             return True
         stderr = out.stderr.decode(errors="replace")
         if "rejected" in stderr or "non-fast-forward" in stderr or "fetch first" in stderr:
+            log.warning("git push rejeitado para %s/%s: %s", remote, branch, stderr.strip())
             return False
         raise GitError(f"git push falhou: {stderr.strip()}")
 
