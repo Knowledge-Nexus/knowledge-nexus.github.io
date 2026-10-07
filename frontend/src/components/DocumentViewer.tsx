@@ -111,7 +111,7 @@ export function DocumentPreview(props: { doc: DocumentRow }) {
           </Button>
         </div>
       )}
-      <div className="max-h-[36rem] overflow-auto rounded-lg bg-paper p-3">
+      <div className="max-h-[calc(100dvh-12rem)] overflow-auto rounded-lg bg-paper p-3">
         {tab === "original" && original ? (
           <OriginalPane doc={doc} page={page} setPage={setPage} />
         ) : (

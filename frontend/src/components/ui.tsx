@@ -58,12 +58,16 @@ export function Button(props: {
   type?: "button" | "submit";
   variant?: ButtonVariant;
   disabled?: boolean;
+  "aria-label"?: string;
+  title?: string;
 }) {
   return (
     <button
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled}
+      aria-label={props["aria-label"]}
+      title={props.title}
       className={buttonClass(props.variant)}
     >
       {props.children}
