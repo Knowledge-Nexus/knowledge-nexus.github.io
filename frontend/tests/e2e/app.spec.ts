@@ -91,6 +91,19 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   // Documento: classificação explicada + PDF renderizado pelo pdf.js
   await expect(page.getByText("Enunciados de avaliação")).toBeVisible();
   await expect(page.locator("canvas")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator("canvas").evaluate((canvas) => {
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const context = canvas.getContext("2d");
+        if (!context) return false;
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        return pixels.some((value, index) => index % 4 !== 3 && value < 245);
+      }),
+    )
+    .toBe(true);
+  await page.getByRole("button", { name: "Rodar para a direita" }).click();
+  await expect(page.locator("canvas")).toBeVisible();
   await page.getByRole("button", { name: "Texto" }).click();
   await expect(page.getByText(/Calcule o limite da sucessão/)).toBeVisible();
 
