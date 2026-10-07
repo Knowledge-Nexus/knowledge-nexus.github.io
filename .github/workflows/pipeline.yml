@@ -96,6 +96,14 @@ jobs:
       - name: Migrar o formato dos ficheiros (se preciso)
         run: nexus migrar
 
+      - name: Publicar o índice dos checkpoints existentes
+        env:
+          GIT_AUTHOR_NAME: nexus-bot
+          GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
+          GIT_COMMITTER_NAME: nexus-bot
+          GIT_COMMITTER_EMAIL: nexus-bot@users.noreply.github.com
+        run: nexus publicar-indices
+
       - name: Processar
         id: process
         env:
@@ -109,12 +117,13 @@ jobs:
           remaining=true
           reclassify="${{ inputs.reclassify }}"
           batch=0
+          since_indices=0
           while true; do
             batch=$((batch + 1))
-            args=(processar --max-itens 20 --json)
+            args=(processar --max-itens 1 --sem-indices --json)
             if [ "$reclassify" = "true" ]; then args+=(--reclassificar); fi
             set +e
-            nexus "${args[@]}" > "$RUNNER_TEMP/resultado.json"
+            nexus --verbose "${args[@]}" > "$RUNNER_TEMP/resultado.json"
             status=$?
             set -e
             # Erros de ficheiros individuais (status 2) estão em _erros/, não bloqueiam o lote.
@@ -133,12 +142,21 @@ jobs:
               f"- propostas de catálogo: {len(r['proposals'])}",
               f"- erros: {len(r['errors'])}",
           ]
+          lines += [f"- item tratado: `{label}`" for label in r["processed_labels"]]
           lines += [f"  - `{label}`: {msg}" for label, msg in r["errors"]]
           lines += [f"- adiado `{label}`: {msg}" for label, msg in r["skipped"]]
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write("\n".join(lines) + "\n")
+          for label in r["processed_labels"]:
+              print(f"::notice::Item concluído: {label}")
           PY
             remaining="$(python3 -c 'import json, os; print(str(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "resultado.json")))["report"]["remaining_items"]).lower())')"
+            processed="$(python3 -c 'import json, os; print(len(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "resultado.json")))["report"]["processed_labels"]))')"
+            since_indices=$((since_indices + processed))
+            if [ "$since_indices" -ge 10 ]; then
+              nexus publicar-indices
+              since_indices=0
+            fi
             reclassify=false
             if [ "$remaining" != "true" ]; then break; fi
             elapsed=$(( $(date +%s) - started_at ))
@@ -147,6 +165,7 @@ jobs:
               break
             fi
           done
+          if [ "$since_indices" -gt 0 ]; then nexus publicar-indices; fi
           echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
           if [ "$remaining" = "true" ]; then
             echo "- Ainda há itens por processar; será iniciada outra execução." \

@@ -135,6 +135,25 @@ def processar(
         raise typer.Exit(2)
 
 
+@app.command("publicar-indices")
+def publicar_indices(
+    repo: RepoOption = Path("."),
+    push: Annotated[bool, typer.Option("--push/--sem-push", help="Fazer push.")] = True,
+) -> None:
+    """Reconstrói e publica os índices do estado actual do repositório."""
+    from nexus.datarepo.git import GitError
+    from nexus.publish import publish_index_branch
+
+    _repo(repo)
+    try:
+        commit = publish_index_branch(repo, push=push)
+    except GitError as exc:
+        _fail(str(exc))
+        return
+    typer.echo(f"índices: {commit or '(gerados localmente)'}"
+               + (" (enviados)" if push and commit else ""))
+
+
 @app.command()
 def indexar(
     repo: RepoOption = Path("."),

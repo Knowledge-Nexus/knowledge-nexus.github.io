@@ -47,6 +47,20 @@ def _remote_indices_source(git: Git, remote: str) -> str | None:
     return str(value) if value else None
 
 
+def publish_index_branch(root: Path, push: bool = True, remote: str = "origin") -> str | None:
+    """Reconstrói e publica os índices do estado actual do repositório."""
+    git = Git(root)
+    use_git = git.is_repo()
+    head = git.head() if use_git else None
+    with tempfile.TemporaryDirectory(prefix="nexus-indices-") as tmp:
+        build_indices(DataRepo(root), Path(tmp), built_from=head)
+        if not use_git:
+            return None
+        return git.publish_directory(
+            Path(tmp), INDICES_BRANCH, f"nexus: índices de {head or 'trabalho local'}",
+            remote=remote if push else None)
+
+
 def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                         publish_indices: bool = True, remote: str = "origin",
                         branch: str = "main", max_attempts: int = 3,
@@ -94,18 +108,11 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
     else:
         raise GitError("não foi possível publicar depois de várias tentativas")
 
-    if publish_indices and not result.report.remaining_items:
+    if publish_indices:
         head = git.head() if use_git else None
         if use_git and push and result.commit is None and head and \
                 _remote_indices_source(git, remote) == head:
             result.notes.append("índices já actualizados")
             return result
-        with tempfile.TemporaryDirectory(prefix="nexus-indices-") as tmp:
-            build_indices(DataRepo(root), Path(tmp), built_from=head)
-            if use_git:
-                result.indices_commit = git.publish_directory(
-                    Path(tmp), INDICES_BRANCH, f"nexus: índices de {head or 'trabalho local'}",
-                    remote=remote if push else None)
-    elif result.report.remaining_items:
-        result.notes.append("há mais itens no depósito; índices adiados até ao fim dos lotes")
+        result.indices_commit = publish_index_branch(root, push=push, remote=remote)
     return result

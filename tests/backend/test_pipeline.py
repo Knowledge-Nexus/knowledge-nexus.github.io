@@ -171,6 +171,7 @@ def test_batch_skips_deferred_items_and_reports_unprocessed_items(
     assert deferred.exists()
     assert not ready.exists()
     assert first.processed_items == 1
+    assert first.processed_labels == [f"{OWNER}/20251001T100000Z-abcd/b_exame.pdf"]
     assert first.remaining_items
     assert first.skipped and "tesseract" in first.skipped[0][1]
 

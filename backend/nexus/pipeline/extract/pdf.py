@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pymupdf
@@ -20,6 +21,7 @@ from nexus.pipeline.extract.ocr import ocr_image
 # 2: acentos soltos dos PDFs em LaTeX juntos à letra (domain.text.fix_spacing_accents).
 VERSION = 2
 _META_KEYS = ("title", "author", "subject", "keywords", "creator", "producer", "creationDate")
+log = logging.getLogger("nexus.extract.pdf")
 
 
 def pdf_pages(
@@ -43,6 +45,8 @@ def pdf_pages(
                 continue
             image = workdir / f"page-{index + 1:04d}.png"
             page.get_pixmap(dpi=settings.ocr_dpi).save(image)
+            if index == 0 or (index + 1) % 10 == 0 or index + 1 == doc.page_count:
+                log.info("OCR de %s: página %d/%d", path.name, index + 1, doc.page_count)
             result = ocr_image(image, settings.ocr_languages, settings.ocr_timeout_seconds)
             image.unlink(missing_ok=True)
             text = clean_text(result.text)

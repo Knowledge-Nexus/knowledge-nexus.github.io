@@ -111,6 +111,7 @@ class RunReport:
     skipped: list[tuple[str, str]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     processed_items: int = 0
+    processed_labels: list[str] = field(default_factory=list)
     remaining_items: bool = False
 
     def summary(self) -> list[str]:
@@ -204,10 +205,13 @@ class Pipeline:
                         for pending in scan.items[index:]
                     )
                     break
+                log.info("a tratar item %s", item.label)
                 self._intake(item)
                 if not any(path.exists() for path in item.deposit_paths()):
                     processed += 1
                     self.report.processed_items += 1
+                    self.report.processed_labels.append(item.label)
+                    log.info("item tratado %s", item.label)
             self._remove_empty_dirs()
             self._reconcile_all()
         return self.report

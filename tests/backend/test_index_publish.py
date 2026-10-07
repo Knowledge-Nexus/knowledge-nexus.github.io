@@ -95,7 +95,7 @@ def test_process_and_publish_with_git(git_root: Path) -> None:
     assert again.commit is None and "índices já actualizados" in again.notes
 
 
-def test_process_and_publish_commits_batches_and_indexes_only_at_the_end(
+def test_process_and_publish_commits_and_indexes_each_batch(
     git_root: Path,
 ) -> None:
     gerar.pdf_nativo(deposit(git_root, "a.pdf"), gerar.EXAME_AM1)
@@ -107,7 +107,7 @@ def test_process_and_publish_commits_batches_and_indexes_only_at_the_end(
     assert first.pushed and first.commit
     assert first.report.processed_items == 2
     assert first.report.remaining_items
-    assert first.indices_commit is None
+    assert first.indices_commit
     assert len(list((git_root / "deposito").rglob("*.pdf"))) == 1
 
     second = process_and_publish(git_root, max_items=2)
