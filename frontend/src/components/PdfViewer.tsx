@@ -64,39 +64,45 @@ export function PdfViewer(props: {
     let cancelRendering: (() => void) | undefined;
     const target = canvas.current;
     const number = Math.min(Math.max(1, props.page), doc.numPages);
-    void doc.getPage(number).then((page) => {
-      if (cancelled) return;
-      const pageViewport = page.getViewport({
-        scale: 1,
-        rotation: (page.rotate + rotation) % 360,
-      });
-      const scale = Math.min(size.width / pageViewport.width, size.height / pageViewport.height);
-      const pixelRatio = window.devicePixelRatio || 1;
-      const renderViewport = page.getViewport({ scale, rotation: (page.rotate + rotation) % 360 });
-      target.width = Math.floor(renderViewport.width * pixelRatio);
-      target.height = Math.floor(renderViewport.height * pixelRatio);
-      target.style.width = `${pageViewport.width * scale}px`;
-      target.style.height = `${pageViewport.height * scale}px`;
-      const context = target.getContext("2d");
-      if (context) {
-        if (pixelRatio !== 1) {
-          context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    void doc
+      .getPage(number)
+      .then((page) => {
+        if (cancelled) return;
+        const pageViewport = page.getViewport({
+          scale: 1,
+          rotation: (page.rotate + rotation) % 360,
+        });
+        const scale = Math.min(size.width / pageViewport.width, size.height / pageViewport.height);
+        const pixelRatio = window.devicePixelRatio || 1;
+        const renderViewport = page.getViewport({
+          scale,
+          rotation: (page.rotate + rotation) % 360,
+        });
+        target.width = Math.floor(renderViewport.width * pixelRatio);
+        target.height = Math.floor(renderViewport.height * pixelRatio);
+        target.style.width = `${pageViewport.width * scale}px`;
+        target.style.height = `${pageViewport.height * scale}px`;
+        const context = target.getContext("2d");
+        if (context) {
+          if (pixelRatio !== 1) {
+            context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+          }
+          const renderTask = page.render({
+            canvasContext: context,
+            viewport: renderViewport,
+            canvas: target,
+            transform: pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0],
+          });
+          cancelRendering = () => renderTask.cancel();
+          void renderTask.promise.catch((err: unknown) => {
+            if (!cancelled && !(err instanceof Error && err.name === "RenderingCancelledException"))
+              setError(err);
+          });
         }
-        const renderTask = page.render({
-          canvasContext: context,
-          viewport: renderViewport,
-          canvas: target,
-          transform: pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0],
-        });
-        cancelRendering = () => renderTask.cancel();
-        void renderTask.promise.catch((err: unknown) => {
-          if (!cancelled && !(err instanceof Error && err.name === "RenderingCancelledException"))
-            setError(err);
-        });
-      }
-    }).catch((err: unknown) => {
-      if (!cancelled) setError(err);
-    });
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err);
+      });
     return () => {
       cancelled = true;
       cancelRendering?.();
