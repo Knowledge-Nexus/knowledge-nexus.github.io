@@ -2,7 +2,7 @@
 
 Uso: uv run python tests/contrato/gerar_indice.py <pasta-de-saida>
 
-Escreve meta.db, pesquisa.db, manifest.json e esperado.json (resultados de referência
+Escreve meta.db, pesquisa.db.gz, manifest.json e esperado.json (resultados de referência
 calculados em Python) para o frontend verificar que lê o mesmo esquema e obtém os mesmos
 resultados de pesquisa (frontend/src/data/sqlite/contract.test.ts).
 """

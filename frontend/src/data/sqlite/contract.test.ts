@@ -4,6 +4,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { gunzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { normalize } from "../../lib/normalize";
 import { ReadonlyDb } from "./db";
@@ -72,7 +73,7 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
 
   it("pesquisa como o Python", async () => {
     const search = new SearchIndex(
-      await ReadonlyDb.open(readFileSync(resolve(dir, "pesquisa.db"))),
+      await ReadonlyDb.open(gunzipSync(readFileSync(resolve(dir, "pesquisa.db.gz")))),
     );
     for (const [query, hits] of Object.entries(expected!.search)) {
       const got = search.search(query, expected!.owner).map((h) => [h.doc_id, h.page]);

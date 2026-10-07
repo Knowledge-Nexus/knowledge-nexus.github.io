@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import sqlite3
 import subprocess
@@ -81,7 +82,9 @@ def test_public_site_only_has_public_material_and_nothing_personal(
     assert (site / "texto" / sha / "paginas" / "0001.md").exists()
     alga_sha = repo.documents[_doc_of(repo, "ufe/alga")].blob.sha256
     assert not list((site / "originais").glob(f"*/{alga_sha}*"))
-    search = sqlite3.connect(site / SEARCH_DB)
+    raw_search = tmp_path / "pesquisa.db"
+    raw_search.write_bytes(gzip.decompress((site / SEARCH_DB).read_bytes()))
+    search = sqlite3.connect(raw_search)
     assert {r[0] for r in search.execute("SELECT DISTINCT doc_id FROM pages_fts")} == {am1}
     manifest = json.loads((site / "manifest.json").read_text())
     assert manifest["scope"] == "public" and manifest["content_digest"] == digest

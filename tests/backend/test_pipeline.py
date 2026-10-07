@@ -395,6 +395,7 @@ def test_software_archive_is_kept_whole(catalog_root: Path) -> None:
 
 
 def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path: Path) -> None:
+    import gzip
     import sqlite3
 
     from nexus.index.builder import SEARCH_DB
@@ -417,7 +418,9 @@ def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path:
     assert copy.filed_name is None and not copy.needs_review
 
     build_indices(repo, tmp_path)
-    ids = {r[0] for r in sqlite3.connect(tmp_path / SEARCH_DB).execute(
+    raw_search = tmp_path / "pesquisa.db"
+    raw_search.write_bytes(gzip.decompress((tmp_path / SEARCH_DB).read_bytes()))
+    ids = {r[0] for r in sqlite3.connect(raw_search).execute(
         "SELECT DISTINCT doc_id FROM pages_fts")}
     assert copy.id not in ids and first.id in ids
 
