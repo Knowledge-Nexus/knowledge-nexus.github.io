@@ -24,6 +24,7 @@ export function PdfViewer(props: {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   // O contentor só existe depois de o documento carregar, por isso a observação depende de `doc`.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `doc` faz a observação recomeçar quando o contentor aparece
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
