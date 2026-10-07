@@ -23,6 +23,7 @@ export function PdfViewer(props: {
   const [rotation, setRotation] = useState(0);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
+  // O contentor só existe depois de o documento carregar, por isso a observação depende de `doc`.
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -36,7 +37,7 @@ export function PdfViewer(props: {
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [doc]);
 
   useEffect(() => {
     let cancelled = false;
