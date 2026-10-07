@@ -95,6 +95,31 @@ def test_process_and_publish_with_git(git_root: Path) -> None:
     assert again.commit is None and "índices já actualizados" in again.notes
 
 
+def test_process_and_publish_commits_batches_and_indexes_only_at_the_end(
+    git_root: Path,
+) -> None:
+    gerar.pdf_nativo(deposit(git_root, "a.pdf"), gerar.EXAME_AM1)
+    gerar.pdf_nativo(deposit(git_root, "b.pdf"), gerar.SLIDES_ALGA)
+    gerar.pdf_nativo(deposit(git_root, "c.pdf"), gerar.FICHA_DESCONHECIDA)
+
+    first = process_and_publish(git_root, max_items=2)
+
+    assert first.pushed and first.commit
+    assert first.report.processed_items == 2
+    assert first.report.remaining_items
+    assert first.indices_commit is None
+    assert len(list((git_root / "deposito").rglob("*.pdf"))) == 1
+
+    second = process_and_publish(git_root, max_items=2)
+
+    assert second.pushed and second.commit
+    assert second.report.processed_items == 1
+    assert not second.report.remaining_items
+    assert second.indices_commit
+    assert len(DataRepo(git_root).documents) == 3
+    assert not list((git_root / "deposito").rglob("*.pdf"))
+
+
 def test_push_rejected_is_retried_without_losing_files(git_root: Path, tmp_path: Path) -> None:
     remote = git("remote", "get-url", "origin", cwd=git_root)
     other = tmp_path / "outro-clone"

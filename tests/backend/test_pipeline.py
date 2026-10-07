@@ -157,6 +157,30 @@ def test_missing_tool_keeps_file_in_deposit(catalog_root: Path, monkeypatch) -> 
     assert report.skipped and "tesseract" in report.skipped[0][1]
 
 
+def test_batch_skips_deferred_items_and_reports_unprocessed_items(
+    catalog_root: Path, monkeypatch
+) -> None:
+    deferred = gerar.imagem_texto(deposit(catalog_root, "a_foto.png"),
+                                  gerar.APONTAMENTOS_FG)
+    ready = gerar.pdf_nativo(deposit(catalog_root, "b_exame.pdf"), gerar.EXAME_AM1)
+    gerar.pdf_nativo(deposit(catalog_root, "c_apontamentos.pdf"), gerar.SLIDES_ALGA)
+    monkeypatch.setenv("PATH", "/nonexistent")
+
+    first = Pipeline(DataRepo(catalog_root), max_items=1).run()
+
+    assert deferred.exists()
+    assert not ready.exists()
+    assert first.processed_items == 1
+    assert first.remaining_items
+    assert first.skipped and "tesseract" in first.skipped[0][1]
+
+    second = Pipeline(DataRepo(catalog_root), max_items=1).run()
+
+    assert deferred.exists()
+    assert second.processed_items == 1
+    assert not second.remaining_items
+
+
 def test_archive_with_code_project_and_nested_zip(catalog_root: Path, tmp_path: Path) -> None:
     project = gerar.projecto_codigo(tmp_path / "trabalho")
     inner = gerar.zip_de(tmp_path / "inner.zip", {"fg/apontamentos.txt": b"Fisica Geral"})

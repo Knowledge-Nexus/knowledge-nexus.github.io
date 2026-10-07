@@ -49,7 +49,8 @@ def _remote_indices_source(git: Git, remote: str) -> str | None:
 
 def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                         publish_indices: bool = True, remote: str = "origin",
-                        branch: str = "main", max_attempts: int = 3) -> ProcessResult:
+                        branch: str = "main", max_attempts: int = 3,
+                        max_items: int | None = None) -> ProcessResult:
     """Corre o pipeline e publica. Nunca perde ficheiros locais:
 
     1. alterações locais por registar (ex.: ficheiros largados no depósito de um clone)
@@ -68,7 +69,9 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
     for attempt in range(1, max_attempts + 1):
         result.attempts = attempt
         base = git.head() if use_git else None
-        result.report = Pipeline(DataRepo(root), reclassify_all=reclassify).run()
+        result.report = Pipeline(
+            DataRepo(root), reclassify_all=reclassify, max_items=max_items
+        ).run()
         if not use_git:
             break
         result.commit = git.commit(commit_message(result.report))
@@ -91,7 +94,7 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
     else:
         raise GitError("não foi possível publicar depois de várias tentativas")
 
-    if publish_indices:
+    if publish_indices and not result.report.remaining_items:
         head = git.head() if use_git else None
         if use_git and push and result.commit is None and head and \
                 _remote_indices_source(git, remote) == head:
@@ -103,4 +106,6 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                 result.indices_commit = git.publish_directory(
                     Path(tmp), INDICES_BRANCH, f"nexus: índices de {head or 'trabalho local'}",
                     remote=remote if push else None)
+    elif result.report.remaining_items:
+        result.notes.append("há mais itens no depósito; índices adiados até ao fim dos lotes")
     return result

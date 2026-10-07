@@ -56,9 +56,11 @@ Porque é assim:
    - decide entre arrumar (nome normalizado) e abrir revisão (com motivos e alternativas);
    - regista propostas de catálogo.
 
-**Publicação:** commit e push. Se o remoto tiver avançado, repete a partir do remoto,
-sem nunca perder ficheiros locais. No fim reconstrói os índices e reescreve o ramo
-`indices`.
+**Publicação:** o Actions processa até 20 itens concluídos por lote e faz commit/push
+entre lotes. Itens adiados ficam no depósito sem bloquear os seguintes. Se o remoto tiver
+avançado, repete a partir do remoto, sem nunca perder ficheiros locais. O workflow continua
+automaticamente noutra execução se se aproximar do limite de seis horas. Só no fim publica
+o material marcado como público e reconstrói os índices no ramo `indices`.
 
 ### Revisão
 1. A interface grava um patch no `documentos/<id>.yaml`: os campos escolhidos ficam com

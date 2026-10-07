@@ -105,6 +105,8 @@ def processar(
     repo: RepoOption = Path("."),
     push: Annotated[bool, typer.Option("--push/--sem-push", help="Fazer push.")] = True,
     indices: Annotated[bool, typer.Option("--indices/--sem-indices")] = True,
+    max_itens: Annotated[int | None, typer.Option(
+        "--max-itens", min=1, help="Máximo de itens do depósito por execução.")] = None,
     reclassificar: Annotated[bool, typer.Option(
         help="Reclassificar tudo o que não foi revisto pelo utilizador.")] = False,
     as_json: JsonOption = False,
@@ -116,7 +118,7 @@ def processar(
     _repo(repo)
     try:
         result = process_and_publish(repo, push=push, reclassify=reclassificar,
-                                     publish_indices=indices)
+                                     publish_indices=indices, max_items=max_itens)
     except GitError as exc:
         _fail(str(exc))
         return

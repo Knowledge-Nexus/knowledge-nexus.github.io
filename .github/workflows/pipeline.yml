@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   processar:
@@ -96,6 +97,7 @@ jobs:
         run: nexus migrar
 
       - name: Processar
+        id: process
         env:
           GIT_AUTHOR_NAME: nexus-bot
           GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
@@ -103,18 +105,27 @@ jobs:
           GIT_COMMITTER_EMAIL: nexus-bot@users.noreply.github.com
         run: |
           nexus verificar --rapido || true
-          args=(processar --json)
-          if [ "${{ inputs.reclassify }}" = "true" ]; then args+=(--reclassificar); fi
-          set +e
-          nexus "${args[@]}" > "$RUNNER_TEMP/resultado.json"
-          status=$?
-          set -e
-          python3 - <<'PY'
+          started_at=$(date +%s)
+          remaining=true
+          reclassify="${{ inputs.reclassify }}"
+          batch=0
+          while true; do
+            batch=$((batch + 1))
+            args=(processar --max-itens 20 --json)
+            if [ "$reclassify" = "true" ]; then args+=(--reclassificar); fi
+            set +e
+            nexus "${args[@]}" > "$RUNNER_TEMP/resultado.json"
+            status=$?
+            set -e
+            # Erros de ficheiros individuais (status 2) estão em _erros/, não bloqueiam o lote.
+            if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
+            BATCH="$batch" python3 - <<'PY'
           import json
           import os
           r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "resultado.json")))["report"]
           lines = [
-              "## Resultado do processamento",
+              f"## Lote {os.environ['BATCH']}",
+              f"- itens processados: **{r['processed_items']}**",
               f"- documentos novos: **{len(r['new_documents'])}**",
               f"- reenvios deduplicados: {len(r['new_sources'])}",
               f"- arrumados: **{len(r['filed'])}**",
@@ -127,10 +138,23 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
               fh.write("\n".join(lines) + "\n")
           PY
-          # Erros de ficheiros individuais (status 2) não falham o workflow: estão em _erros/.
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
+            remaining="$(python3 -c 'import json, os; print(str(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "resultado.json")))["report"]["remaining_items"]).lower())')"
+            reclassify=false
+            if [ "$remaining" != "true" ]; then break; fi
+            elapsed=$(( $(date +%s) - started_at ))
+            if [ "$elapsed" -ge 18900 ]; then
+              echo "::notice::O limite seguro desta execução foi atingido; a continuação será agendada."
+              break
+            fi
+          done
+          echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
+          if [ "$remaining" = "true" ]; then
+            echo "- Ainda há itens por processar; será iniciada outra execução." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publicar o material marcado como público
+        if: success() && steps.process.outputs.remaining != 'true'
         # Só corre se o nexus.yaml tiver publishing.public_repo; só sai o que o dono marcou
         # como "Público" (por cadeira ou por documento). O repositório de dados fica privado.
         env:
@@ -162,8 +186,12 @@ jobs:
         if: ${{ github.event.forced != true }}
         run: |
           before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            git fetch -q --deepen=1 --filter=blob:none origin "$GITHUB_SHA"
+            before="$(git rev-parse "$GITHUB_SHA^" 2>/dev/null || true)"
+          fi
           if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
-            # Checkout superficial: só vem o commit anterior (sem blobs) para comparar árvores.
+            # O histórico superficial basta: só comparamos as árvores do commit anterior.
             git fetch -q --depth=1 --filter=blob:none origin "$before"
             if git diff --name-status --no-renames "$before" HEAD -- originais | grep -v '^A'; then
               echo "::error::Há alterações ou remoções em originais/: proibido."
@@ -177,3 +205,9 @@ jobs:
         with:
           path: ~/.cache/nexus
           key: nexus-extract-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Continuar noutra execução
+        if: success() && steps.process.outputs.remaining == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run nexus.yml --repo "$GITHUB_REPOSITORY" --ref main --field reclassificar=false

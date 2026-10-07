@@ -110,9 +110,12 @@ class RunReport:
     errors: list[tuple[str, str]] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    processed_items: int = 0
+    remaining_items: bool = False
 
     def summary(self) -> list[str]:
         lines = [
+            f"itens processados: {self.processed_items}",
             f"documentos novos: {len(self.new_documents)}",
             f"reenvios do mesmo ficheiro (sem duplicar): {len(self.new_sources)}",
             f"conteúdos extraídos: {len(self.extracted)}",
@@ -123,6 +126,8 @@ class RunReport:
         lines += [f"ERRO {label}: {message}" for label, message in self.errors]
         lines += [f"adiado {label}: {message}" for label, message in self.skipped]
         lines += [f"aviso: {w}" for w in self.warnings]
+        if self.remaining_items:
+            lines.append("há mais itens no depósito para a próxima execução")
         return lines
 
 
@@ -147,7 +152,11 @@ def default_cache_dir() -> Path:
 
 class Pipeline:
     def __init__(
-        self, repo: DataRepo, cache_dir: Path | None = None, reclassify_all: bool = False
+        self,
+        repo: DataRepo,
+        cache_dir: Path | None = None,
+        reclassify_all: bool = False,
+        max_items: int | None = None,
     ) -> None:
         self.repo = repo
         self.layout = repo.layout
@@ -155,6 +164,7 @@ class Pipeline:
         self.blobs = GitRepoBlobStore(repo.layout)
         self.cache_dir = cache_dir or default_cache_dir()
         self.reclassify_all = reclassify_all
+        self.max_items = max_items
         self.report = RunReport()
         self.now = clock.now()
         self.workdir = Path()
@@ -186,8 +196,18 @@ class Pipeline:
             self._catalog_requests()
             for junk in scan.junk:
                 junk.unlink(missing_ok=True)
-            for item in scan.items:
+            processed = 0
+            for index, item in enumerate(scan.items):
+                if self.max_items is not None and processed >= self.max_items:
+                    self.report.remaining_items = any(
+                        any(path.exists() for path in pending.deposit_paths())
+                        for pending in scan.items[index:]
+                    )
+                    break
                 self._intake(item)
+                if not any(path.exists() for path in item.deposit_paths()):
+                    processed += 1
+                    self.report.processed_items += 1
             self._remove_empty_dirs()
             self._reconcile_all()
         return self.report
