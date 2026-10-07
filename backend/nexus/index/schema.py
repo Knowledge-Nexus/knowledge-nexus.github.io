@@ -191,4 +191,5 @@ extractions = Table(
     Column("warnings", JSON, nullable=False),
 )
 
-# pesquisa.db (FTS5) é criada com SQL próprio do SQLite: ver nexus/index/search.py.
+# pesquisa.db (FTS5), publicada comprimida como pesquisa.db.gz, é criada com SQL próprio
+# do SQLite: ver nexus/index/search.py.

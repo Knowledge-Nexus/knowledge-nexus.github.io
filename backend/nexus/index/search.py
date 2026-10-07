@@ -1,13 +1,16 @@
 """Pesquisa de texto integral: FTS5 do SQLite atrás de uma interface própria.
 
-A mesma base (`pesquisa.db`) é lida no browser (frontend/src/data/sqlite/search.ts), com
-a mesma construção de consulta. Na fase 5 troca-se por full-text do PostgreSQL + pgvector
-implementando `SearchBackend`.
+A base (`pesquisa.db`, publicada como `pesquisa.db.gz`) é lida no browser
+(frontend/src/data/sqlite/search.ts), com a mesma construção de consulta. Na fase 5 troca-se
+por full-text do PostgreSQL + pgvector implementando `SearchBackend`.
 """
 
 from __future__ import annotations
 
+import gzip
+import shutil
 import sqlite3
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -122,7 +125,14 @@ LIMIT :limit
 
 class SqliteFtsSearch:
     def __init__(self, path: Path) -> None:
-        self.path = path
+        self._tempdir: tempfile.TemporaryDirectory[str] | None = None
+        if path.suffix == ".gz":
+            self._tempdir = tempfile.TemporaryDirectory(prefix="nexus-search-")
+            self.path = Path(self._tempdir.name) / "pesquisa.db"
+            with gzip.open(path, "rb") as source, self.path.open("wb") as target:
+                shutil.copyfileobj(source, target)
+        else:
+            self.path = path
 
     def search(self, query: str, viewer: str, filters: SearchFilters | None = None,
                limit: int = 50) -> list[SearchHit]:

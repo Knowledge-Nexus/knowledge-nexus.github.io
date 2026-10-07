@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import sqlite3
 import subprocess
@@ -59,6 +60,8 @@ def test_meta_db_contents(catalog_root: Path, tmp_path: Path) -> None:
                        ).fetchone()[0] >= 12
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert set(manifest["files"]) == {META_DB, SEARCH_DB}
+    assert not (tmp_path / "pesquisa.db").exists()
+    assert gzip.decompress((tmp_path / SEARCH_DB).read_bytes()).startswith(b"SQLite format 3")
 
 
 def test_alembic_baseline_matches_schema(tmp_path: Path) -> None:
@@ -85,7 +88,7 @@ def test_process_and_publish_with_git(git_root: Path) -> None:
     remote = git("remote", "get-url", "origin", cwd=git_root)
     assert git("rev-parse", "main", cwd=Path(remote)) == git("rev-parse", "HEAD", cwd=git_root)
     files = git("ls-tree", "--name-only", "indices", cwd=Path(remote)).split()
-    assert files == ["manifest.json", "meta.db", "pesquisa.db"]
+    assert files == ["manifest.json", "meta.db", "pesquisa.db.gz"]
     assert git("rev-list", "--count", "indices", cwd=Path(remote)) == "1"
     log = git("log", "--format=%s", cwd=git_root).splitlines()
     assert log[0].startswith("nexus: processar depósito (1 novos")

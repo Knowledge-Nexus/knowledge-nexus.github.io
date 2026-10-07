@@ -1,7 +1,8 @@
-"""Constrói os índices derivados (`meta.db`, `pesquisa.db`, `manifest.json`)."""
+"""Constrói os índices derivados (`meta.db`, `pesquisa.db.gz`, `manifest.json`)."""
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 from dataclasses import dataclass
@@ -21,7 +22,8 @@ from nexus.index.search import SEARCH_SCHEMA_VERSION, PageRow, create_search_db
 from nexus.pipeline.hashing import hamming
 
 META_DB = "meta.db"
-SEARCH_DB = "pesquisa.db"
+SEARCH_DB = "pesquisa.db.gz"
+_SEARCH_DB_RAW = "pesquisa.db"
 MANIFEST = "manifest.json"
 
 
@@ -283,8 +285,14 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                 for p in repo.proposals.values()])
     engine.dispose()
 
+    raw_search_path = out / _SEARCH_DB_RAW
+    create_search_db(raw_search_path, page_rows, meta_values)
     search_path = out / SEARCH_DB
-    create_search_db(search_path, page_rows, meta_values)
+    with (raw_search_path.open("rb") as source, search_path.open("wb") as target,
+          gzip.GzipFile(filename="", mode="wb", fileobj=target, mtime=0) as compressed):
+        while chunk := source.read(1024 * 1024):
+            compressed.write(chunk)
+    raw_search_path.unlink()
     manifest = {
         "schema_version": schema.SCHEMA_VERSION,
         "search_schema_version": SEARCH_SCHEMA_VERSION,

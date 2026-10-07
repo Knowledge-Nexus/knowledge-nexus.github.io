@@ -5,7 +5,7 @@
 ```
 Browser ─ https://knowledge-nexus.github.io (SPA React, código público, CSP estrita, noindex)
   │  token fine-grained (só o repositório de dados; guardado apenas neste browser)
-  ├─ lê  ramo `indices` → meta.db + pesquisa.db → SQLite WASM em memória (cache IndexedDB)
+  ├─ lê  ramo `indices` → meta.db + pesquisa.db.gz → SQLite WASM em memória (cache IndexedDB)
   ├─ lê  originais/ e texto/ → pdf.js na página citada; Markdown + KaTeX
   └─ escreve commits (Git Data API): deposito/, documentos/, utilizadores/, catalogo/_importar/
                        │ push
@@ -148,4 +148,4 @@ como público.
   "privado" não se garante (quem lê o repositório lê tudo). Na fase 5 a solução passa por
   repositórios por grupo ou por um backend.
 - **Crescimento do índice:** o browser descarrega os índices inteiros. Quando crescerem,
-  reparte-se `pesquisa.db` por cadeira ou por ano lectivo.
+  reparte-se o índice comprimido por cadeira ou por ano lectivo.

@@ -24,7 +24,7 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
 - `texto/<sha256>/` texto extraído (páginas em Markdown + LaTeX, meta.json)
 - `catalogo/` instituições, cursos, cadeiras, vocabulários
 - `revisao/propostas/` propostas de catálogo
-- ramo `indices`: meta.db e pesquisa.db (derivados)
+- ramo `indices`: meta.db e pesquisa.db.gz (derivados)
 
 ## Skills
 - `/processar-deposito`: corre o pipeline localmente e publica

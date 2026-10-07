@@ -160,7 +160,7 @@ def indexar(
     saida: Annotated[Path, typer.Option(help="Pasta onde gravar os índices.")] =
     Path(".nexus-cache/indices"),
 ) -> None:
-    """Constrói meta.db e pesquisa.db sem publicar (útil para depurar)."""
+    """Constrói meta.db e pesquisa.db.gz sem publicar (útil para depurar)."""
     from nexus.datarepo.git import Git
     from nexus.index.builder import build_indices
 

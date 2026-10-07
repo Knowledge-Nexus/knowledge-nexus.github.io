@@ -21,7 +21,7 @@ documentos/<uuid7>.yaml              cópia lógica por utilizador
 texto/<sha256>/                      documento.md, paginas/0001.md…, meta.json, render.pdf
 revisao/propostas/<id>.yaml          cadeira/curso/instituição propostos, com evidência
 gerado/<sha256>/…                    (fase 2) material gerado, sempre com proveniência
-ramo indices                         manifest.json, meta.db, pesquisa.db (derivados)
+ramo indices                         manifest.json, meta.db, pesquisa.db.gz (derivados)
 ```
 
 ## Exemplos
@@ -93,12 +93,14 @@ institutions:
 proposals: {accept: [unit-teoria-dos-grafos-imaginarios]}
 ```
 
-## Índices (`meta.db`, `pesquisa.db`)
+## Índices (`meta.db`, `pesquisa.db.gz`)
 
 - **`meta.db`** tem as tabelas `meta`, `institutions`, `courses`, `units`, `course_units`,
   `unit_editions`, `topics`, `vocab_terms`, `users`, `documents`, `near_duplicates`,
   `proposals` e `extractions`. O esquema está em `backend/nexus/index/schema.py`.
-- **`pesquisa.db`** tem uma tabela FTS5, `pages_fts`: o texto indexado (`text`, `norm`) e
-  colunas não indexadas para filtros e visibilidade.
+- **`pesquisa.db.gz`** contém a base SQLite comprimida com gzip. Depois de a descarregar,
+  a interface descomprime-a no browser; a base tem a tabela FTS5 `pages_fts`, o texto
+  indexado (`text`, `norm`) e colunas não indexadas para filtros e visibilidade. A
+  compressão mantém o ficheiro abaixo do limite de 100 MB por blob do GitHub.
 - **`manifest.json`** guarda `built_from` (o commit de `main`), `built_at` e o SHA-256 de
   cada ficheiro. É com ele que a interface decide se precisa de descarregar de novo.

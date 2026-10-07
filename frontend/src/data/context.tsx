@@ -1,6 +1,7 @@
 // Estado partilhado: sessão, fonte de dados, índices (SQLite) e estado do pipeline.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { gunzipSync } from "fflate";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import type { WorkflowRun } from "./github/client";
 import type { DataSource } from "./source";
@@ -146,12 +147,22 @@ export function DataProvider(props: {
 /** Índice de pesquisa: carregado só quando é preciso (pode ser maior). */
 export function useSearchIndex() {
   const { source, manifest } = useApp();
-  const sha = manifest?.files["pesquisa.db"]?.sha256;
+  const compressedName = "pesquisa.db.gz";
+  const searchName = manifest?.files[compressedName]
+    ? compressedName
+    : manifest?.files["pesquisa.db"]
+      ? "pesquisa.db"
+      : null;
+  const sha = searchName ? manifest?.files[searchName]?.sha256 : undefined;
   return useQuery({
     queryKey: ["search-index", sha],
     enabled: Boolean(sha),
     staleTime: Number.POSITIVE_INFINITY,
-    queryFn: async () =>
-      new SearchIndex(await ReadonlyDb.open(await source.indexFile("pesquisa.db", sha!))),
+    queryFn: async () => {
+      if (!searchName || !sha) throw new Error("manifesto sem índice de pesquisa");
+      const bytes = await source.indexFile(searchName, sha);
+      const database = searchName === compressedName ? gunzipSync(bytes) : bytes;
+      return new SearchIndex(await ReadonlyDb.open(database));
+    },
   });
 }
