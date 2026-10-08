@@ -15,7 +15,7 @@ from typing import Literal
 
 from nexus.datarepo.store import DataRepo
 from nexus.domain.documents import DocumentKind, Status
-from nexus.storage.blobstore import GitRepoBlobStore
+from nexus.storage.r2 import open_blob_store
 
 NO_COURSE = "_sem-curso"
 NO_UNIT = "_sem-uc"
@@ -30,7 +30,7 @@ class ExportReport:
 def export_tree(repo: DataRepo, dest: Path, owner: str | None = None,
                 mode: Literal["copy", "link"] = "copy") -> ExportReport:
     catalog = repo.catalog
-    blobs = GitRepoBlobStore(repo.layout)
+    blobs = open_blob_store(repo.layout, repo.settings.storage)
     report = ExportReport()
     used: set[Path] = set()
     staging = dest / ".nexus-tmp"

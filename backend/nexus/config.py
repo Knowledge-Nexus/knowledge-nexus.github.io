@@ -101,6 +101,14 @@ class PublishingSettings(_Section):
     public_branch: str = "main"
 
 
+class StorageSettings(_Section):
+    # "git" guarda os originais no repositório; "r2" envia-os para o Cloudflare R2.
+    backend: str = "git"
+    r2_bucket: str | None = None
+    # Corte duro: com mais do que isto o R2 recusa gravações até o dono subir o valor.
+    max_gb: float = 9.5
+
+
 class Settings(_Section):
     classification: ClassificationSettings = Field(default_factory=ClassificationSettings)
     extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)
@@ -109,6 +117,7 @@ class Settings(_Section):
     dedup: DedupSettings = Field(default_factory=DedupSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
     publishing: PublishingSettings = Field(default_factory=PublishingSettings)
+    storage: StorageSettings = Field(default_factory=StorageSettings)
 
 
 @cache

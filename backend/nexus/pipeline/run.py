@@ -82,7 +82,7 @@ from nexus.pipeline.intake import DepositItem, scan_deposit
 from nexus.pipeline.lotes import expand_lotes
 from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
 from nexus.review import set_proposal_status
-from nexus.storage.blobstore import GitRepoBlobStore
+from nexus.storage.r2 import open_blob_store
 
 log = logging.getLogger("nexus.pipeline")
 
@@ -162,7 +162,7 @@ class Pipeline:
         self.repo = repo
         self.layout = repo.layout
         self.settings = repo.settings
-        self.blobs = GitRepoBlobStore(repo.layout)
+        self.blobs = open_blob_store(repo.layout, repo.settings.storage)
         self.cache_dir = cache_dir or default_cache_dir()
         self.reclassify_all = reclassify_all
         self.max_items = max_items
