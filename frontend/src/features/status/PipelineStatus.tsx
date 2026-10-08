@@ -7,6 +7,10 @@ export function PipelineStatus(props: { compact?: boolean }) {
   const { t } = useTranslation();
   const { runs, activeRun, manifest, pending } = useApp();
   const latest = runs[0];
+  // Se os índices foram reconstruídos depois da falha (ex.: processamento local), já não há problema.
+  const failed =
+    latest?.conclusion === "failure" &&
+    !(manifest && Date.parse(manifest.built_at) > Date.parse(latest.updated_at));
   let label: string;
   let dot = "bg-line-strong";
   let pulse = false;
@@ -18,7 +22,7 @@ export function PipelineStatus(props: { compact?: boolean }) {
     label = t("pipeline.queued");
     dot = "bg-pen";
     pulse = true;
-  } else if (latest?.conclusion === "failure") {
+  } else if (failed) {
     label = t("pipeline.failure");
     dot = "bg-clay";
   } else if (manifest) {
@@ -27,7 +31,7 @@ export function PipelineStatus(props: { compact?: boolean }) {
   } else {
     label = t("pipeline.no_indices");
   }
-  const run = activeRun ?? (latest?.conclusion === "failure" ? latest : undefined);
+  const run = activeRun ?? (failed ? latest : undefined);
   return (
     <p
       className="flex min-w-0 items-center gap-2 text-xs text-ink-soft"
