@@ -451,6 +451,17 @@
     "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição.",
     "loose_hint": "Arrasta-as para o curso (e o ano) certo."
   },
+  "institution_edit": {
+    "open": "Instituições",
+    "title": "Instituições",
+    "help": "Cria uma instituição nova ou corrige o nome e a sigla de uma existente. O identificador não muda, por isso as cadeiras e os documentos continuam ligados.",
+    "edit": "Editar",
+    "editing": "Editar instituição",
+    "new": "Nova instituição",
+    "taken": "Já existe uma instituição com este identificador.",
+    "create": "Criar instituição",
+    "close": "Fechar"
+  },
   "unit_create": {
     "open": "Nova cadeira",
     "title": "Nova cadeira",
