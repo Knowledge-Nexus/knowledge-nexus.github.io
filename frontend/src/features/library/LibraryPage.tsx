@@ -29,6 +29,7 @@ import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
 import { Shelves } from "./Shelves";
 import { UnitCourses } from "./UnitCourses";
+import { UnitCreator } from "./UnitCreator";
 import { UnitEditor } from "./UnitEditor";
 
 const DOC_DRAG = "application/x-nexus-docs";
@@ -553,6 +554,7 @@ export function LibraryPage() {
   const labels = useLabels(meta);
   const [params] = useSearchParams();
   const [organizing, setOrganizing] = useState(false);
+  const [creating, setCreating] = useState(false);
   const selectedUnit = params.get("uc") ?? "";
 
   if (indexError) return <ErrorBox error={indexError} />;
@@ -566,13 +568,21 @@ export function LibraryPage() {
       <PageHeader
         title={t("library.title")}
         actions={
-          !readOnly && labels.units.length > 0 ? (
-            <Button variant="secondary" onClick={() => setOrganizing((v) => !v)}>
-              {t(organizing ? "courses.organize_close" : "courses.organize")}
-            </Button>
+          !readOnly ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => setCreating((v) => !v)}>
+                {t("unit_create.open")}
+              </Button>
+              {labels.units.length > 0 && (
+                <Button variant="secondary" onClick={() => setOrganizing((v) => !v)}>
+                  {t(organizing ? "courses.organize_close" : "courses.organize")}
+                </Button>
+              )}
+            </div>
           ) : undefined
         }
       />
+      {creating && <UnitCreator onDone={() => setCreating(false)} />}
       {organizing && (
         <Card title={t("courses.organize_title")}>
           <p className="mb-3 text-sm text-ink-soft">{t("courses.organize_help")}</p>

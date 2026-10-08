@@ -451,6 +451,19 @@
     "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição.",
     "loose_hint": "Arrasta-as para o curso (e o ano) certo."
   },
+  "unit_create": {
+    "open": "Nova cadeira",
+    "title": "Nova cadeira",
+    "help": "Cria uma cadeira à mão. Podes já colocá-la num curso e ano; o resto fica por preencher e podes editar depois.",
+    "no_institution": "Ainda não há nenhuma instituição. Regista uma em Definições antes de criar cadeiras.",
+    "institution": "Instituição",
+    "course": "Curso",
+    "no_course": "Nenhum (por agora)",
+    "year": "Ano",
+    "semester": "Semestre",
+    "taken": "Já existe uma cadeira com este nome nesta instituição.",
+    "save": "Criar cadeira"
+  },
   "unit_edit": {
     "open": "Editar cadeira",
     "name": "Nome",
