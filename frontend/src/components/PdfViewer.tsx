@@ -76,7 +76,7 @@ export function PdfViewer(props: {
           rotation: (page.rotate + rotation) % 360,
         });
         const scale =
-        Math.min(size.width / pageViewport.width, size.height / pageViewport.height) * zoom;
+          Math.min(size.width / pageViewport.width, size.height / pageViewport.height) * zoom;
         const pixelRatio = window.devicePixelRatio || 1;
         const renderViewport = page.getViewport({
           scale,
