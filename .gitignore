@@ -61,3 +61,6 @@ Thumbs.db
 .vscode/
 # Excepção: ficheiros da marca do site (ícone, banner). A guarda só os permite aqui.
 !frontend/public/brand/*.png
+
+worker/.wrangler/
+worker/node_modules/
