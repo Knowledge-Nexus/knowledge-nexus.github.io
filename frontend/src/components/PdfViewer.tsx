@@ -21,6 +21,7 @@ export function PdfViewer(props: {
   const [doc, setDoc] = useState<PdfDocument | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [rotation, setRotation] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   // O contentor só existe depois de o documento carregar, por isso a observação depende de `doc`.
@@ -74,7 +75,8 @@ export function PdfViewer(props: {
           scale: 1,
           rotation: (page.rotate + rotation) % 360,
         });
-        const scale = Math.min(size.width / pageViewport.width, size.height / pageViewport.height);
+        const scale =
+        Math.min(size.width / pageViewport.width, size.height / pageViewport.height) * zoom;
         const pixelRatio = window.devicePixelRatio || 1;
         const renderViewport = page.getViewport({
           scale,
@@ -109,7 +111,7 @@ export function PdfViewer(props: {
       cancelled = true;
       cancelRendering?.();
     };
-  }, [doc, props.page, rotation, size]);
+  }, [doc, props.page, rotation, zoom, size]);
 
   if (error) return <ErrorBox error={error} />;
   if (!doc) return <Spinner />;
@@ -149,12 +151,40 @@ export function PdfViewer(props: {
         >
           ↷
         </Button>
+        <span className="mx-1 h-5 border-l border-line-strong" aria-hidden="true" />
+        <Button
+          variant="secondary"
+          aria-label={t("document.zoom_out")}
+          title={t("document.zoom_out")}
+          disabled={zoom <= 0.5}
+          onClick={() => setZoom((current) => Math.max(0.5, current / 1.25))}
+        >
+          −
+        </Button>
+        <Button
+          variant="secondary"
+          aria-label={t("document.zoom_reset")}
+          title={t("document.zoom_reset")}
+          disabled={zoom === 1}
+          onClick={() => setZoom(1)}
+        >
+          {Math.round(zoom * 100)}%
+        </Button>
+        <Button
+          variant="secondary"
+          aria-label={t("document.zoom_in")}
+          title={t("document.zoom_in")}
+          disabled={zoom >= 4}
+          onClick={() => setZoom((current) => Math.min(4, current * 1.25))}
+        >
+          +
+        </Button>
       </div>
       <div
         ref={viewport}
-        className="flex h-[min(65dvh,48rem)] min-h-64 items-center justify-center overflow-auto rounded-lg bg-paper p-2"
+        className="flex h-[min(65dvh,48rem)] min-h-64 overflow-auto rounded-lg bg-paper p-2"
       >
-        <canvas ref={canvas} className="max-w-full rounded border border-line shadow-sm" />
+        <canvas ref={canvas} className="m-auto shrink-0 rounded border border-line shadow-sm" />
       </div>
     </div>
   );

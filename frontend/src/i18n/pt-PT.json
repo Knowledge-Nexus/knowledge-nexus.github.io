@@ -1,4 +1,4 @@
-{
+﻿{
   "app": {
     "name": "Knowledge Nexus",
     "tagline": "O teu material de estudo, arrumado e fácil de encontrar."
@@ -205,6 +205,9 @@
     "next": "Seguinte",
     "rotate_left": "Rodar para a esquerda",
     "rotate_right": "Rodar para a direita",
+    "zoom_in": "Aumentar",
+    "zoom_out": "Diminuir",
+    "zoom_reset": "Ajustar à janela",
     "needs_transcription": "{{count}} página(s) para transcrição por IA (manuscrito ou matemática)",
     "sources": "Origens",
     "history": "Histórico",
