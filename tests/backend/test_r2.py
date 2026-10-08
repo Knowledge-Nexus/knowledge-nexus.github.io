@@ -20,7 +20,7 @@ class FakeS3:
     def head_object(self, Bucket: str, Key: str) -> dict[str, Any]:
         if Key not in self.objects:
             raise _NotFound()
-        return {}
+        return {"ContentLength": len(self.objects[Key])}
 
     def upload_file(self, path: str, bucket: str, key: str) -> None:
         self.objects[key] = Path(path).read_bytes()
@@ -60,3 +60,32 @@ def test_hard_cut_when_over_limit(tmp_path: Path) -> None:
     assert "blobs/" + "3" * 64 not in s3.objects
     # outro processo (cache vazia) vê o mesmo total real do bucket
     assert R2BlobStore("b", 25, s3).used_bytes() == 20
+
+
+def test_migrate_originals(tmp_path: Path) -> None:
+    import hashlib
+
+    from nexus.datarepo.layout import Layout
+    from nexus.storage.migrate import migrate_originals
+
+    layout = Layout(tmp_path)
+    data = {b"um" * 5: "pdf", b"dois" * 5: "docx"}
+    for content, ext in data.items():
+        sha = hashlib.sha256(content).hexdigest()
+        p = layout.original_path(sha, ext)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(content)
+    bad = layout.original_path("ab" + "0" * 62, "pdf")
+    bad.parent.mkdir(parents=True, exist_ok=True)
+    bad.write_bytes(b"adulterado")
+
+    s3 = FakeS3()
+    report = migrate_originals(layout, R2BlobStore("b", 1000, s3))
+    assert report.uploaded == 2 and len(report.mismatched) == 1
+    assert len(s3.objects) == 2
+    again = migrate_originals(layout, R2BlobStore("b", 1000, s3))
+    assert again.uploaded == 0 and again.already_there == 2
+    assert bad.exists()  # nunca apaga
+
+    tight = migrate_originals(layout, R2BlobStore("c", 15, FakeS3()))
+    assert tight.stopped_by_quota is not None

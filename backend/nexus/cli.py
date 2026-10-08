@@ -154,6 +154,42 @@ def publicar_indices(
                + (" (enviados)" if push and commit else ""))
 
 
+@app.command("migrar-blobs")
+def migrar_blobs(
+    repo: RepoOption = Path("."),
+    bucket: Annotated[str | None, typer.Option(
+        help="Bucket do R2 (por defeito storage.r2_bucket).")] = None,
+    max_gb: Annotated[float | None, typer.Option(
+        help="Corte de espaço em GB (por defeito storage.max_gb).")] = None,
+    simular: Annotated[bool, typer.Option(help="Só contar, sem enviar.")] = False,
+) -> None:
+    """Envia os originais para o R2 (não apaga nada do repositório)."""
+    from nexus.storage.migrate import migrate_originals
+    from nexus.storage.r2 import GB, R2BlobStore
+
+    data = _repo(repo)
+    name = bucket or data.settings.storage.r2_bucket
+    if not name:
+        _fail("indica --bucket ou storage.r2_bucket na configuração")
+        return
+    limit = max_gb if max_gb is not None else data.settings.storage.max_gb
+    try:
+        store = R2BlobStore(name, int(limit * GB))
+        report = migrate_originals(data.layout, store, dry_run=simular)
+    except RuntimeError as exc:
+        _fail(str(exc))
+        return
+    verb = "a enviar" if simular else "enviados"
+    typer.echo(f"{verb}: {report.uploaded} ({report.bytes_uploaded / GB:.2f} GB)")
+    typer.echo(f"já no R2: {report.already_there}")
+    if report.mismatched:
+        typer.echo(f"com problemas: {len(report.mismatched)}")
+    if report.stopped_by_quota:
+        typer.echo(f"PARADO: {report.stopped_by_quota}")
+    if not report.ok:
+        raise typer.Exit(2)
+
+
 @app.command()
 def indexar(
     repo: RepoOption = Path("."),
