@@ -66,6 +66,7 @@ class ExtractionSettings(_Section):
     max_xlsx_cols: int = 30
     office_timeout_seconds: int = 180
     ocr_timeout_seconds: int = 120
+    ocr_workers: int = 4
 
 
 class ArchiveSettings(_Section):

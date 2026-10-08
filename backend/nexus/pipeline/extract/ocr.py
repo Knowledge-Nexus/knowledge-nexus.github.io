@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import subprocess
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from nexus.pipeline.extract.base import ExtractionError, MissingToolError, require, which
@@ -18,6 +20,7 @@ class OcrResult:
     words: int
 
 
+@lru_cache(maxsize=1)
 def _has_osd() -> bool:
     if not which("tesseract"):
         return False
@@ -63,6 +66,7 @@ def ocr_image(image: Path, languages: str, timeout: int) -> OcrResult:
             text=True,
             timeout=timeout,
             check=False,
+            env={**os.environ, "OMP_THREAD_LIMIT": "1"},
         )
     except subprocess.TimeoutExpired as exc:
         raise ExtractionError(f"OCR excedeu {timeout}s") from exc

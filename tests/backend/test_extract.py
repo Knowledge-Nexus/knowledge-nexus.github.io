@@ -110,3 +110,26 @@ def test_write_extraction_layout(tmp_path: Path) -> None:
     assert (tmp_path / "t" / "paginas" / "0001.md").exists()
     assert (tmp_path / "t" / "documento.md").read_text().startswith("<!-- página 1 -->")
     assert meta.simhash and meta.words > 40
+
+
+def test_pdf_ocr_parallel_keeps_page_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import pymupdf
+
+    from nexus.pipeline.extract import ocr, pdf
+
+    doc = pymupdf.open()
+    for _ in range(9):
+        doc.new_page()
+    source = tmp_path / "branco.pdf"
+    doc.save(source)
+    doc.close()
+
+    def fake_ocr(image: Path, languages: str, timeout: int) -> ocr.OcrResult:
+        return ocr.OcrResult(text=f"texto {image.stem}", confidence=90.0, words=10)
+
+    monkeypatch.setattr(pdf, "ocr_image", fake_ocr)
+    work = tmp_path / "work"
+    work.mkdir()
+    pages, _meta = pdf.pdf_pages(source, load_settings().extraction, work)
+    assert [page.text for page in pages] == [f"texto page-{n:04d}" for n in range(1, 10)]
+    assert not list(work.iterdir())
