@@ -1,5 +1,5 @@
-// Cliente mínimo da API REST do GitHub (só os pontos que a aplicação usa).
-// O token nunca sai do browser: é enviado apenas para api.github.com (ver CSP).
+﻿// Cliente mínimo da API REST do GitHub (só os pontos que a aplicação usa).
+// O token nunca sai do browser: é enviado apenas para api.github.com e para o Worker de armazenamento (ver CSP).
 
 export class GitHubError extends Error {
   constructor(
@@ -145,6 +145,21 @@ export class GitHubClient {
 
   async rawText(owner: string, name: string, path: string, ref: string): Promise<string> {
     return new TextDecoder().decode(await this.raw(owner, name, path, ref));
+  }
+
+  /** Original guardado no R2, pelo Worker (que valida este token no repositório privado). */
+  async storedBlob(
+    storageUrl: string,
+    owner: string,
+    name: string,
+    sha256: string,
+  ): Promise<Uint8Array | null> {
+    const response = await this.fetchImpl(`${storageUrl}/blob/${sha256}`, {
+      headers: { Authorization: `Bearer ${this.token}`, "X-Nexus-Repo": `${owner}/${name}` },
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new GitHubError(response.status, response.statusText);
+    return new Uint8Array(await response.arrayBuffer());
   }
 
   async headSha(owner: string, name: string, branch: string): Promise<string> {

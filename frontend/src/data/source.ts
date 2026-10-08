@@ -12,6 +12,12 @@ import type { CatalogBundle, IndexManifest } from "./types";
 export const INDICES_BRANCH = "indices";
 export const APP_REPOSITORY = { owner: "Knowledge-Nexus", name: "knowledge-nexus.github.io" };
 
+/** Worker do Cloudflare R2 onde ficam os originais (vazio desactiva). */
+export const STORAGE_URL: string =
+  (import.meta.env.VITE_STORAGE_URL as string | undefined) ??
+  "https://nexus-ficheiros.nightmareftw.workers.dev";
+const ORIGINAL_PATH = /^originais\/[0-9a-f]{2}\/([0-9a-f]{64})(?:\.[^/]*)?$/;
+
 /**
  * A API do GitHub recusa blobs grandes ("input too large"). Acima disto, o ficheiro vai em
  * partes (`<nome>.nexus-part-0001`…) com um manifesto `<nome>.nexus-parts.yaml`; o motor
@@ -186,7 +192,21 @@ export class GitHubDataSource implements DataSource {
     );
   }
 
-  binary(path: string): Promise<Uint8Array> {
+  async binary(path: string): Promise<Uint8Array> {
+    const sha = ORIGINAL_PATH.exec(path)?.[1];
+    if (sha && STORAGE_URL) {
+      try {
+        const stored = await this.client.storedBlob(
+          STORAGE_URL,
+          this.repo.owner,
+          this.repo.name,
+          sha,
+        );
+        if (stored) return stored;
+      } catch {
+        // Worker indisponível: o original ainda pode estar no repositório.
+      }
+    }
     return this.client.raw(this.repo.owner, this.repo.name, path, this.repo.branch);
   }
 
