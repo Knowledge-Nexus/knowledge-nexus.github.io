@@ -154,6 +154,24 @@ def publicar_indices(
                + (" (enviados)" if push and commit else ""))
 
 
+@app.command("servir")
+def servir(
+    repo: RepoOption = Path("."),
+    intervalo: Annotated[int, typer.Option(min=10, help="Segundos entre verificações.")] = 60,
+    uma_vez: Annotated[bool, typer.Option(help="Um só ciclo e sai.")] = False,
+) -> None:
+    """Vigia o repositório de dados e processa os depósitos novos (sem GitHub Actions)."""
+    from nexus.serve import serve
+
+    _repo(repo)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+    typer.echo(f"a vigiar {repo} a cada {intervalo} s (Ctrl+C para parar)")
+    try:
+        serve(repo, interval=intervalo, once=uma_vez)
+    except KeyboardInterrupt:
+        typer.echo("parado")
+
+
 @app.command("migrar-blobs")
 def migrar_blobs(
     repo: RepoOption = Path("."),

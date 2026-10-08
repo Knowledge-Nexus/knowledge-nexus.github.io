@@ -102,6 +102,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Ferramentas de sistema | `uv run nexus verificar` |
 | Repositório de dados novo | `uv run nexus scaffold <pasta> --dono <login>` |
 | Pipeline local | `uv run nexus processar --repo <pasta> [--sem-push]` |
+| Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 60]` |
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |
 | Exportar árvore | `uv run nexus exportar-arvore <destino> --repo <pasta>` |
 | Visibilidade | `uv run nexus visibilidade cadeira <inst>/<cadeira> publico\|privado --repo <pasta>` |
