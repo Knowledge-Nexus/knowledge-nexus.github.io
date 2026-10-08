@@ -1,0 +1,15 @@
+name = "nexus-ficheiros"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "nexus-ficheiros"
+
+[vars]
+# Repositórios de dados (privados) autorizados; o primeiro usa o prefixo `blobs/`.
+DATA_REPOS = "Knowledge-Nexus/estudo-dados"
+ALLOWED_ORIGINS = "https://knowledge-nexus.github.io,http://localhost:5173,http://127.0.0.1:5173"
+# Corte duro de espaço (bytes decimais) e tamanho máximo por ficheiro.
+MAX_BYTES = "9500000000"
+MAX_UPLOAD_BYTES = "99614720"

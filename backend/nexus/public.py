@@ -91,7 +91,17 @@ def _read_original(repo: DataRepo, git: Git, doc: Document) -> bytes:
     try:
         return git.show("HEAD", repo.layout.relative(path))
     except GitError as exc:
-        raise PublishError(f"original em falta para {doc.id}: {exc}") from exc
+        if repo.settings.storage.backend != "r2":
+            raise PublishError(f"original em falta para {doc.id}: {exc}") from exc
+    from nexus.storage.r2 import open_blob_store
+
+    store = open_blob_store(repo.layout, repo.settings.storage)
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            found = store.materialize(doc.blob.sha256, doc.blob.ext, Path(tmp))
+        except FileNotFoundError as exc:
+            raise PublishError(f"original em falta para {doc.id}: {exc}") from exc
+        return found.read_bytes()
 
 
 def _digest(directory: Path) -> str:
