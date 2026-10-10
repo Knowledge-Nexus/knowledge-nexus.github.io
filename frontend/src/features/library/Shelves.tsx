@@ -12,6 +12,7 @@ import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
 import { type CourseColor, courseColors } from "../../lib/courseColors";
 import { normalize, slugify } from "../../lib/normalize";
 import { courseTitle, degreeOf } from "../../lib/reference";
+import { CourseRemover } from "./CourseManager";
 import { UnitBook } from "./LibraryPage";
 
 const DRAG_TYPE = "application/x-nexus-unit";
@@ -67,6 +68,8 @@ export function Shelves(props: { units: UnitRow[] }) {
   const [overrides, setOverrides] = useState<Record<string, Link[]>>({});
   const [created, setCreated] = useState<Record<string, CourseRow>>({});
   const [hover, setHover] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
   // Um índice novo já traz as alterações: as previsões locais deixam de ser precisas.
@@ -74,6 +77,7 @@ export function Shelves(props: { units: UnitRow[] }) {
   useEffect(() => {
     setOverrides({});
     setCreated({});
+    setRemoved(new Set());
   }, [meta]);
 
   // Largar fora de qualquer curso, em qualquer sítio da página, tira a cadeira do curso de
@@ -104,7 +108,7 @@ export function Shelves(props: { units: UnitRow[] }) {
     const courses: (CourseRow & { proposalId?: string })[] = [
       ...meta.courses(),
       ...Object.values(created),
-    ];
+    ].filter((c) => !removed.has(c.key));
     // Cursos propostos pelo material, para se poder largar lá uma cadeira e criá-los.
     const institutions = meta.institutions();
     if (!readOnly && institutions.length === 1) {
@@ -132,9 +136,15 @@ export function Shelves(props: { units: UnitRow[] }) {
       ...(course.proposalId ? { proposalId: course.proposalId } : {}),
       color: colors.get(course.key)!,
     }));
-  }, [meta, created, readOnly]);
+  }, [meta, created, removed, readOnly]);
 
   if (!meta) return null;
+  const institutions = meta.institutions();
+  // Com mais de uma instituição, cada curso diz de qual é (pode haver nomes iguais).
+  const institutionOf = (slug: string) => {
+    const inst = institutions.find((i) => i.slug === slug);
+    return inst?.acronym ?? inst?.name ?? slug;
+  };
   const linksOf = (courseKey: string): Link[] =>
     overrides[courseKey] ??
     meta
@@ -316,6 +326,11 @@ export function Shelves(props: { units: UnitRow[] }) {
                 <h2 className="font-serif text-xl font-semibold" style={{ color }}>
                   {courseTitle(shelf.course.name)}
                 </h2>
+                {institutions.length > 1 && (
+                  <span className="text-xs font-semibold tracking-wider text-muted uppercase">
+                    {institutionOf(shelf.course.institution)}
+                  </span>
+                )}
                 {shelf.proposalId && (
                   <span className="rounded-full bg-marker-soft px-2 py-0.5 text-xs text-ink-soft">
                     {t("shelves.proposed")}
@@ -324,7 +339,28 @@ export function Shelves(props: { units: UnitRow[] }) {
                 <span className="ml-auto text-xs text-muted">
                   {t("library.documents_units", { count: links.length })}
                 </span>
+                {!readOnly && !shelf.proposalId && removing !== key && (
+                  <button
+                    type="button"
+                    className="text-xs text-clay hover:underline"
+                    onClick={() => setRemoving(key)}
+                  >
+                    {t("course_remove.open")}
+                  </button>
+                )}
               </header>
+              {removing === key && (
+                <CourseRemover
+                  course={shelf.course}
+                  institution={institutionOf(shelf.course.institution)}
+                  onCancel={() => setRemoving(null)}
+                  onRemoved={() => {
+                    setRemoving(null);
+                    setRemoved((all) => new Set([...all, key]));
+                    setSaved(true);
+                  }}
+                />
+              )}
               <div className="space-y-5 p-5">
                 {links.length === 0 && (
                   <p className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">

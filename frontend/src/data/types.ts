@@ -245,6 +245,8 @@ export interface CatalogBundle {
   version: 1;
   /** Cadeiras a apagar; os documentos passam para `merge_into` ou voltam a ser classificados. */
   units_remove?: { unit: string; merge_into?: string }[];
+  /** Cursos a apagar; as cadeiras e os documentos ficam (só deixam de estar no curso). */
+  courses_remove?: { course: string }[];
   institutions?: {
     slug: string;
     name: string;

@@ -197,3 +197,13 @@ def remove_unit(layout: Layout, key: str, merge_into: str | None = None) -> bool
         write_yaml_if_changed(path, course.model_copy(update={"units": links}))
     (layout.catalog_dir / unit.institution / UNITS_DIR / f"{unit.slug}.yaml").unlink()
     return True
+
+
+def remove_course(layout: Layout, key: str) -> bool:
+    """Apaga um curso do catálogo. As cadeiras e os documentos ficam: só deixam de estar
+    nesse curso. Devolve False se não existir."""
+    course = load_catalog(layout).courses.get(key)
+    if course is None:
+        return False
+    (layout.catalog_dir / course.institution / COURSES_DIR / f"{course.slug}.yaml").unlink()
+    return True

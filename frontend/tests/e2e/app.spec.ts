@@ -537,6 +537,44 @@ test("editar e remover uma cadeira", async ({ page }) => {
   expect(request.units_remove[0].merge_into).toBeTruthy();
 });
 
+test("criar e remover um curso (com o nome escrito para confirmar)", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  const lei = page.getByRole("region", { name: "Engenharia Informática" });
+  await expect(lei).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Novo curso" }).click();
+  await page.getByLabel("Grau").selectOption("mestrado");
+  await page.getByLabel("Nome do curso").fill("Ciência de Dados");
+  await page.getByRole("button", { name: "Criar curso" }).click();
+  await expect(page.getByRole("button", { name: "Criar curso" })).toBeHidden();
+  let commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  let request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(request.institutions[0].courses[0]).toMatchObject({
+    name: "Ciência de Dados",
+    degree: "mestrado",
+    units: [],
+  });
+
+  await lei.getByRole("button", { name: "Remover curso" }).click();
+  const confirm = lei.getByRole("alertdialog", { name: "Remover curso" });
+  const remove = confirm.getByRole("button", { name: "Remover curso" });
+  await expect(remove).toBeDisabled();
+  await confirm.getByLabel("Nome do curso, para confirmar").fill("Engenharia");
+  await expect(remove).toBeDisabled();
+  await confirm.getByLabel("Nome do curso, para confirmar").fill("engenharia informática");
+  await remove.click();
+  await expect(lei).toBeHidden();
+  commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(request.courses_remove).toEqual([{ course: "ufe/lei" }]);
+  // As cadeiras ficam: passam para «Sem curso».
+  await expect(
+    page.getByRole("complementary", { name: "Sem curso" }).getByText("Bases de Dados"),
+  ).toBeVisible();
+});
+
 test.describe("PDF num ecrã de alta densidade", () => {
   test.use({ deviceScaleFactor: 2 });
 

@@ -26,10 +26,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nexus import clock
-from nexus.datarepo.catalog_io import import_bundle, remove_unit
+from nexus.datarepo.catalog_io import import_bundle, remove_course, remove_unit
 from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX
 from nexus.datarepo.store import DataRepo
-from nexus.datarepo.yamlio import read_yaml, write_text_if_changed
+from nexus.datarepo.yamlio import read_yaml, write_text_if_changed, write_yaml_if_changed
 from nexus.domain.common import uuid7
 from nexus.domain.documents import (
     CLASSIFICATION_FIELDS,
@@ -240,6 +240,8 @@ class Pipeline:
                     import_bundle(self.layout, raw)
                 for item in raw.get("units_remove") or []:
                     self._remove_unit(str(item["unit"]), item.get("merge_into"))
+                for item in raw.get("courses_remove") or []:
+                    self._remove_course(str(item["course"]))
                 decisions = raw.get("proposals") or {}
                 for pid in decisions.get("accept", []):
                     set_proposal_status(self.repo, str(pid), "accepted")
@@ -302,6 +304,18 @@ class Pipeline:
                 updated.classification.unit = None
             updated.classifier_version = None
             self.repo.save_document(updated)
+
+    def _remove_course(self, key: str) -> None:
+        """Apaga o curso e tira-o das inscrições; as cadeiras ficam (sem esse curso)."""
+        if not remove_course(self.layout, key):
+            return
+        for user in self.repo.users.values():
+            if key in user.enrollments.courses:
+                courses = [c for c in user.enrollments.courses if c != key]
+                updated = user.model_copy(update={"enrollments": user.enrollments.model_copy(
+                    update={"courses": courses})})
+                self.repo.users[user.login] = updated
+                write_yaml_if_changed(self.layout.user_path(user.login), updated)
 
     # --- recepção -------------------------------------------------------------------
 

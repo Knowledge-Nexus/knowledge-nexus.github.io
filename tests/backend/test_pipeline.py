@@ -753,3 +753,27 @@ def test_filed_document_in_doubt_again_leaves_the_unit(catalog_root: Path) -> No
     again = docs(catalog_root)
     run(catalog_root)
     assert docs(catalog_root) == again, "idempotente"
+
+
+def test_remove_course_keeps_units_and_documents(catalog_root: Path) -> None:
+    """Remover um curso (na biblioteca) só apaga o curso: as cadeiras e os documentos ficam,
+    e o curso sai das inscrições."""
+    gerar.pdf_nativo(deposit(catalog_root, "Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    run(catalog_root)
+    repo = DataRepo(catalog_root)
+    [course] = repo.catalog.courses
+    user = catalog_root / "utilizadores" / f"{OWNER}.yaml"
+    user.write_text(user.read_text() + f"enrollments:\n  courses: [{course}]\n")
+    units = set(repo.catalog.units)
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "a.yaml").write_text(
+        f"format: nexus-catalogo\nversion: 1\ncourses_remove:\n  - {{ course: {course} }}\n")
+    run(catalog_root)
+    repo = DataRepo(catalog_root)
+    assert course not in repo.catalog.courses
+    assert set(repo.catalog.units) == units
+    assert course not in repo.users[OWNER].enrollments.courses
+    [doc] = docs(catalog_root)
+    assert doc["status"] == "filed" and doc["classification"]["unit"]["value"] == "ufe/am1"
+    assert not list(requests.glob("*.yaml"))

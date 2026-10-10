@@ -475,6 +475,25 @@
     "create": "Criar instituição",
     "close": "Fechar"
   },
+  "course_create": {
+    "open": "Novo curso",
+    "title": "Novo curso",
+    "help": "Cria um curso à mão. Depois arrasta as cadeiras para ele (e para o ano certo).",
+    "no_institution": "Ainda não há nenhuma instituição. Regista uma em «Instituições» antes de criar cursos.",
+    "institution": "Instituição",
+    "degree": "Grau",
+    "name": "Nome do curso",
+    "taken": "Já existe este curso (com este grau) nesta instituição.",
+    "save": "Criar curso"
+  },
+  "course_remove": {
+    "open": "Remover curso",
+    "title": "Remover curso",
+    "warning": "Remover o curso «{{name}}» ({{institution}})? As cadeiras e os documentos ficam: só deixam de estar neste curso (as que não estiverem noutro passam para «Sem curso»).",
+    "type_name": "Para confirmar, escreve o nome do curso: {{name}}",
+    "type_label": "Nome do curso, para confirmar",
+    "confirm": "Remover curso"
+  },
   "unit_create": {
     "open": "Nova cadeira",
     "title": "Nova cadeira",

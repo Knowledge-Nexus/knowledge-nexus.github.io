@@ -27,6 +27,7 @@ import { joinBundle, separateBundle, suggestBundleName } from "../../lib/bundles
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { CourseCreator } from "./CourseManager";
 import { InstitutionManager } from "./InstitutionManager";
 import { Shelves } from "./Shelves";
 import { UnitCourses } from "./UnitCourses";
@@ -620,6 +621,7 @@ export function LibraryPage() {
   const [params] = useSearchParams();
   const [organizing, setOrganizing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingCourse, setCreatingCourse] = useState(false);
   const [institutionsOpen, setInstitutionsOpen] = useState(false);
   const selectedUnit = params.get("uc") ?? "";
 
@@ -639,6 +641,9 @@ export function LibraryPage() {
               <Button variant="secondary" onClick={() => setInstitutionsOpen((v) => !v)}>
                 {t("institution_edit.open")}
               </Button>
+              <Button variant="secondary" onClick={() => setCreatingCourse((v) => !v)}>
+                {t("course_create.open")}
+              </Button>
               <Button variant="secondary" onClick={() => setCreating((v) => !v)}>
                 {t("unit_create.open")}
               </Button>
@@ -652,6 +657,7 @@ export function LibraryPage() {
         }
       />
       {institutionsOpen && <InstitutionManager onDone={() => setInstitutionsOpen(false)} />}
+      {creatingCourse && <CourseCreator onDone={() => setCreatingCourse(false)} />}
       {creating && <UnitCreator onDone={() => setCreating(false)} />}
       {organizing && (
         <Card title={t("courses.organize_title")}>
