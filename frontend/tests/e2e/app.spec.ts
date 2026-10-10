@@ -525,3 +525,36 @@ test("editar e remover uma cadeira", async ({ page }) => {
   expect(request.units_remove[0].unit).toBe("ufe/am1");
   expect(request.units_remove[0].merge_into).toBeTruthy();
 });
+
+test.describe("PDF num ecrã de alta densidade", () => {
+  test.use({ deviceScaleFactor: 2 });
+
+  test("a página cabe inteira no canvas (a densidade não é aplicada duas vezes)", async ({
+    page,
+  }) => {
+    const fake = await withFakeGitHub(page);
+    await login(page, fake);
+    await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+    await page
+      .getByRole("link", { name: /Análise Matemática I/ })
+      .first()
+      .click();
+    await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+    await expect(page.locator("canvas")).toBeVisible();
+    // Fracção da largura do canvas até onde vai o texto: ~0,67 quando a página cabe toda;
+    // com a densidade aplicada duas vezes, o texto passava a borda (1,0) e era cortado.
+    const right = () =>
+      page.locator("canvas").evaluate((element) => {
+        const canvas = element as HTMLCanvasElement;
+        const pixels = canvas.getContext("2d")?.getImageData(0, 0, canvas.width, canvas.height);
+        if (!pixels) return 0;
+        let max = 0;
+        for (let i = 0; i < pixels.data.length; i += 4) {
+          if ((pixels.data[i] ?? 255) < 200) max = Math.max(max, (i / 4) % canvas.width);
+        }
+        return max / canvas.width;
+      });
+    await expect.poll(right).toBeGreaterThan(0.3);
+    expect(await right()).toBeLessThan(0.85);
+  });
+});

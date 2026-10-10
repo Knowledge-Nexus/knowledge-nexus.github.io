@@ -8,6 +8,8 @@ import { Button, ErrorBox, Spinner } from "./ui";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
+const BORDER = 2;
+
 type PdfDocument = Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>;
 
 export function PdfViewer(props: {
@@ -75,8 +77,13 @@ export function PdfViewer(props: {
           scale: 1,
           rotation: (page.rotate + rotation) % 360,
         });
+        // A borda do canvas (1 px de cada lado) fica fora do espaço útil: sem isto, ajustar à
+        // janela passava 2 px e aparecia uma barra de deslocação.
         const scale =
-          Math.min(size.width / pageViewport.width, size.height / pageViewport.height) * zoom;
+          Math.min(
+            (size.width - BORDER) / pageViewport.width,
+            (size.height - BORDER) / pageViewport.height,
+          ) * zoom;
         const pixelRatio = window.devicePixelRatio || 1;
         const renderViewport = page.getViewport({
           scale,
@@ -88,9 +95,9 @@ export function PdfViewer(props: {
         target.style.height = `${pageViewport.height * scale}px`;
         const context = target.getContext("2d");
         if (context) {
-          if (pixelRatio !== 1) {
-            context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-          }
+          // A densidade do ecrã vai só no `transform` do pdf.js. Aplicá-la também ao contexto
+          // (setTransform) multiplicava-a duas vezes: a página ficava maior do que o canvas
+          // e era cortada (ex.: a 125%, ficava 56% maior).
           const renderTask = page.render({
             canvasContext: context,
             viewport: renderViewport,
