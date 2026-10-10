@@ -254,7 +254,9 @@ Dependências de sistema (Ubuntu/WSL2):
     cabeçalho, sem apoio no nome do ficheiro, nas pastas nem nos metadados) fica abaixo do
     limiar (`BODY_ONLY_MAX`, razões `unit.body_only` e `unit.text_only`): os livros falam de
     outras cadeiras logo na 1.ª página. Excepção: um cabeçalho que diz "Unidade Curricular:
-    X" (`UNIT_LABEL_RE`).
+    X" (`UNIT_LABEL_RE`). Pela mesma razão, uma cadeira rival que só aparece no texto pesa
+    metade (`TEXT_RIVAL_WEIGHT`) contra a que o nome do ficheiro, as pastas ou os metadados
+    confirmam.
   - Tipo: `producers` nos termos (programa que criou o PDF: PowerPoint → slides), sem sinal
     de enunciado/resolução o tipo não é penalizado, e `type_prior` (0.4) só para o tipo; a
     cadeira continua com `prior` (0.6).

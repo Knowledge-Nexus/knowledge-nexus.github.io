@@ -58,11 +58,15 @@ from nexus.pipeline.classify.years import score_dates, score_years
 # 8: cadeira só no texto (cabeçalho ou corpo, sem nome, pastas nem metadados) não chega; a
 #    pasta da cadeira tem de conter o nome dela ("Programação" não é "Programação Orientada a
 #    Objectos").
-CLASSIFIER_VERSION = 8
+# 9: uma cadeira rival que só aparece no texto pesa metade contra a do nome ou da pasta.
+CLASSIFIER_VERSION = 9
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
 ROLE_PRIOR = 0.3
+# Peso de uma cadeira rival que só aparece no texto, contra uma que o nome do ficheiro, as
+# pastas ou os metadados confirmam.
+TEXT_RIVAL_WEIGHT = 0.5
 # Certeza máxima de uma cadeira que só aparece no texto ou que a pasta da cadeira contradiz
 # (abaixo do limiar).
 BODY_ONLY_MAX = 0.6
@@ -103,6 +107,12 @@ def material_folder(vocab: Vocabularies) -> Callable[[str], bool]:
         signal = _signal("path", name, 1.0)
         return signal is not None and bool(score_terms(terms, [signal]))
     return check
+
+
+def _text_only(candidate: Candidate) -> bool:
+    """A prova vem só do texto (cabeçalho ou corpo), sem o nome do ficheiro nem as pastas."""
+    sources = {r.source for r in candidate.reasons if r.source}
+    return bool(sources) and sources <= {"header", "body"}
 
 
 @dataclass
@@ -264,6 +274,11 @@ class Classifier:
         # Todas as cadeiras competem; a inscrição só dá um bónus. (Antes, uma cadeira inscrita
         # com um sinal fraco, ex. nos metadados, ganhava sem olhar para a pasta da cadeira.)
         ranked = score_units(self.units, signals, enrolled, boost)
+        # Um manual de Direito Administrativo (na pasta e no nome) fala de "Administração
+        # Pública" logo no início: essa menção conta menos contra a cadeira da pasta.
+        if ranked and not _text_only(ranked[0]):
+            ranked = rank([replace(c, score=c.score * TEXT_RIVAL_WEIGHT) if _text_only(c) else c
+                           for c in ranked])
         result = to_field(ranked, prior)
         if result is None:
             return None

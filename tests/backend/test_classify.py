@@ -396,3 +396,14 @@ def test_unit_folder_outweighs_an_acronym_in_the_file_name() -> None:
     out = classifier.classify(doc, None, ["Pauta"], None, [])
     assert out.classification.value("unit") == "x/p3"
     assert "unit" not in out.weak_fields
+
+
+def test_text_mention_counts_less_against_the_folder_and_file_name() -> None:
+    """Depois de criada «Direito Administrativo», o manual na pasta e com o nome dela fica lá,
+    apesar de falar de «Administração Pública» logo no início."""
+    classifier = _custom([("ap", "Administração Pública", "AP"),
+                          ("da", "Direito Administrativo", None)])
+    doc = _doc("Manuais/Direito Administrativo/manual direito administrativo.pdf")
+    out = classifier.classify(doc, None, ["A Administração Pública em Portugal"], None, [])
+    assert out.classification.value("unit") == "x/da"
+    assert "unit" not in out.weak_fields
