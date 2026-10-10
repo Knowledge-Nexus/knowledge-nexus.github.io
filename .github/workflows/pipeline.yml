@@ -43,7 +43,13 @@ jobs:
         id: tools
         run: |
           set -euo pipefail
-          office=false; archives=false
+          office=false; archives=false; deposit=false
+          # Há trabalho no depósito? Sem nada, a execução só reconcilia (ex.: uma correcção
+          # feita na interface) e dispensa o OCR e o Pandoc.
+          if find deposito -type f ! -name '_LEIA-ME.txt' ! -path '*/_erros/*' 2>/dev/null \
+               | grep -q .; then
+            deposit=true
+          fi
           if find deposito -type f \( -iname '*.doc' -o -iname '*.docx' -o -iname '*.ppt' \
                -o -iname '*.pptx' -o -iname '*.pps' -o -iname '*.xls' -o -iname '*.odt' \
                -o -iname '*.odp' -o -iname '*.ods' -o -iname '*.rtf' -o -iname '*.zip' \
@@ -59,10 +65,12 @@ jobs:
           if find deposito -type f -name '*.nexus-lote.zip*' 2>/dev/null | grep -q .; then
             office=true; archives=true
           fi
+          echo "deposit=$deposit" >> "$GITHUB_OUTPUT"
           echo "office=$office" >> "$GITHUB_OUTPUT"
           echo "archives=$archives" >> "$GITHUB_OUTPUT"
 
-      - name: Instalar OCR e Pandoc
+      - name: Instalar OCR e Pandoc (só se houver algo no depósito)
+        if: steps.tools.outputs.deposit == 'true'
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
@@ -97,6 +105,9 @@ jobs:
         run: nexus migrar
 
       - name: Publicar o índice dos checkpoints existentes
+        # Só vale a pena antes de um depósito longo (a interface vê o progresso mais cedo);
+        # não reconstrói se os índices publicados já forem deste commit.
+        if: steps.tools.outputs.deposit == 'true'
         env:
           GIT_AUTHOR_NAME: nexus-bot
           GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
@@ -107,6 +118,11 @@ jobs:
       - name: Processar
         id: process
         env:
+          # Originais no Cloudflare R2 (storage.backend: r2 no nexus.yaml). Segredos do
+          # repositório de dados; o workflow que chama este tem de usar `secrets: inherit`.
+          NEXUS_R2_ENDPOINT: ${{ secrets.NEXUS_R2_ENDPOINT }}
+          NEXUS_R2_ACCESS_KEY_ID: ${{ secrets.NEXUS_R2_ACCESS_KEY_ID }}
+          NEXUS_R2_SECRET_ACCESS_KEY: ${{ secrets.NEXUS_R2_SECRET_ACCESS_KEY }}
           GIT_AUTHOR_NAME: nexus-bot
           GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
           GIT_COMMITTER_NAME: nexus-bot
@@ -165,7 +181,9 @@ jobs:
               break
             fi
           done
-          if [ "$since_indices" -gt 0 ]; then nexus publicar-indices; fi
+          # Também depois de uma execução só de reconciliação (ex.: uma correcção): o
+          # comando não faz nada se os índices já forem do commit actual.
+          nexus publicar-indices
           echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
           if [ "$remaining" = "true" ]; then
             echo "- Ainda há itens por processar; será iniciada outra execução." \
@@ -178,6 +196,11 @@ jobs:
         # como "Público" (por cadeira ou por documento). O repositório de dados fica privado.
         env:
           NEXUS_PUBLICO_TOKEN: ${{ secrets.NEXUS_PUBLICO_TOKEN }}
+          # Originais no Cloudflare R2 (storage.backend: r2 no nexus.yaml). Segredos do
+          # repositório de dados; o workflow que chama este tem de usar `secrets: inherit`.
+          NEXUS_R2_ENDPOINT: ${{ secrets.NEXUS_R2_ENDPOINT }}
+          NEXUS_R2_ACCESS_KEY_ID: ${{ secrets.NEXUS_R2_ACCESS_KEY_ID }}
+          NEXUS_R2_SECRET_ACCESS_KEY: ${{ secrets.NEXUS_R2_SECRET_ACCESS_KEY }}
           GIT_AUTHOR_NAME: nexus-bot
           GIT_AUTHOR_EMAIL: nexus-bot@users.noreply.github.com
           GIT_COMMITTER_NAME: nexus-bot

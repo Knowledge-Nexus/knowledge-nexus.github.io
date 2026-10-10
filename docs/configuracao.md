@@ -73,6 +73,36 @@ de pesquisa (`noindex`), mas qualquer pessoa com a ligação a vê.
   - Os ficheiros saem da pasta só depois de processados: vão para `_enviados/` ou,
     se falharem, para `_erros/`.
 
+## 4.1 Onde corre o processamento (Actions ou o teu computador)
+
+Num repositório privado, o GitHub Actions tem uma quota mensal de minutos (2000 no plano
+gratuito de uma organização). O OCR de um depósito grande gasta horas, por isso a quota
+esgota-se depressa; quando acaba, as execuções falham logo ao arrancar ("The job was not
+started because recent account payments have failed or your spending limit needs to be
+increased").
+
+- **No teu computador (recomendado para depósitos grandes):** `nexus servir` vigia o
+  repositório de dados e processa cada envio da interface (no Windows, `vigiar-deposito.bat`).
+  Os commits que ele envia levam `[skip ci]`, por isso não põem o Actions a repetir o trabalho.
+- **Desligar o Actions:** cria a variável `NEXUS_PROCESSAMENTO` com o valor `local` em
+  *Settings → Secrets and variables → Actions → Variables* do repositório de dados. O
+  workflow passa a aparecer como "skipped" e não gasta minutos. Apaga a variável para voltar
+  ao Actions (o `.github/workflows/nexus.yml` tem de ter a linha
+  `if: vars.NEXUS_PROCESSAMENTO != 'local'`; actualiza-o com `nexus scaffold … --actualizar`).
+- **No Actions:** uma correcção feita na interface (sem nada no depósito) não instala o OCR
+  nem reconstrói os índices duas vezes, por isso custa pouco; o que gasta é o OCR.
+
+## 4.2 Originais no Cloudflare R2
+
+Com `storage.backend: r2` no `nexus.yaml` (e `storage.r2_bucket`, `storage.max_gb`), os
+originais novos vão para o R2 em vez de `originais/`. O motor lê as credenciais do ambiente:
+
+- `NEXUS_R2_ENDPOINT`, `NEXUS_R2_ACCESS_KEY_ID`, `NEXUS_R2_SECRET_ACCESS_KEY`.
+- **No teu computador:** exporta-as antes de `nexus servir` (ex.: no `~/.bashrc` do WSL).
+- **No Actions:** cria-as como segredos do repositório de dados (*Settings → Secrets and
+  variables → Actions → Secrets*); o workflow passa-as ao motor (`secrets: inherit`).
+- Uma execução que não toca nos originais (ex.: uma correcção) corre sem elas.
+
 ## 5. Claude Code sobre o repositório de dados
 
 - Abre uma sessão do Claude Code (web ou WSL2) com o repositório de dados. O hook

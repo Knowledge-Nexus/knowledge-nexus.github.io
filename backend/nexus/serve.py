@@ -33,7 +33,8 @@ def serve_once(root: Path, remote: str = "origin", branch: str = "main",
         return False
     if news:
         git.run("pull", "--rebase", "-q", remote, branch)
-    result = process_and_publish(root, push=True, remote=remote, branch=branch)
+    # O resultado já vem processado: o push não deve pôr o Actions a fazê-lo outra vez.
+    result = process_and_publish(root, push=True, remote=remote, branch=branch, skip_ci=True)
     for line in result.report.summary():
         log.info(line)
     for note in result.notes:

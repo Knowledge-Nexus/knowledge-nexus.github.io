@@ -261,11 +261,16 @@ class Classifier:
         """Agrupa tipos com as mesmas palavras-chave em famílias; escolhe a família e,
         dentro dela, o membro pelo papel (enunciado/resolução)."""
         prior = self.settings.prior
-        families: dict[Any, list[CompiledTerm]] = {}
+        # Cada família é identificada pelo slug do primeiro membro: os empates desempatam
+        # por esse nome. (Desempatar pela chave da família, um frozenset, dependia da
+        # semente de hash do Python e mudava o resultado de execução para execução.)
+        families: dict[str, list[CompiledTerm]] = {}
+        names: dict[Any, str] = {}
         for compiled in self.doc_types:
             if compiled.term.is_fallback:
                 continue
-            families.setdefault(compiled.family_key, []).append(compiled)
+            name = names.setdefault(compiled.family_key, compiled.term.slug)
+            families.setdefault(name, []).append(compiled)
         assessment_signal = sum(
             r[0].score for r in (score_terms(self.assessment_types, signals),
                                  score_terms(self.seasons, signals)) if r

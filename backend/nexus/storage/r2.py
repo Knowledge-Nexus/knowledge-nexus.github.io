@@ -42,8 +42,16 @@ class R2BlobStore:
     def __init__(self, bucket: str, max_bytes: int, client: Any | None = None) -> None:
         self.bucket = bucket
         self.max_bytes = max_bytes
-        self.client = client if client is not None else _s3_client()
+        self._client = client
         self._used: int | None = None
+
+    @property
+    def client(self) -> Any:
+        """Criado só quando é preciso: uma execução que não toca nos originais (ex.: uma
+        correcção feita na interface) não precisa das credenciais do R2."""
+        if self._client is None:
+            self._client = _s3_client()
+        return self._client
 
     def used_bytes(self) -> int:
         """Espaço ocupado no bucket (lido uma vez e actualizado a cada envio)."""

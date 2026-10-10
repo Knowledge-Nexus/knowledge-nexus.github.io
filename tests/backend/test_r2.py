@@ -89,3 +89,12 @@ def test_migrate_originals(tmp_path: Path) -> None:
 
     tight = migrate_originals(layout, R2BlobStore("c", 15, FakeS3()))
     assert tight.stopped_by_quota is not None
+
+
+def test_client_only_when_needed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sem credenciais, o pipeline ainda corre o que não toca nos originais (correcções)."""
+    for name in ("NEXUS_R2_ENDPOINT", "NEXUS_R2_ACCESS_KEY_ID", "NEXUS_R2_SECRET_ACCESS_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    store = R2BlobStore("b", 100)
+    with pytest.raises(RuntimeError, match="NEXUS_R2"):
+        store.exists("0" * 64)

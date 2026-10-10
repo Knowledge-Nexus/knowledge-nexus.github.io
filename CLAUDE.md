@@ -33,6 +33,16 @@ convenções ou comandos.
     em partes se preciso; `buildLotes` em `data/source.ts`) e o motor abre-os antes de
     tudo, como se tivessem vindo um a um (`pipeline/lotes.py`). O cliente da API volta a
     tentar em falhas de rede, limites de ritmo e erros 5xx.
+- **Originais no Cloudflare R2 (opcional):** com `storage.backend: r2`, os originais novos vão
+  para o R2 (`storage/r2.py`, `HybridBlobStore`: lê do git ou do R2, grava no R2); a interface
+  descarrega-os pelo Worker (`worker/`), que valida o token do GitHub no repositório privado.
+  Credenciais `NEXUS_R2_*` só no ambiente (segredos no Actions); o cliente só é criado quando
+  é preciso. Migração: `nexus migrar-blobs`.
+- **Processamento: Actions ou local.** A quota de minutos do Actions num repositório privado
+  esgota-se com OCR de depósitos grandes. `nexus servir` processa no computador do dono e
+  marca os seus commits com `[skip ci]`; a variável `NEXUS_PROCESSAMENTO=local` no repositório
+  de dados desliga o job (`if:` no `nexus.yml`). Sem nada no depósito, o workflow não instala
+  o OCR e só publica os índices se estiverem desactualizados.
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
@@ -57,6 +67,9 @@ Detalhes: `docs/arquitectura.md`, `docs/repo-dados.md`, `docs/modelo-dados.md`,
 4. **O pipeline é idempotente.** Correr duas vezes sobre o mesmo estado não produz
    diferenças: a escrita é determinística e só acontece se o conteúdo mudar, e as datas
    só mudam nas transições de estado.
+   Nada pode depender da ordem de um `set`/`frozenset` (muda com a semente de hash de cada
+   processo: os empates desempatam por slug) nem de escolhas que mudam a meio da execução
+   (o principal de um conjunto mantém-se enquanto estiver arrumado).
 5. **Deduplicação por SHA-256.** O mesmo conteúdo é guardado uma vez, mas cada
    utilizador tem a sua cópia lógica (`documentos/<id>.yaml`). Os quase-duplicados são
    marcados, nunca descartados.
@@ -103,6 +116,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Repositório de dados novo | `uv run nexus scaffold <pasta> --dono <login>` |
 | Pipeline local | `uv run nexus processar --repo <pasta> [--sem-push]` |
 | Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 60]` |
+| Publicar índices (só se desactualizados) | `uv run nexus publicar-indices --repo <pasta> [--forcar]` |
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |
 | Exportar árvore | `uv run nexus exportar-arvore <destino> --repo <pasta>` |
 | Visibilidade | `uv run nexus visibilidade cadeira <inst>/<cadeira> publico\|privado --repo <pasta>` |

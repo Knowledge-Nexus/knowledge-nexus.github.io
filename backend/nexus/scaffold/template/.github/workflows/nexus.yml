@@ -29,9 +29,13 @@ concurrency:
 
 jobs:
   pipeline:
+    # Processamento só no teu computador (`nexus servir`): cria a variável
+    # NEXUS_PROCESSAMENTO=local (Settings → Secrets and variables → Actions → Variables).
+    # O Actions deixa de correr e não gasta minutos; apaga a variável para voltar.
+    if: vars.NEXUS_PROCESSAMENTO != 'local'
     uses: __APP_REPOSITORY__/.github/workflows/pipeline.yml@__APP_REF__
     with:
       app-ref: __APP_REF__
       reclassify: ${{ inputs.reclassificar || false }}
-    # Passa o segredo NEXUS_PUBLICO_TOKEN (opcional) para publicar o material público.
+    # Passa os segredos: NEXUS_PUBLICO_TOKEN (material público) e NEXUS_R2_* (originais no R2).
     secrets: inherit

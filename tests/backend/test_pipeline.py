@@ -607,3 +607,50 @@ def test_remove_unit_merging_and_not(catalog_root: Path) -> None:
     assert "ufe/calculo" not in DataRepo(catalog_root).catalog.units
     [doc] = docs(catalog_root)
     assert (doc["classification"].get("unit") or {}).get("value") != "ufe/calculo"
+
+
+def test_bundle_lead_is_stable_between_runs(catalog_root: Path) -> None:
+    """O principal de um conjunto não alterna entre execuções (o PDF sozinho fica em dúvida,
+    o texto é arrumado; antes, a escolha mudava a meio de cada execução)."""
+    base = "UFE/2020_2021/1º Semestre/Álgebra Linear e Geometria Analítica/Geral"
+    gerar.pdf_nativo(deposit(catalog_root, f"{base}/planeamento.pdf"),
+                     "Planeamento\nlivro de apoio e apresentação da matéria\n")
+    deposit(catalog_root, f"{base}/ficha_exercicios_1.txt").write_text(
+        "Ficha de exercícios 1\nResolva os exercícios seguintes sobre matrizes.\n")
+    for _ in range(2):
+        Pipeline(DataRepo(catalog_root)).run()
+    before = {p.name: p.read_text() for p in (catalog_root / "documentos").glob("*.yaml")}
+    for _ in range(2):
+        Pipeline(DataRepo(catalog_root)).run()
+        after = {p.name: p.read_text() for p in (catalog_root / "documentos").glob("*.yaml")}
+        assert after == before, "o pipeline é idempotente com conjuntos"
+
+
+def test_type_ties_do_not_depend_on_hash_seed(tmp_path: Path) -> None:
+    """Famílias de tipos empatadas desempatam sempre da mesma forma (antes dependia da
+    semente de hash do Python, que muda em cada processo)."""
+    import sys
+
+    script = tmp_path / "empate.py"
+    script.write_text(
+        "from nexus.config import load_settings\n"
+        "from nexus.datarepo.store import DataRepo\n"
+        "from nexus.domain.catalog import Catalog\n"
+        "from nexus.domain.documents import BlobRef, Document, Source\n"
+        "from nexus.pipeline.classify.classifier import Classifier\n"
+        "from nexus.datarepo.yamlio import read_yaml\n"
+        "from nexus.domain.vocab import Vocabularies\n"
+        "import nexus.config as c, pathlib\n"
+        "vocab = Vocabularies.model_validate(read_yaml(c.config_dir() / 'vocabularios.yaml'))\n"
+        "settings = c.Settings().classification\n"
+        "cl = Classifier(vocab, Catalog(), settings)\n"
+        "doc = Document(id='d', owner='o', blob=BlobRef(sha256='0'*64, size=1, ext='txt',"
+        " mime='text/plain'), sources=[Source(via='upload', path='x.txt')])\n"
+        "out = cl.classify(doc, None, ['livro e apresentação'], None, [])\n"
+        "print(out.classification.value('document_type'))\n")
+    results = set()
+    for seed in ("1", "2", "3", "4"):
+        done = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                              env={**os.environ, "PYTHONHASHSEED": seed}, check=True)
+        results.add(done.stdout.strip())
+    assert len(results) == 1, results

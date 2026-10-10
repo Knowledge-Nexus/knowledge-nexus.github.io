@@ -617,7 +617,17 @@ class Pipeline:
                 ids = {d.id for d in group}
                 chosen = sorted({d.bundle.lead_choice for d in group
                                  if d.bundle is not None and d.bundle.lead_choice in ids})
-                lead = docs[chosen[0]] if chosen else choose_lead(group, code)
+                # Sem escolha tua, o principal anterior mantém-se enquanto estiver arrumado:
+                # escolher de novo a cada passagem fazia-o alternar entre execuções.
+                current = sorted({d.bundle.lead for d in group
+                                  if d.bundle is not None and d.bundle.lead in ids})
+                kept = docs[current[0]] if current else None
+                if chosen:
+                    lead = docs[chosen[0]]
+                elif kept is not None and kept.filed_name and not kept.needs_review:
+                    lead = kept
+                else:
+                    lead = choose_lead(group, code)
                 ref = ref.model_copy(update={
                     "lead": lead.id, "lead_choice": chosen[0] if chosen else None})
                 if lead.id != doc_id:

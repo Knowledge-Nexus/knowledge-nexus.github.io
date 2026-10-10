@@ -139,12 +139,17 @@ def processar(
 def publicar_indices(
     repo: RepoOption = Path("."),
     push: Annotated[bool, typer.Option("--push/--sem-push", help="Fazer push.")] = True,
+    forcar: Annotated[bool, typer.Option(
+        help="Reconstruir mesmo que os publicados já sejam do commit actual.")] = False,
 ) -> None:
     """Reconstrói e publica os índices do estado actual do repositório."""
     from nexus.datarepo.git import GitError
-    from nexus.publish import publish_index_branch
+    from nexus.publish import indices_up_to_date, publish_index_branch
 
     _repo(repo)
+    if push and not forcar and indices_up_to_date(repo):
+        typer.echo("índices já actualizados")
+        return
     try:
         commit = publish_index_branch(repo, push=push)
     except GitError as exc:

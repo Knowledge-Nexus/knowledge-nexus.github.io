@@ -30,3 +30,18 @@ def test_remote_has_news_after_other_clone_pushes(tmp_path: Path) -> None:
     _git(a, "commit", "-q", "-m", "dois")
     _git(a, "push", "-q", "origin", "HEAD:main")
     assert remote_has_news(Git(b), "origin", "main")
+
+
+def test_serve_commits_skip_ci(git_root: Path) -> None:
+    """O que o `nexus servir` envia já está processado: o push não corre o Actions."""
+    from conftest import deposit
+
+    from amostras import gerar
+
+    gerar.pdf_nativo(deposit(git_root, "ficha.pdf"), gerar.FICHA_DESCONHECIDA)
+    assert serve_once(git_root, force=True)
+    messages = subprocess.run(["git", "log", "--format=%B", "-3"], cwd=git_root, check=True,
+                              capture_output=True, text=True).stdout
+    assert "nexus: processar depósito" in messages
+    for message in messages.split("nexus:")[1:]:
+        assert "[skip ci]" in message, message

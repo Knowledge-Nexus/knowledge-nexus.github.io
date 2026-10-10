@@ -31,10 +31,15 @@ class ProcessResult:
         return data
 
 
-def commit_message(report: RunReport) -> str:
-    return (f"nexus: processar depósito ({len(report.new_documents)} novos, "
-            f"{len(report.filed)} arrumados, {len(report.review)} a rever, "
-            f"{len(report.errors)} erros)")
+# Num push com isto na mensagem, o GitHub não corre o workflow (não gasta minutos do Actions).
+SKIP_CI = "[skip ci]"
+
+
+def commit_message(report: RunReport, skip_ci: bool = False) -> str:
+    message = (f"nexus: processar depósito ({len(report.new_documents)} novos, "
+               f"{len(report.filed)} arrumados, {len(report.review)} a rever, "
+               f"{len(report.errors)} erros)")
+    return f"{message}\n\n{SKIP_CI}" if skip_ci else message
 
 
 def _remote_indices_source(git: Git, remote: str) -> str | None:
@@ -45,6 +50,12 @@ def _remote_indices_source(git: Git, remote: str) -> str | None:
         return None
     value = manifest.get("built_from")
     return str(value) if value else None
+
+
+def indices_up_to_date(root: Path, remote: str = "origin") -> bool:
+    """Os índices publicados já foram construídos a partir do HEAD actual."""
+    git = Git(root)
+    return git.is_repo() and _remote_indices_source(git, remote) == git.head()
 
 
 def publish_index_branch(root: Path, push: bool = True, remote: str = "origin") -> str | None:
@@ -64,11 +75,13 @@ def publish_index_branch(root: Path, push: bool = True, remote: str = "origin") 
 def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                         publish_indices: bool = True, remote: str = "origin",
                         branch: str = "main", max_attempts: int = 3,
-                        max_items: int | None = None) -> ProcessResult:
+                        max_items: int | None = None, skip_ci: bool = False) -> ProcessResult:
     """Corre o pipeline e publica. Nunca perde ficheiros locais:
 
     1. alterações locais por registar (ex.: ficheiros largados no depósito de um clone)
        são primeiro guardadas num commit próprio;
+    `skip_ci`: os commits levam `[skip ci]`, para o push não pôr o Actions a repetir o que
+    já foi feito aqui (é o caso do `nexus servir`).
     2. se o push for rejeitado (o remoto avançou), o commit do pipeline é descartado, o
        commit local é reposto sobre o remoto (rebase) e o pipeline corre de novo: é
        idempotente e reaproveita a cache de extracção.
@@ -77,7 +90,8 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
     use_git = git.is_repo()
     result = ProcessResult(report=RunReport())
     if use_git:
-        local = git.commit("nexus: alterações locais antes de processar")
+        local = git.commit("nexus: alterações locais antes de processar"
+                           + (f"\n\n{SKIP_CI}" if skip_ci else ""))
         if local:
             result.notes.append(f"alterações locais guardadas em {local[:10]}")
     for attempt in range(1, max_attempts + 1):
@@ -88,7 +102,7 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
         ).run()
         if not use_git:
             break
-        result.commit = git.commit(commit_message(result.report))
+        result.commit = git.commit(commit_message(result.report, skip_ci))
         if not push:
             break
         if git.push(remote, branch):
