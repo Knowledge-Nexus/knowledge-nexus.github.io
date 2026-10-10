@@ -195,6 +195,7 @@ class Pipeline:
             scan = scan_deposit(self.layout.deposit_root, set(self.repo.users),
                                 self.default_owner, self.settings.code_projects)
             self._catalog_requests()
+            self._close_known_proposals()
             for junk in scan.junk:
                 junk.unlink(missing_ok=True)
             processed = 0
@@ -249,6 +250,18 @@ class Pipeline:
                                       f"{type(exc).__name__}: {exc}\n")
                 self.report.errors.append((f"catalogo/{request.name}", str(exc)))
         self.repo.reload_catalog()
+
+    def _close_known_proposals(self) -> None:
+        """Uma proposta de cadeira cujo nome já é uma cadeira do catálogo (ex.: criada na
+        biblioteca, sem aceitar a proposta) fica aceite: já não falta nada."""
+        names: set[str] = set()
+        for unit in self.repo.catalog.units.values():
+            names.update(normalize(n) for n in (unit.name, unit.acronym or "", *unit.aliases))
+        names.discard("")
+        for proposal in list(self.repo.proposals.values()):
+            name = normalize(str(proposal.data.get("name") or ""))
+            if proposal.kind == "unit" and proposal.status == "open" and name in names:
+                self.repo.save_proposal(proposal.model_copy(update={"status": "accepted"}))
 
     def _remove_unit(self, key: str, merge_into: str | None) -> None:
         """Apaga a cadeira; os documentos dela passam para `merge_into` ou voltam a ser
@@ -795,15 +808,20 @@ class Pipeline:
         if not extracted and doc.review is not None and doc.review.status == "open":
             reasons += [r for r in doc.review.reasons if r.code == EXTRACTION_FAILED]
         if doc.reached(Status.CLASSIFIED) and doc.kind is not DocumentKind.ARCHIVE:
-            for name in self._weak(doc, classifier):
+            weak = self._weak(doc, classifier)
+            for name in weak:
                 current = getattr(doc.classification, name)
                 if current is None or current.value is None:
                     reasons.append(Reason(code="review.missing", params={"field": name}))
                 else:
                     reasons.append(Reason(code="review.low_confidence", params={
                         "field": name, "confidence": current.confidence}))
-            for pid in proposal_ids or self._open_unit_proposals(doc):
-                reasons.append(Reason(code="review.unit_proposed", params={"proposal": pid}))
+            # Uma proposta de cadeira só prende o documento enquanto a cadeira dele estiver em
+            # dúvida: se a escolheste tu (ou é certa), a proposta deixa de o impedir.
+            if "unit" in weak:
+                for pid in proposal_ids or self._open_unit_proposals(doc):
+                    reasons.append(Reason(code="review.unit_proposed",
+                                          params={"proposal": pid}))
         elif not doc.reached(Status.CLASSIFIED) and not reasons:
             return self._save(doc, original)
 

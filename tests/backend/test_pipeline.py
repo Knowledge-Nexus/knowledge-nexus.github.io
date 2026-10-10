@@ -654,3 +654,32 @@ def test_type_ties_do_not_depend_on_hash_seed(tmp_path: Path) -> None:
                               env={**os.environ, "PYTHONHASHSEED": seed}, check=True)
         results.add(done.stdout.strip())
     assert len(results) == 1, results
+
+
+def test_user_unit_is_not_held_by_open_proposal(catalog_root: Path) -> None:
+    """Escolheste a cadeira: uma proposta de cadeira que cita o documento já não o prende em
+    «A rever». E uma proposta cuja cadeira entretanto existe fica aceite."""
+    gerar.pdf_nativo(deposit(catalog_root, "grafos_ficha2.pdf"), gerar.FICHA_DESCONHECIDA)
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    pid = "unit-teoria-dos-grafos-imaginarios"
+    assert any(r["code"] == "review.unit_proposed" for r in doc["review"]["reasons"])
+
+    resolve(DataRepo(catalog_root), doc["id"], {"unit": "ufe/am1",
+                                                "document_type": "fichas-exercicios"}, OWNER)
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    assert doc["review"]["status"] == "resolved", doc["review"]
+    assert doc.get("filed_name")
+    assert read_yaml(catalog_root / "revisao" / "propostas" / f"{pid}.yaml")["status"] == "open"
+
+    # A cadeira passa a existir (criada na biblioteca, sem aceitar a proposta).
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "nova.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\ninstitutions:\n"
+        "  - slug: ufe\n    name: Universidade Fictícia de Exemplo\n"
+        "    units:\n      - slug: tgi\n        name: Teoria dos Grafos Imaginários\n")
+    run(catalog_root)
+    assert read_yaml(catalog_root / "revisao" / "propostas" / f"{pid}.yaml")["status"] \
+        == "accepted"
