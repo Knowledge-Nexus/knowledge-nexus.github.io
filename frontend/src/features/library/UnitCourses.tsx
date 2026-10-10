@@ -8,6 +8,7 @@ import { SuggestInput } from "../../components/SuggestInput";
 import { Badge, Button, ErrorBox, Notice } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
+import { unitRef } from "../../lib/courseLinks";
 import { normalize, slugify } from "../../lib/normalize";
 import { courseSuggestions, courseTitle, DEGREES } from "../../lib/reference";
 
@@ -23,8 +24,6 @@ interface NewCourse {
   year: string;
   semester: string;
 }
-
-const slugOf = (key: string) => key.split("/")[1] ?? key;
 
 export function courseLabel(
   t: (key: string, options?: Record<string, unknown>) => string,
@@ -46,7 +45,18 @@ export function UnitCourses(props: { unit: UnitRow }) {
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   if (!meta) return null;
-  const courses = meta.courses().filter((c) => c.institution === unit.institution);
+  // Os cursos de todas as instituições (uma cadeira pode estar em cursos de outras); os da
+  // instituição da cadeira primeiro.
+  const courses = [...meta.courses()].sort(
+    (a, b) =>
+      Number(b.institution === unit.institution) - Number(a.institution === unit.institution),
+  );
+  const institutions = meta.institutions();
+  const label = (course: CourseRow) => {
+    if (course.institution === unit.institution) return courseTitle(course.name);
+    const inst = institutions.find((i) => i.slug === course.institution);
+    return `${courseTitle(course.name)} (${inst?.acronym ?? inst?.name ?? course.institution})`;
+  };
   const links = meta.courseUnits().filter((l) => l.unit_key === unit.key);
   const byKey = new Map(courses.map((c) => [c.key, c]));
   const current = links
@@ -62,7 +72,7 @@ export function UnitCourses(props: { unit: UnitRow }) {
           const detail = courseLabel(t, link.curricular_year, link.semester);
           return (
             <Badge key={course.key} tone="info">
-              {courseTitle(course.name)}
+              {label(course)}
               {detail ? ` · ${detail}` : ""}
             </Badge>
           );
@@ -89,6 +99,7 @@ export function UnitCourses(props: { unit: UnitRow }) {
         <CoursesEditor
           unit={unit}
           courses={courses}
+          label={label}
           onCancel={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
@@ -105,6 +116,7 @@ export function UnitCourses(props: { unit: UnitRow }) {
 function CoursesEditor(props: {
   unit: UnitRow;
   courses: CourseRow[];
+  label: (course: CourseRow) => string;
   onCancel: () => void;
   onSaved: () => void;
   save: (bundle: CatalogBundle, message: string) => Promise<string>;
@@ -138,8 +150,8 @@ function CoursesEditor(props: {
     setAdded((all) => all.map((c, i) => (i === index ? { ...c, ...value } : c)));
 
   const numberOrUndefined = (v: string) => (v ? Number(v) : undefined);
-  const linkOf = (slug: string, l: { year: string; semester: string }) => ({
-    unit: slug,
+  const linkOf = (ref: string, l: { year: string; semester: string }) => ({
+    unit: ref,
     ...(l.year ? { curricular_year: numberOrUndefined(l.year) } : {}),
     ...(l.semester ? { semester: numberOrUndefined(l.semester) } : {}),
   });
@@ -148,7 +160,6 @@ function CoursesEditor(props: {
     setBusy(true);
     setError(null);
     try {
-      const own = slugOf(unit.key);
       const changed = courses.filter((c) => {
         const a = initial[c.key];
         const b = state[c.key];
@@ -156,25 +167,35 @@ function CoursesEditor(props: {
           a && b && (a.on !== b.on || (b.on && (a.year !== b.year || a.semester !== b.semester)))
         );
       });
-      const bundleCourses: NonNullable<
+      type BundleCourse = NonNullable<
         NonNullable<CatalogBundle["institutions"]>[number]["courses"]
-      > = changed.map((course) => {
+      >[number];
+      // Cada curso vai na entrada da instituição dele.
+      const byInstitution = new Map<string, BundleCourse[]>();
+      const put = (institutionSlug: string, course: BundleCourse) =>
+        byInstitution.set(institutionSlug, [...(byInstitution.get(institutionSlug) ?? []), course]);
+      for (const course of changed) {
         const others = allLinks
           .filter((l) => l.course_key === course.key && l.unit_key !== unit.key)
           .map((l) => ({
-            unit: slugOf(l.unit_key),
+            unit: unitRef(course.institution, l.unit_key),
             ...(l.curricular_year ? { curricular_year: l.curricular_year } : {}),
             ...(l.semester ? { semester: l.semester } : {}),
           }));
         const mine = state[course.key] as Link;
-        return {
+        put(course.institution, {
           slug: course.slug,
           name: course.name,
           ...(course.degree ? { degree: course.degree } : {}),
-          units: mine.on ? [...others, linkOf(own, mine)] : others,
-        };
-      });
-      const used = new Set(courses.map((c) => c.slug));
+          units: mine.on
+            ? [...others, linkOf(unitRef(course.institution, unit.key), mine)]
+            : others,
+        });
+      }
+      const own = unitRef(unit.institution, unit.key);
+      const used = new Set(
+        courses.filter((c) => c.institution === unit.institution).map((c) => c.slug),
+      );
       const accept: string[] = [];
       for (const course of added.filter((c) => c.name.trim())) {
         const title = courseTitle(course.name.trim());
@@ -183,24 +204,23 @@ function CoursesEditor(props: {
         used.add(slug);
         const proposal = proposals.find((p) => normalize(courseTitle(p.name)) === normalize(title));
         if (proposal) accept.push(proposal.id);
-        bundleCourses.push({
+        put(unit.institution, {
           slug,
           name: title,
           ...(course.degree ? { degree: course.degree } : {}),
           units: [linkOf(own, course)],
         });
       }
-      if (bundleCourses.length === 0) return props.onCancel();
+      if (byInstitution.size === 0) return props.onCancel();
+      const all = meta?.institutions() ?? [];
       const bundle: CatalogBundle = {
         format: "nexus-catalogo",
         version: 1,
-        institutions: [
-          {
-            slug: unit.institution,
-            name: institution?.name ?? unit.institution,
-            courses: bundleCourses,
-          },
-        ],
+        institutions: [...byInstitution].map(([slug, list]) => ({
+          slug,
+          name: all.find((i) => i.slug === slug)?.name ?? slug,
+          courses: list,
+        })),
         ...(accept.length ? { proposals: { accept } } : {}),
       };
       await props.save(bundle, `catálogo: cursos de ${unit.acronym ?? unit.name}`);
@@ -262,7 +282,7 @@ function CoursesEditor(props: {
                   checked={link.on}
                   onChange={(e) => patch(course.key, { on: e.target.checked })}
                 />
-                <span className="truncate">{courseTitle(course.name)}</span>
+                <span className="truncate">{props.label(course)}</span>
               </label>
               {link.on && (
                 <>

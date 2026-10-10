@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Card, ErrorBox, Notice } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle } from "../../data/types";
+import { unitRef } from "../../lib/courseLinks";
 import { slugify } from "../../lib/normalize";
 
 const input = "rounded-lg border border-line-strong bg-sheet px-2 py-1 text-sm";
@@ -24,7 +25,15 @@ export function UnitCreator(props: { onDone: () => void }) {
   const [error, setError] = useState<unknown>(null);
   if (!meta) return null;
 
-  const courses = meta.courses().filter((c) => c.institution === institution);
+  // Qualquer curso, também de outra instituição (os desta primeiro).
+  const courses = [...meta.courses()].sort(
+    (a, b) => Number(b.institution === institution) - Number(a.institution === institution),
+  );
+  const courseName = (c: (typeof courses)[number]) => {
+    if (c.institution === institution) return c.name;
+    const inst = institutions.find((i) => i.slug === c.institution);
+    return `${c.name} (${inst?.acronym ?? inst?.name ?? c.institution})`;
+  };
   const slug = slugify(name, 30);
   const taken = meta.units().some((u) => u.institution === institution && u.slug === slug);
   const valid = Boolean(institution && name.trim() && slug && !taken);
@@ -40,11 +49,28 @@ export function UnitCreator(props: { onDone: () => void }) {
             .courseUnits()
             .filter((l) => l.course_key === chosen.key)
             .map((l) => ({
-              unit: l.unit_key,
+              unit: unitRef(chosen.institution, l.unit_key),
               ...(l.curricular_year ? { curricular_year: l.curricular_year } : {}),
               ...(l.semester ? { semester: l.semester } : {}),
             }))
         : [];
+      const course = chosen
+        ? {
+            slug: chosen.slug,
+            name: chosen.name,
+            ...(chosen.degree ? { degree: chosen.degree } : {}),
+            units: [
+              ...existing,
+              {
+                unit: unitRef(chosen.institution, `${institution}/${slug}`),
+                ...(year ? { curricular_year: Number(year) } : {}),
+                ...(semester ? { semester: Number(semester) } : {}),
+              },
+            ],
+          }
+        : null;
+      const sameInstitution = !chosen || chosen.institution === institution;
+      const courseInst = chosen ? institutions.find((i) => i.slug === chosen.institution) : null;
       const bundle: CatalogBundle = {
         format: "nexus-catalogo",
         version: 1,
@@ -59,26 +85,18 @@ export function UnitCreator(props: { onDone: () => void }) {
                 ...(acronym.trim() ? { acronym: acronym.trim() } : {}),
               },
             ],
-            ...(chosen
-              ? {
-                  courses: [
-                    {
-                      slug: chosen.slug,
-                      name: chosen.name,
-                      ...(chosen.degree ? { degree: chosen.degree } : {}),
-                      units: [
-                        ...existing,
-                        {
-                          unit: `${institution}/${slug}`,
-                          ...(year ? { curricular_year: Number(year) } : {}),
-                          ...(semester ? { semester: Number(semester) } : {}),
-                        },
-                      ],
-                    },
-                  ],
-                }
-              : {}),
+            ...(course && sameInstitution ? { courses: [course] } : {}),
           },
+          // O curso escolhido é de outra instituição: vai na entrada dela.
+          ...(course && chosen && !sameInstitution
+            ? [
+                {
+                  slug: chosen.institution,
+                  name: courseInst?.name ?? chosen.institution,
+                  courses: [course],
+                },
+              ]
+            : []),
         ],
       };
       await source.catalogRequest(bundle, `catálogo: nova cadeira ${institution}/${slug}`);
@@ -146,7 +164,7 @@ export function UnitCreator(props: { onDone: () => void }) {
                 <option value="">{t("unit_create.no_course")}</option>
                 {courses.map((c) => (
                   <option key={c.key} value={c.key}>
-                    {c.name}
+                    {courseName(c)}
                   </option>
                 ))}
               </select>

@@ -416,7 +416,7 @@
     "label": "Cursos:",
     "none": "ainda sem curso",
     "edit": "Editar cursos",
-    "help": "Marca os cursos de {{institution}} a que esta cadeira pertence, com o ano e o semestre. Se o curso ainda não existir, acrescenta-o (há sugestões ao escrever).",
+    "help": "Marca os cursos a que esta cadeira pertence, com o ano e o semestre (podem ser de outras instituições). Se o curso ainda não existir, acrescenta-o: fica em {{institution}} (há sugestões ao escrever).",
     "no_courses": "Esta instituição ainda não tem cursos. Acrescenta o primeiro.",
     "add": "Acrescentar curso",
     "new_name": "Nome do curso",
@@ -463,7 +463,6 @@
     "empty_readonly": "Ainda sem cadeiras.",
     "no_year": "Ano por indicar",
     "year_targets": "Largar num ano:",
-    "other_institution": "Essa cadeira é de outra instituição: só pode entrar nos cursos da mesma instituição.",
     "loose_hint": "Arrasta-as para o curso (e o ano) certo."
   },
   "institution_edit": {

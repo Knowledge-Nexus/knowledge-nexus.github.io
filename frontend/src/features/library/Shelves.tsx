@@ -10,6 +10,7 @@ import { ErrorBox, Notice, unitColor } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
 import { type CourseColor, courseColors } from "../../lib/courseColors";
+import { unitRef } from "../../lib/courseLinks";
 import { normalize, slugify } from "../../lib/normalize";
 import { courseTitle, degreeOf } from "../../lib/reference";
 import { CourseRemover } from "./CourseManager";
@@ -32,8 +33,6 @@ interface Shelf {
 
 type Drop = { course: string; year: number | null } | null;
 
-const slugOf = (key: string) => key.split("/")[1] ?? key;
-
 function bundleFor(
   institution: { slug: string; name: string },
   courses: { course: CourseRow; links: Link[] }[],
@@ -51,7 +50,7 @@ function bundleFor(
           name: course.name,
           ...(course.degree ? { degree: course.degree } : {}),
           units: links.map((l) => ({
-            unit: slugOf(l.unit_key),
+            unit: unitRef(course.institution, l.unit_key),
             ...(l.curricular_year ? { curricular_year: l.curricular_year } : {}),
             ...(l.semester ? { semester: l.semester } : {}),
           })),
@@ -217,10 +216,6 @@ export function Shelves(props: { units: UnitRow[] }) {
     const shelf = shelves.find((s) => s.course.key === target.course);
     const unit = unitMap.get(data.unit);
     if (!shelf || !unit) return;
-    if (unit.institution !== shelf.course.institution) {
-      setError(t("shelves.other_institution"));
-      return;
-    }
     const links = linksOf(shelf.course.key);
     const current = links.find((l) => l.unit_key === unit.key);
     const year = target.year ?? current?.curricular_year ?? null;

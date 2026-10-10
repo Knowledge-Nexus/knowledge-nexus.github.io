@@ -69,6 +69,8 @@ class CurricularUnit(Record):
 
 
 class CourseUnitLink(Record):
+    # Slug da cadeira (da mesma instituição do curso) ou a chave completa `<inst>/<slug>`
+    # (cadeira de outra instituição).
     unit: str
     curricular_year: int | None = None
     semester: int | None = None
@@ -85,6 +87,19 @@ class Course(Record):
     def key(self) -> str:
         return unit_key(self.institution, self.slug)
 
+    def link_key(self, link: CourseUnitLink) -> str:
+        """Chave da cadeira de uma ligação (pode ser de outra instituição)."""
+        return link.unit if "/" in link.unit else unit_key(self.institution, link.unit)
+
+    def unit_keys(self) -> list[str]:
+        return [self.link_key(link) for link in self.units]
+
+    def unit_ref(self, key: str) -> str:
+        """Como se escreve a cadeira `key` numa ligação deste curso: o slug, se for da mesma
+        instituição; a chave completa, se for de outra."""
+        institution, slug = key.split("/", 1)
+        return slug if institution == self.institution else key
+
 
 class Institution(Record):
     slug: str
@@ -99,12 +114,8 @@ class Catalog(Record):
     units: dict[str, CurricularUnit] = Field(default_factory=dict)
 
     def courses_of_unit(self, key: str) -> list[Course]:
-        institution, slug = key.split("/", 1)
-        return [
-            c
-            for c in self.courses.values()
-            if c.institution == institution and any(link.unit == slug for link in c.units)
-        ]
+        """Os cursos que têm a cadeira, de qualquer instituição."""
+        return [c for c in self.courses.values() if key in c.unit_keys()]
 
     def is_empty(self) -> bool:
         return not self.units

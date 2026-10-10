@@ -107,18 +107,29 @@ def import_bundle(layout: Layout, raw: Any) -> ImportReport:
         raise CatalogError(f"formato desconhecido: {bundle.format}")
     current = load_catalog(layout)
     report = ImportReport()
+    # Um curso pode ter cadeiras de outras instituições (pela chave completa `<inst>/<slug>`).
+    known_units = set(current.units) | {
+        unit_key(inst.slug, u.slug) for inst in bundle.institutions for u in inst.units
+    }
     for inst in bundle.institutions:
         _check_slug("instituição", inst.slug)
-        known_units = {u.slug for u in inst.units} | {
-            u.slug for u in current.units.values() if u.institution == inst.slug
-        }
+        courses: list[Course] = []
         for course in inst.courses:
             _check_slug("curso", course.slug)
-            missing = [link.unit for link in course.units if link.unit not in known_units]
+            course = course.model_copy(update={"institution": inst.slug})
+            missing = [link.unit for link in course.units
+                       if course.link_key(link) not in known_units]
             if missing:
                 raise CatalogError(
-                    f"o curso {course.slug} refere UCs inexistentes: {', '.join(missing)}"
+                    f"o curso {course.slug} refere cadeiras inexistentes: {', '.join(missing)}"
                 )
+            # As da mesma instituição gravam-se só com o slug (como sempre).
+            if "units" in course.model_fields_set:
+                course = course.model_copy(update={"units": [
+                    link.model_copy(update={"unit": course.unit_ref(course.link_key(link))})
+                    for link in course.units]})
+            courses.append(course)
+        inst.courses = courses
         inst_dir = layout.catalog_dir / inst.slug
         # Só os campos que o pedido traz: o resto do que está no ficheiro mantém-se
         # (ex.: um pedido que só muda os cursos não apaga os nomes alternativos).
@@ -182,16 +193,14 @@ def remove_unit(layout: Layout, key: str, merge_into: str | None = None) -> bool
         if extra:
             write_unit(layout, target.model_copy(update={"aliases": [*target.aliases, *extra]}))
     for course in catalog.courses.values():
-        if course.institution != unit.institution or not any(
-                link.unit == unit.slug for link in course.units):
+        if key not in course.unit_keys():
             continue
         links: list[CourseUnitLink] = []
         for link in course.units:
-            if link.unit == unit.slug:
-                if target is None or target.institution != course.institution or any(
-                        other.unit == target.slug for other in course.units):
+            if course.link_key(link) == key:
+                if target is None or target.key in course.unit_keys():
                     continue
-                link = link.model_copy(update={"unit": target.slug})
+                link = link.model_copy(update={"unit": course.unit_ref(target.key)})
             links.append(link)
         path = layout.catalog_dir / course.institution / COURSES_DIR / f"{course.slug}.yaml"
         write_yaml_if_changed(path, course.model_copy(update={"units": links}))

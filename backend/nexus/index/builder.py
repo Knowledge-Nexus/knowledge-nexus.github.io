@@ -123,7 +123,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                 if d.classification.value("unit")}
         units = {k: u for k, u in units.items() if k in used}
         courses = {k: c for k, c in courses.items()
-                   if any(f"{c.institution}/{link.unit}" in used for link in c.units)}
+                   if any(k in used for k in c.unit_keys())}
         wanted = {u.institution for u in units.values()} | {c.institution
                                                             for c in courses.values()}
         institutions = {k: i for k, i in institutions.items() if k in wanted}
@@ -238,10 +238,10 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
             con.execute(insert(schema.courses), [
                 {"key": c.key, "institution": c.institution, "slug": c.slug, "name": c.name,
                  "degree": c.degree} for c in courses.values()])
-            links = [{"course_key": c.key, "unit_key": f"{c.institution}/{link.unit}",
+            links = [{"course_key": c.key, "unit_key": c.link_key(link),
                       "curricular_year": link.curricular_year, "semester": link.semester}
                      for c in courses.values() for link in c.units
-                     if f"{c.institution}/{link.unit}" in units]
+                     if c.link_key(link) in units]
             if links:
                 con.execute(insert(schema.course_units), links)
         if units:

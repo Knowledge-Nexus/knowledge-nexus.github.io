@@ -9,7 +9,7 @@ CLAUDE.md, .claude/                  regras e skills para o Claude Code
 .github/workflows/nexus.yml          chama o pipeline reutilizável da aplicação
 catalogo/vocabularios.yaml           tipos de documento, papéis, origens, avaliações, épocas
 catalogo/<inst>/instituicao.yaml
-catalogo/<inst>/cursos/<curso>.yaml  curso + cadeiras (ano curricular, semestre)
+catalogo/<inst>/cursos/<curso>.yaml  curso + cadeiras (ano curricular, semestre; de outra instituição: <inst>/<slug>)
 catalogo/<inst>/ucs/<uc>.yaml        cadeira: código, sigla, aliases, palavras-chave, docentes,
                                      tópicos, edições (ano lectivo, método, avaliações)
 catalogo/_importar/*.yaml            pedidos da interface (aplicados e apagados pelo motor)

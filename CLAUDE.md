@@ -188,6 +188,10 @@ Dependências de sistema (Ubuntu/WSL2):
     Biblioteca (`features/library/UnitCourses.tsx`); grava um pedido de catálogo com a
     lista completa das cadeiras de cada curso alterado (o motor só escreve os campos que
     o pedido traz).
+  - Um curso pode ter cadeiras de outras instituições: na ligação, `unit` é o slug (mesma
+    instituição) ou a chave completa `<inst>/<slug>` (`Course.link_key`/`unit_keys`/`unit_ref`
+    no motor, `lib/courseLinks.ts` na interface). Compatível com os ficheiros antigos (sem
+    mudar `FORMAT_VERSION`).
   - Criar e remover cursos (`features/library/CourseManager.tsx`): «Novo curso» na Biblioteca
     e «Remover curso» em cada estante. Remover só avança com o nome do curso escrito à mão
     e grava `courses_remove: [{course}]` (`remove_course`, `Pipeline._remove_course`): o curso

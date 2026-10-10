@@ -273,7 +273,7 @@ class Classifier:
             for course_key in owner.enrollments.courses:
                 course = self.catalog.courses.get(course_key)
                 if course is not None:
-                    enrolled |= {f"{course.institution}/{link.unit}" for link in course.units}
+                    enrolled |= set(course.unit_keys())
         # Todas as cadeiras competem; a inscrição só dá um bónus. (Antes, uma cadeira inscrita
         # com um sinal fraco, ex. nos metadados, ganhava sem olhar para a pasta da cadeira.)
         ranked = score_units(self.units, signals, enrolled, boost)

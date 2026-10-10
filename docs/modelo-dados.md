@@ -5,7 +5,7 @@
 | Entidade | Onde | Notas |
 |---|---|---|
 | Instituição | `catalogo/<inst>/instituicao.yaml` | slug, nome, sigla, aliases |
-| Curso | `catalogo/<inst>/cursos/*.yaml` | grau; ligação às cadeiras com ano curricular e semestre (uma cadeira pode estar em vários cursos) |
+| Curso | `catalogo/<inst>/cursos/*.yaml` | grau; ligação às cadeiras com ano curricular e semestre (uma cadeira pode estar em vários cursos, também de outras instituições: `unit` é o slug da cadeira da mesma instituição ou a chave completa `<inst>/<slug>`) |
 | Unidade curricular | `catalogo/<inst>/ucs/*.yaml` | código, sigla, aliases, palavras-chave, docentes, ECTS, tópicos hierárquicos |
 | Edição da cadeira | dentro da cadeira (`editions`) | ano lectivo, docentes, método de avaliação, avaliações (tipo, época, número, data, peso, folha de consulta) |
 | Vocabulários | `catalogo/vocabularios.yaml` | tipos de documento, papéis, origens de resolução, tipos de avaliação, épocas; com rótulos i18n e âmbito opcional por instituição |

@@ -777,3 +777,39 @@ def test_remove_course_keeps_units_and_documents(catalog_root: Path) -> None:
     [doc] = docs(catalog_root)
     assert doc["status"] == "filed" and doc["classification"]["unit"]["value"] == "ufe/am1"
     assert not list(requests.glob("*.yaml"))
+
+
+def test_course_can_have_units_of_other_institutions(catalog_root: Path, tmp_path: Path) -> None:
+    """Um curso pode ter cadeiras de outras instituições (pela chave completa); as da mesma
+    instituição continuam gravadas só com o slug."""
+    import sqlite3
+
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "a.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\ninstitutions:\n"
+        "  - slug: outra\n    name: Outra Escola\n"
+        "    units:\n      - { slug: estatistica, name: Estatística }\n"
+        "    courses:\n      - slug: gestao\n        name: Gestão\n        units:\n"
+        "          - { unit: ufe/am1, curricular_year: 1 }\n"
+        "          - { unit: outra/estatistica }\n")
+    run(catalog_root)
+    assert not list(requests.glob("*.yaml")), "o pedido foi aplicado"
+    repo = DataRepo(catalog_root)
+    course = repo.catalog.courses["outra/gestao"]
+    assert [link.unit for link in course.units] == ["ufe/am1", "estatistica"]
+    assert "outra/gestao" in [c.key for c in repo.catalog.courses_of_unit("ufe/am1")]
+    build_indices(repo, tmp_path / "idx")
+    con = sqlite3.connect(tmp_path / "idx" / "meta.db")
+    links = set(con.execute("SELECT course_key, unit_key FROM course_units"))
+    assert {("outra/gestao", "ufe/am1"), ("outra/gestao", "outra/estatistica")} <= links
+
+    # Juntar a cadeira noutra: a ligação do curso da outra instituição passa para ela.
+    (requests / "b.yaml").write_text(
+        "format: nexus-catalogo\nversion: 1\ninstitutions:\n"
+        "  - slug: ufe\n    name: Universidade Fictícia de Exemplo\n"
+        "    units:\n      - { slug: calculo, name: Cálculo }\n"
+        "units_remove:\n  - { unit: ufe/am1, merge_into: ufe/calculo }\n")
+    run(catalog_root)
+    course = DataRepo(catalog_root).catalog.courses["outra/gestao"]
+    assert [link.unit for link in course.units] == ["ufe/calculo", "estatistica"]
