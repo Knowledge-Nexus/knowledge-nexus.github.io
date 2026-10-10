@@ -6,6 +6,7 @@ import { Button, Card, ErrorBox } from "../../components/ui";
 import { type FetchLike, GitHubClient, GitHubError } from "../../data/github/client";
 import { parseRepo, type StoredSession } from "../../data/session";
 import { GitHubDataSource } from "../../data/source";
+import { decodeInvite } from "../../lib/invite";
 
 export interface Connected {
   session: StoredSession;
@@ -36,7 +37,7 @@ export async function connect(session: StoredSession, fetchImpl?: FetchLike): Pr
   const repo = { owner: session.owner, name: session.name, branch };
   return {
     session: { ...session, branch },
-    source: new GitHubDataSource(client, repo, login, info),
+    source: new GitHubDataSource(client, repo, login, info, session.guest),
   };
 }
 
@@ -50,6 +51,37 @@ export function ConnectPage(props: {
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+
+  async function submitCode(event: FormEvent) {
+    event.preventDefault();
+    setCodeError(null);
+    const invite = decodeInvite(code);
+    const parsed = invite ? parseRepo(invite.repo) : null;
+    if (!invite || !parsed) return setCodeError(t("connect.errors.code_invalid"));
+    setBusy(true);
+    try {
+      const guest = { name: invite.name, ...(invite.until ? { until: invite.until } : {}) };
+      const connected = await connect(
+        { ...parsed, branch: "main", token: invite.token, remember: false, guest },
+        props.fetchImpl,
+      );
+      props.onConnected(connected);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "";
+      // Um código que deixou de funcionar é quase sempre um token expirado ou apagado.
+      const known: Record<string, string> = {
+        unauthorized: "code_expired",
+        not_found: "code_expired",
+        public: "public",
+        no_push: "no_push",
+      };
+      setCodeError(known[reason] ? t(`connect.errors.${known[reason]}`) : String(reason || err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -148,6 +180,26 @@ export function ConnectPage(props: {
               {error && <ErrorBox error={error} />}
               <Button type="submit" disabled={busy}>
                 {busy ? t("connect.checking") : t("connect.submit")}
+              </Button>
+            </form>
+          </Card>
+          <Card title={t("connect.code_title")}>
+            <p className="mb-3 text-sm text-ink-soft">{t("connect.code_intro")}</p>
+            <form className="space-y-3" onSubmit={submitCode}>
+              <label className="block text-sm">
+                <span className="font-medium">{t("connect.code")}</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-line-strong px-3 py-2 font-mono"
+                  type="password"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </label>
+              {codeError && <ErrorBox error={codeError} />}
+              <Button type="submit" variant="secondary" disabled={busy}>
+                {busy ? t("connect.checking") : t("connect.code_submit")}
               </Button>
             </form>
           </Card>

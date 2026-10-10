@@ -103,6 +103,26 @@ originais novos vão para o R2 em vez de `originais/`. O motor lê as credenciai
   variables → Actions → Secrets*); o workflow passa-as ao motor (`secrets: inherit`).
 - Uma execução que não toca nos originais (ex.: uma correcção) corre sem elas.
 
+## 4.3 Dar acesso temporário a outra pessoa
+
+Para alguém te ajudar a organizar (cadeiras, cursos, instituições, «A rever»…) sem conta
+própria no GitHub:
+
+1. **Definições → Dar acesso temporário a outra pessoa:** escreve o nome e o prazo.
+2. **Criar o token no GitHub:** a página abre já preenchida (nome, prazo e permissões). Em
+   *Repository access* escolhe *Only select repositories* e o repositório de dados; depois
+   *Generate token* e copia-o.
+3. **Cola o token e gera o código** (`KN1-…`). Envia-o só a essa pessoa, por um canal privado.
+4. A pessoa abre o site, vai a **Entrar → Recebeste um código de acesso?** e cola-o.
+
+- Quem tem o código faz tudo o que tu fazes no site (ver, depositar, organizar), até ao fim
+  do prazo. Cada alteração fica no histórico com «Feito por: <nome> (acesso temporário)».
+- Para acabar antes do prazo, apaga o token em *GitHub → Settings → Developer settings →
+  Personal access tokens*.
+- Para uma ajuda duradoura, é melhor convidar a pessoa como colaboradora do repositório de
+  dados (com a conta dela): as alterações ficam com o nome dela e retiras o acesso quando
+  quiseres.
+
 ## 5. Claude Code sobre o repositório de dados
 
 - Abre uma sessão do Claude Code (web ou WSL2) com o repositório de dados. O hook

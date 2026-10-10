@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router";
 import { useApp } from "../data/context";
+import { GitHubDataSource } from "../data/source";
 import { PipelineStatus } from "../features/status/PipelineStatus";
+import { formatWhen } from "../lib/labels";
 import { Brand } from "./Brand";
 import {
   IconBooks,
@@ -194,8 +196,30 @@ export function Layout(props: { children: ReactNode }) {
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
         </nav>
       </header>
-      <Main>{props.children}</Main>
+      <Main>
+        <GuestBanner />
+        {props.children}
+      </Main>
     </div>
+  );
+}
+
+/** Quem entrou com um código de acesso temporário vê de quem é o acesso e até quando. */
+function GuestBanner() {
+  const { t } = useTranslation();
+  const { source } = useApp();
+  const guest = source instanceof GitHubDataSource ? source.guest : undefined;
+  if (!guest) return null;
+  const until =
+    (source instanceof GitHubDataSource && source.client.tokenExpiration) || guest.until;
+  return (
+    <p
+      role="status"
+      className="mb-6 rounded-xl border border-gold/50 bg-marker-soft px-4 py-2 text-sm text-ink"
+    >
+      {t("invite.banner", { name: guest.name })}
+      {until ? ` ${t("invite.until", { when: formatWhen(until) })}` : ""}.
+    </p>
   );
 }
 

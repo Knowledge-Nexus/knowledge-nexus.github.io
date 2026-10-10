@@ -7,6 +7,8 @@ export interface StoredSession {
   branch: string;
   token: string;
   remember: boolean;
+  /** Entrada com um código de acesso temporário (ver `lib/invite.ts`). */
+  guest?: { name: string; until?: string };
 }
 
 const KEY = "nexus.session";

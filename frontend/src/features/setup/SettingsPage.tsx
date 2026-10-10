@@ -6,6 +6,7 @@ import { clearCache } from "../../data/cache";
 import { useApp } from "../../data/context";
 import { GitHubDataSource } from "../../data/source";
 import { academicYears, formatWhen, useLabels } from "../../lib/labels";
+import { InviteCard } from "./InviteCard";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -22,6 +23,7 @@ export function SettingsPage() {
     (d) => d.visibility === "public",
   ).length;
   const expiration = source instanceof GitHubDataSource ? source.client.tokenExpiration : null;
+  const guest = source instanceof GitHubDataSource ? source.guest : undefined;
 
   async function save() {
     setError(null);
@@ -69,6 +71,7 @@ export function SettingsPage() {
           </Button>
         </div>
       </Card>
+      {!guest && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
       <Card title={t("settings.sharing")}>
         <div className="space-y-2 text-sm">
           <p className="text-ink-soft">{t("settings.sharing_intro")}</p>

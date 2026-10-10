@@ -564,3 +564,40 @@ test.describe("PDF num ecrã de alta densidade", () => {
     expect(await right()).toBeLessThan(0.85);
   });
 });
+
+test("acesso temporário: o dono cria um código e outra pessoa entra com ele", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Definições" }).first().click();
+  await page.getByLabel("Nome de quem vai ajudar").fill("Ana");
+  await expect(page.getByRole("link", { name: /Criar o token no GitHub/ })).toHaveAttribute(
+    "href",
+    /expires_in=7.*contents=write/,
+  );
+  await page.getByLabel("Cola aqui o token criado").fill(fake.token);
+  await page.getByRole("button", { name: "Gerar o código" }).click();
+  const code = await page.getByLabel("Código de acesso").inputValue();
+  expect(code.startsWith("KN1-")).toBe(true);
+
+  // Outra pessoa (sem sessão) entra com o código.
+  await page.getByRole("button", { name: "Terminar sessão" }).first().click();
+  await page.goto("/#/entrar");
+  await page.getByLabel("Código de acesso").fill(code);
+  await page.getByRole("button", { name: "Entrar com o código" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Acesso temporário de Ana" }),
+  ).toBeVisible();
+
+  // O que grava fica com o nome dela.
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Editar cadeira" }).click();
+  await page.getByLabel("Sigla", { exact: true }).fill("AM I");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect
+    .poll(() => fake.repos.get(REPO)!.commits.at(-1)?.message ?? "")
+    .toContain("Feito por: Ana (acesso temporário)");
+});

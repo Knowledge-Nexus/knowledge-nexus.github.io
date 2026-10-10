@@ -233,6 +233,13 @@ Dependências de sistema (Ubuntu/WSL2):
   `Pipeline._remove_unit`). Juntar passa os documentos, os cursos e os nomes (como nomes
   alternativos) para a outra; sem destino, os documentos voltam a ser classificados. Mudar o
   slug é criar a nova e remover a antiga com `merge_into`.
+- **Acesso temporário** (`lib/invite.ts`, `features/setup/InviteCard.tsx`): nas Definições, o
+  dono abre a página do GitHub já preenchida (`tokenPageUrl`: prazo, `contents=write`,
+  `actions=read`; o repositório escolhe-se à mão) e cola o token; a interface gera um código
+  `KN1-…` (base64url de repo + token + nome + prazo, NÃO cifrado: é tão secreto como o token).
+  Quem o recebe entra em «Recebeste um código de acesso?»; a sessão fica com `guest`, aparece
+  uma faixa com o nome e o prazo, e cada commit leva `Feito por: <nome> (acesso temporário)`.
+  Acaba quando o token expira ou o dono o apaga no GitHub.
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso

@@ -4,6 +4,7 @@
 import { zipSync } from "fflate";
 import YAML from "yaml";
 import { sha256Hex } from "../lib/files";
+import { guestTrailer } from "../lib/invite";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
@@ -157,7 +158,20 @@ export class GitHubDataSource implements DataSource {
     readonly repo: RepoRef,
     readonly login: string,
     readonly info?: RepoInfo,
+    /** Quem entrou com um código de acesso temporário (vai nas mensagens dos commits). */
+    readonly guest?: { name: string; until?: string },
   ) {}
+
+  /** Um commit; com acesso temporário, a mensagem diz quem o fez. */
+  private commit(
+    changes: Change[],
+    message: string,
+    maxAttempts = 5,
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<string> {
+    const signed = this.guest ? `${message}\n\n${guestTrailer(this.guest.name)}` : message;
+    return commitChanges(this.client, this.repo, changes, signed, maxAttempts, onProgress);
+  }
 
   async manifest(): Promise<IndexManifest | null> {
     try {
@@ -218,9 +232,7 @@ export class GitHubDataSource implements DataSource {
     const base = `deposito/${this.login}/${batch}`;
     if (entries.length >= LOTE_MIN_FILES) {
       const changes = await buildLotes(entries, base);
-      return commitChanges(
-        this.client,
-        this.repo,
+      return this.commit(
         changes,
         `depósito: ${entries.length} ficheiro(s) num lote (${batch})`,
         5,
@@ -237,9 +249,7 @@ export class GitHubDataSource implements DataSource {
             },
           ],
     );
-    return commitChanges(
-      this.client,
-      this.repo,
+    return this.commit(
       changes,
       `depósito: ${entries.length} ficheiro(s) (${batch})`,
       5,
@@ -252,30 +262,21 @@ export class GitHubDataSource implements DataSource {
     patch: (doc: Record<string, unknown>) => void,
     message: string,
   ): Promise<string> {
-    return commitChanges(
-      this.client,
-      this.repo,
-      [{ path: `documentos/${id}.yaml`, update: yamlUpdate(patch) }],
-      message,
-    );
+    return this.commit([{ path: `documentos/${id}.yaml`, update: yamlUpdate(patch) }], message);
   }
 
   patchDocuments(
     patches: { id: string; patch: (doc: Record<string, unknown>) => void }[],
     message: string,
   ): Promise<string> {
-    return commitChanges(
-      this.client,
-      this.repo,
+    return this.commit(
       patches.map((p) => ({ path: `documentos/${p.id}.yaml`, update: yamlUpdate(p.patch) })),
       message,
     );
   }
 
   patchUser(update: (user: Record<string, unknown>) => void): Promise<string> {
-    return commitChanges(
-      this.client,
-      this.repo,
+    return this.commit(
       [
         {
           path: `utilizadores/${this.login}.yaml`,
@@ -288,9 +289,7 @@ export class GitHubDataSource implements DataSource {
 
   catalogRequest(bundle: CatalogBundle, message: string): Promise<string> {
     const name = `${nowIso().replace(/[-:]/g, "")}-${Math.random().toString(36).slice(2, 6)}.yaml`;
-    return commitChanges(
-      this.client,
-      this.repo,
+    return this.commit(
       [{ path: `catalogo/_importar/${name}`, content: YAML.stringify(bundle) }],
       message,
     );
@@ -362,11 +361,6 @@ export class GitHubDataSource implements DataSource {
         "estrutura inicial do repositório de dados",
       );
     }
-    return commitChanges(
-      this.client,
-      this.repo,
-      changes,
-      "estrutura do repositório de dados (Knowledge Nexus)",
-    );
+    return this.commit(changes, "estrutura do repositório de dados (Knowledge Nexus)");
   }
 }

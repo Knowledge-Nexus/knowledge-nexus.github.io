@@ -81,7 +81,9 @@
       "unauthorized": "O token é inválido ou expirou.",
       "not_found": "Repositório não encontrado (ou o token não lhe tem acesso).",
       "public": "Este repositório é PÚBLICO. Material com direitos de autor nunca pode estar num repositório público: torna-o privado ou cria outro.",
-      "no_push": "O token não tem permissão de escrita neste repositório."
+      "no_push": "O token não tem permissão de escrita neste repositório.",
+      "code_invalid": "Este código não é válido. Confirma que o copiaste inteiro (começa por KN1-).",
+      "code_expired": "Este código já não funciona: expirou ou foi cancelado. Pede um novo a quem to deu."
     },
     "banner_quote": "Todo o teu material de estudo, num só sítio.",
     "banner_caption": "Apontamentos, slides, exames e resoluções, arrumados por cadeira.",
@@ -90,7 +92,11 @@
       "O site lê cada ficheiro e arruma-o por cadeira, tipo e ano lectivo. Quando tem dúvidas, pergunta-te.",
       "Depois encontras tudo na biblioteca ou numa pesquisa, e abres logo a página certa.",
       "Tudo fica num repositório privado teu no GitHub: só tu vês, a não ser que escolhas partilhar."
-    ]
+    ],
+    "code_title": "Recebeste um código de acesso?",
+    "code_intro": "Se o dono do material te deu um código de acesso temporário, cola-o aqui. Não precisas de conta no GitHub.",
+    "code": "Código de acesso",
+    "code_submit": "Entrar com o código"
   },
   "setup": {
     "title": "Configuração inicial",
@@ -490,5 +496,31 @@
     "remove": "Remover cadeira",
     "remove_confirm": "Remover «{{name}}»? Os documentos dela voltam a ser classificados (podem ir para «A rever»). Os ficheiros não são apagados.",
     "remove_merge_confirm": "Remover «{{name}}» e passar os documentos para «{{target}}»? O nome antigo fica como nome alternativo de «{{target}}». Os ficheiros não são apagados."
+  },
+  "invite": {
+    "title": "Dar acesso temporário a outra pessoa",
+    "intro": "Cria um código para alguém te ajudar a organizar o material (cadeiras, cursos, instituições, «A rever»…) durante uns dias. A pessoa entra com o código, sem conta própria, e o acesso acaba sozinho no fim do prazo.",
+    "person": "Nome de quem vai ajudar",
+    "person_placeholder": "ex.: Ana",
+    "days": "Durante",
+    "days_option_one": "{{count}} dia",
+    "days_option_other": "{{count}} dias",
+    "create_token": "Criar o token no GitHub (abre numa página nova)",
+    "create_token_help": "Na página do GitHub, em «Repository access», escolhe «Only select repositories» e selecciona {{repo}}. O resto já vem preenchido. Carrega em «Generate token» e copia o token.",
+    "token": "Cola aqui o token criado",
+    "generate": "Gerar o código",
+    "ready": "Código de acesso para {{name}}",
+    "until": "(até {{when}})",
+    "code_label": "Código de acesso",
+    "copy": "Copiar o código",
+    "copied": "Copiado",
+    "warn_secret": "Quem tiver este código entra como se fosses tu: envia-o só à pessoa, por um canal privado.",
+    "warn_scope": "Pode ver, depositar e organizar tudo neste repositório. As alterações ficam no histórico com o nome dela.",
+    "warn_revoke": "Para acabar antes do prazo, apaga o token no GitHub:",
+    "revoke_link": "os teus tokens",
+    "banner": "Acesso temporário de {{name}}, dado pelo dono deste material",
+    "errors": {
+      "no_access": "Esse token não abre o repositório de dados. Confirma que o seleccionaste em «Repository access» e que deste permissão de escrita em «Contents»."
+    }
   }
 }
