@@ -54,7 +54,8 @@ from nexus.pipeline.classify.years import score_dates, score_years
 # 5: organização da origem (<ano>/<semestre>/<cadeira>/…) e pastas de tipo de material.
 # 6: siglas só como siglas ("SO" ≠ "só"); todas as cadeiras competem (a inscrição é bónus);
 #    cadeira só no corpo do texto não chega; programa que criou o PDF; tipo com `type_prior`.
-CLASSIFIER_VERSION = 6
+# 7: a pasta da cadeira que nomeia outra impede arrumar sozinho; pastas neutras.
+CLASSIFIER_VERSION = 7
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
