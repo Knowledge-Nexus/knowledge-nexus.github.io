@@ -9,6 +9,7 @@
     "enrolled": "Estás inscrito nesta cadeira",
     "not_enrolled": "Não estás inscrito nesta cadeira",
     "body_only": "Só aparece no meio do texto: não chega para arrumar",
+    "text_only": "Só aparece no texto, sem apoio no nome do ficheiro, nas pastas nem nos metadados: não chega para arrumar",
     "other_folder": "A pasta de origem indica outra cadeira («{{folder}}»): não chega para arrumar"
   },
   "term": {

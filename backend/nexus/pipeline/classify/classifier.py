@@ -55,12 +55,16 @@ from nexus.pipeline.classify.years import score_dates, score_years
 # 6: siglas só como siglas ("SO" ≠ "só"); todas as cadeiras competem (a inscrição é bónus);
 #    cadeira só no corpo do texto não chega; programa que criou o PDF; tipo com `type_prior`.
 # 7: a pasta da cadeira que nomeia outra impede arrumar sozinho; pastas neutras.
-CLASSIFIER_VERSION = 7
+# 8: cadeira só no texto (cabeçalho ou corpo, sem nome, pastas nem metadados) não chega; a
+#    pasta da cadeira tem de conter o nome dela ("Programação" não é "Programação Orientada a
+#    Objectos").
+CLASSIFIER_VERSION = 8
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
 ROLE_PRIOR = 0.3
-# Certeza máxima de uma cadeira que só aparece no corpo do texto (abaixo do limiar).
+# Certeza máxima de uma cadeira que só aparece no texto ou que a pasta da cadeira contradiz
+# (abaixo do limiar).
 BODY_ONLY_MAX = 0.6
 DEFAULT_STATEMENT_CONFIDENCE = 0.9
 ASSESSMENT_BOOST = 0.5
@@ -130,6 +134,7 @@ class Classifier:
                   for term in kind for k in term.keywords),
             ]
         )
+        self.is_material = material_folder(vocab)
 
     # --- API ------------------------------------------------------------------------
 
@@ -205,10 +210,15 @@ class Classifier:
             if pages and doc.kind is DocumentKind.FILE else []
         if doc.kind is DocumentKind.FILE and (result.unit is None or "unit" in weak):
             known = {normalize(c.name) for c in found}
-            found += [c for c in proposals.folder_units(
-                [layout.full_path(s.batch, s.path) for s in doc.sources], self.catalog,
-                self.generic)
-                if normalize(c.name) not in known]
+            paths = [layout.full_path(s.batch, s.path) for s in doc.sources]
+            header = pages[0][:self.settings.header_chars] if pages else ""
+            for extra in (*proposals.folder_units(paths, self.catalog, self.generic),
+                          *proposals.folder_subjects(
+                              [(s.batch, s.path) for s in doc.sources], header, self.catalog,
+                              self.generic, self.is_material)):
+                if normalize(extra.name) not in known:
+                    known.add(normalize(extra.name))
+                    found.append(extra)
         return Outcome(result, weak, found)
 
     def weak_fields(self, result: Classification, type_term: Term | None) -> list[str]:
@@ -259,11 +269,15 @@ class Classifier:
             return None
         if enrolled and result.value not in enrolled:
             result.reasons = [*result.reasons, Reason(code="unit.not_enrolled")]
-        # Só no meio do texto (uma menção de passagem) nunca chega para arrumar.
+        # Só no texto não chega para arrumar: um livro de Direito Administrativo fala de
+        # "Administração Pública" logo na primeira página. Falta o apoio do nome do ficheiro,
+        # das pastas ou dos metadados, ou um cabeçalho que diga "Unidade Curricular: X".
         sources = {r.source for r in result.reasons if r.source}
-        if sources <= {"body"} and result.confidence > BODY_ONLY_MAX:
+        if sources <= {"header", "body"} and result.confidence > BODY_ONLY_MAX \
+                and not self._labelled(str(result.value), signals):
             result.confidence = BODY_ONLY_MAX
-            result.reasons = [*result.reasons, Reason(code="unit.body_only")]
+            code = "unit.body_only" if sources <= {"body"} else "unit.text_only"
+            result.reasons = [*result.reasons, Reason(code=code)]
         # A pasta da cadeira (organização da origem) diz outra: não se arruma sozinho
         # ("AP" no nome do ficheiro era "avaliação periódica", não "Administração Pública").
         if folders and result.confidence > BODY_ONLY_MAX \
@@ -273,15 +287,25 @@ class Classifier:
                                                       params={"folder": folders[0]})]
         return result
 
+    def _labelled(self, key: str, signals: list[Signal]) -> bool:
+        """O cabeçalho diz qual é a cadeira ("Unidade Curricular: X", "Disciplina: X")."""
+        unit = self.catalog.units.get(key)
+        names = [n for n in (normalize(x) for x in (unit.name, *unit.aliases)) if n] \
+            if unit is not None else []
+        return any(contains_unit_phrase(normalize(match.group(1)), name)
+                   for s in signals if s.source == "header"
+                   for match in proposals.UNIT_LABEL_RE.finditer(s.text or s.raw)
+                   for name in names)
+
     def _matches_folder(self, key: str, folders: list[str]) -> bool:
         unit = self.catalog.units.get(key)
         if unit is None:
             return False
         names = [normalize(n) for n in (unit.name, unit.acronym or "", unit.code or "",
                                         *unit.aliases) if n]
-        return any(n and (contains_unit_phrase(normalize(f), n)
-                          or contains_unit_phrase(n, normalize(f)))
-                   for f in folders for n in names)
+        # A pasta tem de conter o nome (ou um nome alternativo, sigla ou código): a pasta
+        # "Programação" não diz "Programação Orientada a Objectos" (é outra cadeira).
+        return any(n and contains_unit_phrase(normalize(f), n) for f in folders for n in names)
 
     def _unit_names(self, unit: FieldValue | None) -> list[str]:
         found = self.catalog.units.get(str(unit.value)) if unit and unit.value else None

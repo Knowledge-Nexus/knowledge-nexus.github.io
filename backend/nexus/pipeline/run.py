@@ -852,6 +852,11 @@ class Pipeline:
                 doc.review = Review(status="open", reasons=reasons, opened_at=self.now)
             elif doc.review.reasons != reasons:
                 doc.review.reasons = reasons
+            # Estava arrumado e voltou a ficar em dúvida (ex.: regras novas): sai da cadeira
+            # até ser revisto, em vez de lá continuar como se fosse certo.
+            if doc.reached(Status.FILED):
+                doc.back_to(Status.CLASSIFIED, self.now)
+                doc.filed_name = None
             self.report.review.append(doc.id)
         else:
             if doc.review is not None and doc.review.status == "open":

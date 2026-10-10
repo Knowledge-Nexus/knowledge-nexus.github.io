@@ -84,6 +84,9 @@ increased").
 - **No teu computador (recomendado para depósitos grandes):** `nexus servir` vigia o
   repositório de dados e processa cada envio da interface (no Windows, `vigiar-deposito.bat`).
   Os commits que ele envia levam `[skip ci]`, por isso não põem o Actions a repetir o trabalho.
+  A cada 10 minutos vê se há uma versão nova da aplicação; se houver, o `.bat` actualiza-a e
+  volta a arrancar sozinho (se usas uma cópia do `.bat` fora da pasta `~/nexus`, copia-o de
+  novo).
 - **Desligar o Actions:** cria a variável `NEXUS_PROCESSAMENTO` com o valor `local` em
   *Settings → Secrets and variables → Actions → Variables* do repositório de dados. O
   workflow passa a aparecer como "skipped" e não gasta minutos. Apaga a variável para voltar

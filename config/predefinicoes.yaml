@@ -19,6 +19,8 @@ classification:
     header: 1.0
     body: 0.35
     metadata: 0.7
+    # Pasta da cadeira na organização da origem (<inst>/<ano>/<semestre>/<cadeira>/…).
+    layout: 3.0
   # Multiplicador para UCs em que o utilizador está inscrito.
   enrollment_boost: 1.25
   # Mês em que começa o ano lectivo (9 = Setembro).

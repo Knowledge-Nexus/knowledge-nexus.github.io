@@ -730,3 +730,26 @@ def test_uncertain_type_is_filed_when_the_owner_chooses(catalog_root: Path, enab
     again = docs(catalog_root)
     run(catalog_root)
     assert docs(catalog_root) == again, "idempotente"
+
+
+def test_filed_document_in_doubt_again_leaves_the_unit(catalog_root: Path) -> None:
+    """Arrumado e depois em dúvida (aqui, o dono desliga `file_uncertain_type`): volta a
+    «A rever» e sai da cadeira, em vez de lá ficar como se fosse certo."""
+    nexus_yaml = catalog_root / "nexus.yaml"
+    original = nexus_yaml.read_text()
+    nexus_yaml.write_text(original + "\nclassification:\n  file_uncertain_type: true\n")
+    base = "UFE/2020_2021/1º Semestre/Álgebra Linear e Geometria Analítica"
+    deposit(catalog_root, f"{base}/notas_soltas.txt").write_text(
+        "Matrizes e sistemas de equações lineares.\n")
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    assert doc["status"] == "filed" and doc.get("filed_name")
+    nexus_yaml.write_text(original)
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    assert doc["status"] == "classified" and not doc.get("filed_name")
+    assert doc["review"]["status"] == "open"
+    assert doc["history"][-1]["status"] == "classified"
+    again = docs(catalog_root)
+    run(catalog_root)
+    assert docs(catalog_root) == again, "idempotente"

@@ -212,6 +212,14 @@ class Document(Record):
         self.status = status
         self.history = [*self.history, HistoryEntry(status=status, at=at)]
 
+    def back_to(self, status: Status, at: dt.datetime) -> None:
+        """Volta a um estado anterior (ex.: um documento arrumado cuja classificação voltou a
+        ficar em dúvida) e regista a transição no histórico."""
+        if self.status == status or not self.reached(status):
+            return
+        self.status = status
+        self.history = [*self.history, HistoryEntry(status=status, at=at)]
+
     @property
     def needs_review(self) -> bool:
         return self.review is not None and self.review.status == "open"

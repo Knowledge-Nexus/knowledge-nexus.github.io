@@ -12,6 +12,7 @@ Duas fontes, sempre com o excerto como evidência:
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 
@@ -29,7 +30,8 @@ from nexus.domain.text import (
 from nexus.pipeline import layout
 
 _SEP = r"\s*[:\-–—]\s*"
-_UNIT_RE = re.compile(
+# "Unidade Curricular: X", "Disciplina - X": o documento diz de que cadeira é.
+UNIT_LABEL_RE = _UNIT_RE = re.compile(
     r"(?im)\b(?:unidade\s+curricular|u\.\s?c\.|disciplina|cadeira)" + _SEP + r"([^\n|]{3,80})"
 )
 _COURSE_RE = re.compile(
@@ -347,6 +349,42 @@ def folder_units(paths: list[str], catalog: Catalog,
             continue
         out.setdefault(normalize(found.unit), ProposalCandidate(
             "unit", found.unit, found.unit_folder, None))
+    return list(out.values())
+
+
+# Parte de um caminho que é um ficheiro (ex.: o arquivo em "IPRP.rar!/IPRP/…").
+_FILE_PART = re.compile(r"\.[A-Za-z0-9]{1,5}$")
+
+
+def folder_subjects(sources: list[tuple[str | None, str]], text: str, catalog: Catalog,
+                    generic: frozenset[str] = frozenset(),
+                    is_material: Callable[[str], bool] | None = None
+                    ) -> list[ProposalCandidate]:
+    """Fora da organização da origem: a pasta onde está o ficheiro (a mais funda que não é de
+    material), quando o nome dela também aparece no nome do ficheiro ou no início do texto
+    ("Direito Administrativo/manual direito administrativo.pdf"). Pede duas palavras com
+    significado, pelo menos: "Penal", "Orais" ou "CEJUR" sozinhos são abreviaturas, provas
+    ou entidades. `sources`: (lote, caminho) de cada origem."""
+    out: dict[str, ProposalCandidate] = {}
+    for batch, path in sources:
+        if layout.parse(layout.full_path(batch, path)) is not None:
+            continue
+        parts = [p for p in path.replace("!/", "/").split("/") if p]
+        if len(parts) < 2:
+            continue
+        folders = parts[:-1]
+        folder = next((f for f in reversed(folders) if not _FILE_PART.search(f)
+                       and not (is_material is not None and is_material(f))), None)
+        if folder is None:
+            continue
+        name = " ".join(folder.split())
+        norm = normalize(name)
+        words = [w for w in norm.split() if w not in _STOPWORDS]
+        evidence = f"{normalize(parts[-1].rsplit('.', 1)[0])} {normalize(text)}"
+        if len(words) < 2 or not acceptable(name, generic) or _known(catalog, "unit", name) \
+                or not contains_phrase(evidence, norm):
+            continue
+        out.setdefault(norm, ProposalCandidate("unit", name, "/".join(folders), None))
     return list(out.values())
 
 

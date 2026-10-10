@@ -166,15 +166,19 @@ def servir(
     uma_vez: Annotated[bool, typer.Option(help="Um só ciclo e sai.")] = False,
 ) -> None:
     """Vigia o repositório de dados e processa os depósitos novos (sem GitHub Actions)."""
-    from nexus.serve import serve
+    from nexus.serve import UPDATE_EXIT, serve
 
     _repo(repo)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     typer.echo(f"a vigiar {repo} a cada {intervalo} s (Ctrl+C para parar)")
     try:
-        serve(repo, interval=intervalo, once=uma_vez)
+        updated = serve(repo, interval=intervalo, once=uma_vez)
     except KeyboardInterrupt:
         typer.echo("parado")
+        return
+    if updated:
+        # O `vigiar-deposito.bat` vê este código, actualiza (git pull) e volta a arrancar.
+        raise typer.Exit(UPDATE_EXIT)
 
 
 @app.command("migrar-blobs")

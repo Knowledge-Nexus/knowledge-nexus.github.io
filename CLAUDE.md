@@ -42,7 +42,9 @@ convenções ou comandos.
   esgota-se com OCR de depósitos grandes. `nexus servir` processa no computador do dono e
   marca os seus commits com `[skip ci]`; a variável `NEXUS_PROCESSAMENTO=local` no repositório
   de dados desliga o job (`if:` no `nexus.yml`). Sem nada no depósito, o workflow não instala
-  o OCR e só publica os índices se estiverem desactualizados.
+  o OCR e só publica os índices se estiverem desactualizados. Quando a aplicação tem commits
+  novos, o `nexus servir` sai com o código 75 (`UPDATE_EXIT`) e o `vigiar-deposito.bat` faz
+  `git pull` e volta a arrancá-lo.
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
@@ -248,13 +250,20 @@ Dependências de sistema (Ubuntu/WSL2):
   - Siglas só como siglas: em maiúsculas e palavra inteira no texto original (`Signal.text`;
     "SO" ≠ "só"); as de 2 letras não contam no corpo do texto.
   - Todas as cadeiras competem; a inscrição só dá bónus (antes uma inscrita com um sinal
-    fraco ganhava à pasta da cadeira). Uma cadeira que só aparece no corpo fica abaixo do
-    limiar (`BODY_ONLY_MAX`, razão `unit.body_only`).
+    fraco ganhava à pasta da cadeira). Uma cadeira que só aparece no texto (corpo ou
+    cabeçalho, sem apoio no nome do ficheiro, nas pastas nem nos metadados) fica abaixo do
+    limiar (`BODY_ONLY_MAX`, razões `unit.body_only` e `unit.text_only`): os livros falam de
+    outras cadeiras logo na 1.ª página. Excepção: um cabeçalho que diz "Unidade Curricular:
+    X" (`UNIT_LABEL_RE`).
   - Tipo: `producers` nos termos (programa que criou o PDF: PowerPoint → slides), sem sinal
     de enunciado/resolução o tipo não é penalizado, e `type_prior` (0.4) só para o tipo; a
     cadeira continua com `prior` (0.6).
   - A pasta da cadeira (organização da origem) que nomeia outra cadeira impede arrumar
-    sozinho (razão `unit.other_folder`).
+    sozinho (razão `unit.other_folder`). A pasta tem de conter o nome, a sigla ou um nome
+    alternativo da cadeira ("Programação" não é "Programação Orientada a Objectos"). Essa
+    pasta pesa `source_weights.layout` (3.0): "AP1" no nome não lhe tira a certeza.
+  - Um documento arrumado que volta a ficar em dúvida (regras novas, opção desligada) sai da
+    cadeira: volta a `classified`, sem `filed_name`, até ser revisto.
   - Opção do dono `classification.file_uncertain_type` (no `nexus.yaml`): com a cadeira certa,
     arruma com o tipo em dúvida (no mais provável, ou "Outros") e marca `type.to_confirm`;
     na biblioteca aparece «tipo por confirmar», com filtro e «Confirmar o tipo» (grava o tipo
@@ -270,6 +279,9 @@ Dependências de sistema (Ubuntu/WSL2):
   provas ("Prova escrita de …") e "Curso de Formação …"; siglas só das pastas e que não sejam
   de nada do catálogo; continuações ("X II") só das pastas ou com numeração romana no nome do
   ficheiro. Cursos e instituições desconhecidos são propostos mesmo com outros no catálogo.
+  Fora da organização da origem, a pasta onde está o ficheiro é proposta como cadeira quando
+  o nome do ficheiro ou o início do texto a repete e tem duas palavras com significado
+  (`folder_subjects`: "Direito Administrativo/manual direito administrativo.pdf").
   A cada execução, as propostas abertas que as regras já não criariam ficam rejeitadas e as
   de cadeiras que já existem ficam aceites (`Pipeline._close_known_proposals`).
 - **Nomes alternativos acumulam:** nos pedidos de catálogo, `aliases` e `keywords` juntam-se

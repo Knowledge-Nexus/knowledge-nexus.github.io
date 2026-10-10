@@ -8,7 +8,7 @@ from nexus.datarepo.store import DataRepo
 from nexus.domain.documents import BlobRef, Document, FieldValue, Source
 from nexus.domain.users import Enrollments, UnitEnrollment, User
 from nexus.pipeline.classify.classifier import Classifier
-from nexus.pipeline.classify.proposals import detect
+from nexus.pipeline.classify.proposals import detect, folder_subjects
 from nexus.pipeline.classify.signals import Signal
 from nexus.pipeline.classify.years import score_years
 
@@ -343,3 +343,56 @@ def test_folder_naming_another_unit_blocks_auto_filing() -> None:
     unit = out.classification.unit
     assert unit is not None and unit.confidence < 0.7
     assert any(r.code == "unit.other_folder" for r in unit.reasons)
+
+
+def test_unit_only_in_the_text_is_not_enough() -> None:
+    """Um livro de Direito Administrativo fala de «Administração Pública» logo no início: sem
+    apoio no nome do ficheiro, nas pastas ou nos metadados, não chega para arrumar. A pasta
+    onde está, que o nome do ficheiro repete, fica proposta como cadeira."""
+    classifier = _custom([("ap", "Administração Pública", "AP")])
+    doc = _doc("Manuais/Direito Administrativo/manual direito administrativo paulo otero.pdf")
+    pages = ["Manual de Direito Administrativo\nA Administração Pública e o Direito"]
+    out = classifier.classify(doc, None, pages, None, [])
+    unit = out.classification.unit
+    assert unit is not None and unit.value == "x/ap" and unit.confidence < 0.7
+    assert any(r.code == "unit.text_only" for r in unit.reasons)
+    assert ("unit", "Direito Administrativo") in {(c.kind, c.name) for c in out.proposals}
+    # Um cabeçalho que diz qual é a cadeira chega.
+    labelled = classifier.classify(_doc("ficha1.pdf"), None,
+                                   ["Unidade Curricular: Administração Pública\nFicha 1"],
+                                   None, [])
+    assert labelled.classification.value("unit") == "x/ap"
+    assert "unit" not in labelled.weak_fields
+
+
+def test_folder_subjects_need_two_words_and_the_file_to_agree() -> None:
+    from nexus.domain.catalog import Catalog
+
+    found = folder_subjects([
+        (None, "Manuais/Penal/Curso de Processo Penal.pdf"),
+        (None, "Direito do Trabalho/Acordao.pdf"),
+        (None, "Direito das Obrigações/Direito das Obrigações - Romano Martinez.pdf"),
+        ("b1", "UC/2019_2020/1º Semestre/Bases de Dados/Bases de Dados - Ficha 1.pdf"),
+    ], "", Catalog())
+    assert [c.name for c in found] == ["Direito das Obrigações"]
+    assert found[0].snippet == "Direito das Obrigações"
+
+
+def test_unit_folder_must_contain_the_unit_name() -> None:
+    """A pasta «Programação» é outra cadeira, não «Programação Orientada a Objectos»."""
+    classifier = _custom([("poo", "Programação Orientada a Objectos", "POO")])
+    doc = _doc("UC/2019_2020/1º Semestre/Programação/Material Teórico/"
+               "LEI_Prog_Cap_02. POO - Objectos e Classes.pdf")
+    out = classifier.classify(doc, None, ["Objectos e classes"], None, [])
+    unit = out.classification.unit
+    assert unit is not None and unit.value == "x/poo" and unit.confidence < 0.7
+    assert any(r.code == "unit.other_folder" for r in unit.reasons)
+
+
+def test_unit_folder_outweighs_an_acronym_in_the_file_name() -> None:
+    """"AP1" (avaliação periódica) no nome não tira a certeza da pasta «Programação III»."""
+    classifier = _custom([("p3", "Programação III", None), ("ap", "Administração Pública", "AP")])
+    doc = _doc("UC/2020_2021/1º Semestre/Programação III/LEI_Prog_202021_AP1_Pauta_2020_12_22.pdf")
+    out = classifier.classify(doc, None, ["Pauta"], None, [])
+    assert out.classification.value("unit") == "x/p3"
+    assert "unit" not in out.weak_fields
