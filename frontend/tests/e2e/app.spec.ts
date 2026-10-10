@@ -54,16 +54,22 @@ async function withFakeGitHub(page: Page, options: { private?: boolean } = {}) {
   return fake;
 }
 
-async function login(page: Page, fake: FakeGitHub) {
+async function login(page: Page, fake: FakeGitHub, options: { refused?: boolean } = {}) {
   await page.goto("/#/entrar");
   await page.getByLabel("Repositório de dados (dono/nome)").fill(REPO);
   await page.getByLabel("Token de acesso (fine-grained)").fill(fake.token);
   await page.getByRole("button", { name: "Ligar" }).click();
+  if (options.refused) return;
+  // Espera a sessão abrir: sem ela, «Biblioteca» no menu leva à biblioteca pública, e numa
+  // máquina lenta (CI) o clique seguinte ainda acontecia no ecrã de entrada.
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 test("recusa um repositório de dados público", async ({ page }) => {
   const fake = await withFakeGitHub(page, { private: false });
-  await login(page, fake);
+  await login(page, fake, { refused: true });
   await expect(page.getByRole("alert")).toContainText("PÚBLICO");
 });
 
