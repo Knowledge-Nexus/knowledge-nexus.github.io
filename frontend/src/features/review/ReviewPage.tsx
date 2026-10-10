@@ -117,7 +117,19 @@ function Evidence(props: { proposal: ProposalRow }) {
   );
 }
 
-/** Um clique: a instituição proposta (ou a única existente) com todas as cadeiras propostas. */
+/** A instituição sugerida para as cadeiras propostas: a que elas indicam, a única que já
+ * existe, ou a primeira. */
+function preferredInstitution(units: ProposalRow[], choices: InstitutionChoice[]): string {
+  const named = new Set(units.map((u) => u.data.institution).filter((v) => typeof v === "string"));
+  const existing = choices.filter((c) => !c.proposalId);
+  if (named.size === 1) {
+    const match = existing.find((c) => named.has(c.slug));
+    if (match) return match.key;
+  }
+  return (existing.length === 1 ? existing[0] : choices[0])?.key ?? "";
+}
+
+/** Um clique: todas as cadeiras propostas numa instituição (existente ou proposta). */
 function AcceptAll(props: { proposals: ProposalRow[]; choices: InstitutionChoice[] }) {
   const { t } = useTranslation();
   const { source, notifyCommit } = useApp();
@@ -125,7 +137,8 @@ function AcceptAll(props: { proposals: ProposalRow[]; choices: InstitutionChoice
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const institution = props.choices.length === 1 ? props.choices[0] : undefined;
+  const [key, setKey] = useState(() => preferredInstitution(units, props.choices));
+  const institution = props.choices.find((c) => c.key === key);
   if (!institution || units.length === 0) return null;
 
   async function run() {
@@ -156,6 +169,22 @@ function AcceptAll(props: { proposals: ProposalRow[]; choices: InstitutionChoice
         <p className="text-sage">✓ {t("review.accept_all_done")}</p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
+          {props.choices.length > 1 && (
+            <label className="w-full text-sm">
+              {t("review.accept_all_institution")}{" "}
+              <select
+                className="rounded-lg border border-line-strong bg-sheet px-2 py-1"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+              >
+                {props.choices.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.proposalId ? t("review.new_institution", { name: c.name }) : c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className="flex-1">
             {t("review.accept_all_text", {
               institution: institution.name,

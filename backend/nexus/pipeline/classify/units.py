@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -23,6 +24,19 @@ FEATURE_POINTS = {
 IDENTITY = {"code", "acronym", "name", "alias"}
 # Palavras-chave e docentes somam, mas com tecto por fonte (são sinais fracos).
 CAPPED = {"keyword": 1.2, "lecturer": 1.2}
+# Uma sigla de duas letras ("SO", "ED", "PA") no corpo do texto é quase sempre outra coisa.
+SHORT_ACRONYM = 2
+_LETTERS = re.compile(r"[^\W\d_]+")
+
+
+def _acronym_in(text: str, acronym: str) -> bool:
+    """A sigla escrita como sigla: em maiúsculas e como palavra inteira ("SO", "PI II",
+    "AM_II"). Sem isto, "SO" correspondia a "só" (sem acentos e em minúsculas são iguais)."""
+    letters = _LETTERS.findall(acronym)
+    if not letters or not text:
+        return False
+    head = re.escape(letters[0].upper())
+    return re.search(rf"(?<![^\W\d_]){head}(?![^\W\d_])", text) is not None
 
 
 @dataclass(frozen=True)
@@ -60,6 +74,11 @@ def score_unit(features: UnitFeatures, signals: list[Signal], boost: float) -> C
         for kind, norm, original in features.features:
             match = contains_unit_phrase if kind in IDENTITY else contains_phrase
             if not match(signal.norm, norm):
+                continue
+            if kind == "acronym" and (
+                not _acronym_in(signal.text, original)
+                or (signal.source == "body" and len(norm.replace(" ", "")) <= SHORT_ACRONYM)
+            ):
                 continue
             points = FEATURE_POINTS[kind]
             if kind in CAPPED:

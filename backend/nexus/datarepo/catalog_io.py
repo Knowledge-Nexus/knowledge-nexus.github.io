@@ -56,11 +56,20 @@ def _check_slug(kind: str, slug: str) -> None:
         raise CatalogError(f"slug inválido para {kind}: {slug!r} (usa a-z, 0-9 e '-')")
 
 
+# Listas que um pedido acrescenta em vez de substituir (a interface não as conhece todas:
+# "acrescentar o nome alternativo Civil" não pode apagar os que já lá estão).
+_ADDITIVE = ("aliases", "keywords")
+
+
 def _merge(existing: dict[str, Any] | None, incoming: dict[str, Any]) -> dict[str, Any]:
     if existing is None:
         return incoming
     merged = dict(existing)
     merged.update(incoming)
+    for key in _ADDITIVE:
+        old, new = existing.get(key), incoming.get(key)
+        if isinstance(old, list) and isinstance(new, list):
+            merged[key] = list(dict.fromkeys([*old, *new]))
     return merged
 
 

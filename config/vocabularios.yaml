@@ -10,9 +10,21 @@
 #   (lectivo = letivo, correcção = correção). Aparecem assim nas justificações.
 # - `patterns` são expressões regulares aplicadas ao texto normalizado.
 # - `extensions` (só tipos de documento): formatos que por si só são indício do tipo.
+# - `producers` (só tipos de documento): programas que criaram o PDF (metadados creator /
+#   producer) e que por si só são indício do tipo (ex.: PowerPoint → slides).
 # - O código nunca depende de um slug concreto; só dos atributos (`is_assessment`,
-#   `role`, `is_submission`, `is_syllabus`, `is_fallback`, `extensions`).
-version: 1
+#   `role`, `is_submission`, `is_syllabus`, `is_fallback`, `extensions`, `producers`).
+version: 2
+
+# Termos genéricos do ensino que nunca são o nome de uma cadeira (nem de um curso): não
+# geram propostas de catálogo. Comparados depois de normalizados.
+generic_terms: [unidade curricular, unidades curriculares, disciplina, cadeira, ficha de trabalho,
+                fichas de trabalho, ficha de exercícios, questões de aula, questão de aula,
+                prático-laboratorial, práticas laboratoriais, teórico-prático, teórico-prática,
+                trabalho prático, avaliação, avaliação final, avaliação periódica,
+                avaliação contínua, época normal, época de recurso, material de apoio,
+                plano de estudos, ano lectivo, semestre, licenciatura, mestrado, doutoramento,
+                aula teórica, aula prática, sumários, exame final, frequência, mini-teste]
 
 document_types:
   - slug: slides
@@ -20,9 +32,12 @@ document_types:
     role: any
     # Formatos que, por si só, são indício deste tipo.
     extensions: [pptx, ppt, pps, ppsx, odp, key]
+    producers: [powerpoint, keynote, impress, beamer, google slides]
     keywords: [slides, diapositivos, teórica, teóricas, aula teórica, aulas teóricas,
                apresentação, lecture, lectures, capítulo, chapter, sumário,
-               material teórico]
+               material teórico, aula]
+    # "Cap_06" nos nomes dos ficheiros (capítulo 6).
+    patterns: ['\bcap \d']
   - slug: apontamentos
     labels: { pt-PT: "Apontamentos", en: "Notes" }
     role: any
@@ -36,11 +51,15 @@ document_types:
                folha, folhas, caderno de exercícios, exercícios, exercício, problemas,
                exercises, problem set, aula prática, aulas práticas, prática, práticas,
                prática laboratorial, práticas laboratoriais, tp, tp1, tp2, pl,
-               material prático, prático, práticos]
+               material prático, prático, práticos, ficha de trabalho, fichas de trabalho,
+               trabalho para casa, prático-laboratorial]
+    # "FT 1", "FT2" (ficha de trabalho) e "TPC3" (trabalho para casa) nos nomes.
+    patterns: &exercise_patterns ['\bft ?\d', '\btpc ?\d*\b']
   - slug: resolucoes-exercicios
     labels: { pt-PT: "Resoluções de exercícios", en: "Exercise solutions" }
     role: solution
     keywords: *exercise_keywords
+    patterns: *exercise_patterns
   - slug: enunciados-avaliacao
     labels: { pt-PT: "Enunciados de avaliação", en: "Assessment papers" }
     role: statement
@@ -48,7 +67,8 @@ document_types:
     keywords: &assessment_keywords [exame, exames, teste, testes, frequência, mini-teste,
                mini-testes, miniteste, prova, provas, época, exam, test, quiz, midterm,
                duração, cotação, cotações, número de estudante, número de aluno,
-               sem consulta, com consulta]
+               sem consulta, com consulta, questões de aula, questão de aula, prova escrita,
+               prova oral]
     # "fre1", "freq", "resfreq" nos nomes dos ficheiros.
     patterns: &assessment_patterns ['(\b|(?<=res))freq?\b']
   - slug: resolucoes-avaliacao
@@ -71,7 +91,9 @@ document_types:
   - slug: bibliografia
     labels: { pt-PT: "Bibliografia", en: "Bibliography" }
     role: any
-    keywords: [livro, book, bibliografia, isbn, edição, edition, publisher, editora, copyright]
+    keywords: [livro, book, bibliografia, isbn, edição, edition, publisher, editora, copyright,
+               manual, manuais, anotado, código anotado, jurisprudência, acórdão, acórdãos,
+               doutrina]
   - slug: formularios
     labels: { pt-PT: "Formulários", en: "Formula sheets" }
     role: any
@@ -84,6 +106,12 @@ document_types:
     keywords: [ficha da unidade curricular, ficha da UC, programa da unidade curricular,
                programa, conteúdos programáticos, objectivos de aprendizagem,
                métodos de avaliação, bibliografia principal, syllabus, ECTS]
+  - slug: informacoes
+    labels: { pt-PT: "Informações (pautas, horários, avisos)", en: "Notices (grades, timetables)" }
+    role: any
+    keywords: [pauta, pautas, classificações, notas finais, resultados, horário, horários,
+               horário de atendimento, atendimento, calendário, calendário de avaliações,
+               aviso, avisos, planeamento, regulamento, lista de alunos, grades, timetable]
   - slug: outros
     labels: { pt-PT: "Outros", en: "Other" }
     role: any
@@ -99,7 +127,8 @@ roles:
     labels: { pt-PT: "Resolução", en: "Solution" }
     keywords: [resolução, resoluções, resolvido, resolvida, resolvidos, solução, soluções,
                correcção, proposta de resolução, critérios de correcção, solutions,
-               solution, answers, respostas]
+               solution, answers, respostas, grelha, grelha de correcção,
+               tópicos de correcção, com soluções, com sol]
     # Abreviaturas comuns nos nomes dos ficheiros: res_fre1, corr_teste1, sol_exame,
     # resfreq… (o texto já vem normalizado: minúsculas, sem acentos, "fre1" → "fre 1").
     patterns: ['^(res|resol|corr|sol)\b', '^res(freq?|exame|teste|ficha)',
@@ -109,7 +138,8 @@ roles:
 solution_origins:
   - slug: oficial
     labels: { pt-PT: "Oficial", en: "Official" }
-    keywords: [proposta de resolução, resolução oficial, critérios de correcção, docente]
+    keywords: [proposta de resolução, resolução oficial, critérios de correcção, docente,
+               grelha de correcção, tópicos de correcção]
   - slug: propria
     labels: { pt-PT: "Própria", en: "Own" }
     keywords: [minha resolução, a minha resolução, resolução própria]
@@ -124,7 +154,10 @@ solution_origins:
 assessment_types:
   - slug: mini-teste
     labels: { pt-PT: "Mini-teste", en: "Quiz" }
-    keywords: [mini-teste, mini-testes, miniteste, minitestes, quiz, questão-aula]
+    keywords: [mini-teste, mini-testes, miniteste, minitestes, quiz, questão-aula,
+               questões de aula, questão de aula]
+    # "QA6" (questões de aula 6) nos nomes dos ficheiros.
+    patterns: ['\bqa ?\d']
   - slug: teste
     labels: { pt-PT: "Teste", en: "Test" }
     keywords: [teste, testes, test, midterm, teste intercalar]

@@ -46,6 +46,9 @@ class SourceWeights(_Section):
 class ClassificationSettings(_Section):
     auto_file_threshold: float = 0.7
     prior: float = 1.0
+    # Constante só para o tipo de documento (None: a mesma `prior`). O tipo pode ser menos
+    # exigente do que a cadeira: um tipo trocado corrige-se arrastando na biblioteca.
+    type_prior: float | None = None
     source_weights: SourceWeights = Field(default_factory=SourceWeights)
     enrollment_boost: float = 1.25
     academic_year_start_month: int = 9

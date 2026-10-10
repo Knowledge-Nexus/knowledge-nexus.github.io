@@ -7,7 +7,8 @@
     "keyword": "Palavra-chave da cadeira «{{value}}» em {{source}}",
     "lecturer": "Docente «{{value}}» em {{source}}",
     "enrolled": "Estás inscrito nesta cadeira",
-    "not_enrolled": "Não estás inscrito nesta cadeira"
+    "not_enrolled": "Não estás inscrito nesta cadeira",
+    "body_only": "Só aparece no meio do texto: não chega para arrumar"
   },
   "term": {
     "keyword": "Expressões «{{keywords}}» em {{source}}"
@@ -18,7 +19,8 @@
     "format": "O formato .{{ext}} é típico deste tipo",
     "role_solution": "Tem indícios de ser uma resolução",
     "role_statement": "Sem indícios de resolução: assumido enunciado",
-    "no_signal": "Nenhum indício do tipo de documento"
+    "no_signal": "Nenhum indício do tipo de documento",
+    "producer": "O PDF foi criado com {{producer}}, típico deste tipo"
   },
   "role": {
     "default_statement": "Sem indícios de resolução"

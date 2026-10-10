@@ -16,6 +16,7 @@ export function UnitEditor(props: { unit: UnitRow }) {
   const [name, setName] = useState(unit.name);
   const [acronym, setAcronym] = useState(unit.acronym ?? "");
   const [slug, setSlug] = useState(unit.slug);
+  const [aliases, setAliases] = useState("");
   const [mergeInto, setMergeInto] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -44,6 +45,12 @@ export function UnitEditor(props: { unit: UnitRow }) {
     }
   }
 
+  // Acrescentados aos que já existem (o motor junta as listas, não as substitui).
+  const aliasList = aliases
+    .split(",")
+    .map((a) => a.trim())
+    .filter(Boolean);
+
   function save() {
     const renamed = slug !== unit.slug;
     void send(
@@ -59,6 +66,7 @@ export function UnitEditor(props: { unit: UnitRow }) {
                 slug,
                 name: name.trim() || unit.name,
                 ...(acronym.trim() ? { acronym: acronym.trim() } : {}),
+                ...(aliasList.length ? { aliases: aliasList } : {}),
               },
             ],
           },
@@ -131,6 +139,16 @@ export function UnitEditor(props: { unit: UnitRow }) {
           />
         </label>
       </div>
+      <label className="block">
+        {t("unit_edit.aliases")}{" "}
+        <input
+          className={`${input} w-full max-w-xl`}
+          value={aliases}
+          onChange={(e) => setAliases(e.target.value)}
+          placeholder={t("unit_edit.aliases_placeholder")}
+        />
+        <span className="mt-1 block text-xs text-muted">{t("unit_edit.aliases_help")}</span>
+      </label>
       {slug !== unit.slug && taken && <p className="text-clay">{t("unit_edit.slug_taken")}</p>}
       {slug !== unit.slug && !taken && slug && (
         <p className="text-muted">{t("unit_edit.slug_hint")}</p>

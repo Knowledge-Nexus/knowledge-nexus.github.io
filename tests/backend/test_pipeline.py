@@ -123,7 +123,10 @@ def test_ai_proposal_never_overrides_user(catalog_root: Path) -> None:
 def test_unknown_unit_creates_proposal(catalog_root: Path) -> None:
     gerar.pdf_nativo(deposit(catalog_root, "grafos_ficha2.pdf"), gerar.FICHA_DESCONHECIDA)
     report = run(catalog_root).report
-    assert report.proposals == ["unit-teoria-dos-grafos-imaginarios"]
+    # A instituição do cabeçalho também não está no catálogo: é proposta (o catálogo já ter
+    # outras instituições não impede).
+    assert report.proposals == ["unit-teoria-dos-grafos-imaginarios",
+                                "institution-instituto-superior-de-exemplo"]
     [doc] = docs(catalog_root)
     codes = [r["code"] for r in doc["review"]["reasons"]]
     assert "review.unit_proposed" in codes
@@ -683,3 +686,21 @@ def test_user_unit_is_not_held_by_open_proposal(catalog_root: Path) -> None:
     run(catalog_root)
     assert read_yaml(catalog_root / "revisao" / "propostas" / f"{pid}.yaml")["status"] \
         == "accepted"
+
+
+def test_stale_junk_proposals_are_rejected(catalog_root: Path) -> None:
+    """Propostas antigas que as regras actuais já não criariam saem de «A rever»."""
+    from nexus.domain.proposals import CatalogProposal
+
+    repo = DataRepo(catalog_root)
+    for pid, kind, name in [("unit-barbara", "unit", "Bárbara Magalhães Bravo"),
+                            ("unit-uc", "unit", "Unidade Curricular"),
+                            ("unit-lei", "unit", "Licenciatura em Engenharia Informática"),
+                            # continuação que nenhuma pasta justifica (era um capítulo)
+                            ("unit-alga3", "unit", "Álgebra Linear e Geometria Analítica III"),
+                            ("unit-ok", "unit", "Teoria dos Grafos Imaginários")]:
+        repo.save_proposal(CatalogProposal(id=pid, kind=kind, data={"name": name}))
+    run(catalog_root)
+    status = {p.id: p.status for p in DataRepo(catalog_root).proposals.values()}
+    assert status == {"unit-barbara": "rejected", "unit-uc": "rejected",
+                      "unit-lei": "rejected", "unit-alga3": "rejected", "unit-ok": "open"}

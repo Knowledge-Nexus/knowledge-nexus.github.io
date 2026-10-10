@@ -22,6 +22,8 @@ class Signal:
     raw: str  # minúsculas sem acentos, com pontuação (datas, anos)
     weight: float
     page: int | None = None
+    # Texto original (com maiúsculas e acentos): as siglas comparam-se aqui ("SO" ≠ "só").
+    text: str = ""
 
 
 def _raw(text: str) -> str:
@@ -32,7 +34,7 @@ def _signal(source: str, text: str, weight: float, page: int | None = None) -> S
     norm = normalize(text)
     if not norm:
         return None
-    return Signal(source, norm, _raw(text), weight, page)
+    return Signal(source, norm, _raw(text), weight, page, text)
 
 
 def collect_signals(

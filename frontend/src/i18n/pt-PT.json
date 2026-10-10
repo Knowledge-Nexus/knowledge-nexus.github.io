@@ -265,7 +265,8 @@
     "bulk_keep": "Manter a sugestão de cada um",
     "bulk_confirm": "Confirmar {{count}} documentos",
     "bulk_done": "{{count}} documentos confirmados.",
-    "bulk_missing_unit": "{{count}} documento(s) sem cadeira: escolhe a cadeira para os confirmar."
+    "bulk_missing_unit": "{{count}} documento(s) sem cadeira: escolhe a cadeira para os confirmar.",
+    "accept_all_institution": "Instituição destas cadeiras:"
   },
   "search": {
     "title": "Pesquisa",
@@ -495,7 +496,10 @@
     "merge_none": "Nenhuma (voltam a ser classificados)",
     "remove": "Remover cadeira",
     "remove_confirm": "Remover «{{name}}»? Os documentos dela voltam a ser classificados (podem ir para «A rever»). Os ficheiros não são apagados.",
-    "remove_merge_confirm": "Remover «{{name}}» e passar os documentos para «{{target}}»? O nome antigo fica como nome alternativo de «{{target}}». Os ficheiros não são apagados."
+    "remove_merge_confirm": "Remover «{{name}}» e passar os documentos para «{{target}}»? O nome antigo fica como nome alternativo de «{{target}}». Os ficheiros não são apagados.",
+    "aliases": "Acrescentar nomes alternativos",
+    "aliases_placeholder": "ex.: Civil, Direito Civil",
+    "aliases_help": "Separados por vírgulas. O material com estes nomes nas pastas, nos ficheiros ou no título passa a ser reconhecido como desta cadeira (ex.: a pasta «Civil»)."
   },
   "invite": {
     "title": "Dar acesso temporário a outra pessoa",

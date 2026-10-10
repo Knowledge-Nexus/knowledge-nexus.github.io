@@ -515,11 +515,16 @@ test("editar e remover uma cadeira", async ({ page }) => {
     .click();
   await page.getByRole("button", { name: "Editar cadeira" }).click();
   await page.getByLabel("Sigla", { exact: true }).fill("AM I");
+  await page.getByLabel("Acrescentar nomes alternativos").fill("Análise I, Cálculo I");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByText(/actualiza|sincroniz/i).first()).toBeVisible();
   let commit = fake.repos.get(REPO)!.commits.at(-1)!;
   let request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
-  expect(request.institutions[0].units[0]).toMatchObject({ slug: "am1", acronym: "AM I" });
+  expect(request.institutions[0].units[0]).toMatchObject({
+    slug: "am1",
+    acronym: "AM I",
+    aliases: ["Análise I", "Cálculo I"],
+  });
 
   await page.getByRole("button", { name: "Editar cadeira" }).click();
   await page.getByLabel("Os documentos dela passam para:").selectOption({ index: 1 });

@@ -47,11 +47,15 @@ from nexus.pipeline.classify.years import score_dates, score_years
 #    palavras da página 1); abreviaturas nos vocabulários (res_, corr_, fre1…).
 # 3: data e versão (A/B…) das provas; "Primeira Frequência" → número 1.
 # 5: organização da origem (<ano>/<semestre>/<cadeira>/…) e pastas de tipo de material.
-CLASSIFIER_VERSION = 5
+# 6: siglas só como siglas ("SO" ≠ "só"); todas as cadeiras competem (a inscrição é bónus);
+#    cadeira só no corpo do texto não chega; programa que criou o PDF; tipo com `type_prior`.
+CLASSIFIER_VERSION = 6
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
 ROLE_PRIOR = 0.3
+# Certeza máxima de uma cadeira que só aparece no corpo do texto (abaixo do limiar).
+BODY_ONLY_MAX = 0.6
 DEFAULT_STATEMENT_CONFIDENCE = 0.9
 ASSESSMENT_BOOST = 0.5
 CODE_PROJECT_BOOST = 1.5
@@ -68,6 +72,13 @@ _VARIANT_RE = re.compile(
     r"\b(?:Teste|Exame|Frequ[êe]ncia|Prova|Mini-?teste)(?:\s+de\s+Recurso|\s+Recurso)?"
     r"\s*\d{0,2}\s*([A-F])(?![\w.])"
     r"|\b(?:Vers[ãa]o|Tipo|Variante|Modelo|Turno)\s+([A-Z0-9]{1,2})\b")
+
+
+def _producer(meta: ExtractionMeta | None) -> str:
+    """Programa que criou o PDF (metadados creator/producer), em minúsculas."""
+    if meta is None:
+        return ""
+    return " ".join(meta.metadata.get(k, "") for k in ("creator", "producer")).lower()
 
 
 def material_folder(vocab: Vocabularies) -> Callable[[str], bool]:
@@ -101,6 +112,15 @@ class Classifier:
         self.assessment_types = compile_terms(vocab.assessment_types)
         self.seasons = compile_terms(vocab.exam_seasons)
         self.origins = compile_terms(vocab.solution_origins)
+        # Termos que nunca são nomes de cadeiras: os genéricos e as palavras-chave do vocabulário.
+        self.generic = frozenset(
+            normalize(t) for t in [
+                *vocab.generic_terms,
+                *(k for kind in (vocab.document_types, vocab.assessment_types, vocab.roles,
+                                 vocab.exam_seasons, vocab.solution_origins)
+                  for term in kind for k in term.keywords),
+            ]
+        )
 
     # --- API ------------------------------------------------------------------------
 
@@ -128,7 +148,7 @@ class Classifier:
         if kept("role") is not None:
             role_field = kept("role")
         doc_type, is_assessment = self._document_type(signals, role_field, doc.kind,
-                                                      doc.blob.ext)
+                                                      doc.blob.ext, _producer(meta))
         if kept("document_type") is not None:
             doc_type = kept("document_type")
         result.document_type = doc_type
@@ -169,12 +189,14 @@ class Classifier:
         weak = self.weak_fields(result, type_term)
         # Propostas de catálogo só a partir de documentos (nunca de listagens de arquivos
         # ou de projectos de código, que citam caminhos e tamanhos).
-        found = proposals.detect(pages, self.catalog, paths=[s.path for s in doc.sources]) \
+        found = proposals.detect(pages, self.catalog, paths=[s.path for s in doc.sources],
+                                 generic=self.generic) \
             if pages and doc.kind is DocumentKind.FILE else []
         if doc.kind is DocumentKind.FILE and (result.unit is None or "unit" in weak):
             known = {normalize(c.name) for c in found}
             found += [c for c in proposals.folder_units(
-                [layout.full_path(s.batch, s.path) for s in doc.sources], self.catalog)
+                [layout.full_path(s.batch, s.path) for s in doc.sources], self.catalog,
+                self.generic)
                 if normalize(c.name) not in known]
         return Outcome(result, weak, found)
 
@@ -204,15 +226,19 @@ class Classifier:
                 course = self.catalog.courses.get(course_key)
                 if course is not None:
                     enrolled |= {f"{course.institution}/{link.unit}" for link in course.units}
-        if enrolled:
-            mine = [u for u in self.units if u.unit.key in enrolled]
-            ranked = score_units(mine, signals, enrolled, boost)
-            if ranked and confidence(ranked, prior) >= self.settings.auto_file_threshold:
-                return to_field(ranked, prior)
+        # Todas as cadeiras competem; a inscrição só dá um bónus. (Antes, uma cadeira inscrita
+        # com um sinal fraco, ex. nos metadados, ganhava sem olhar para a pasta da cadeira.)
         ranked = score_units(self.units, signals, enrolled, boost)
         result = to_field(ranked, prior)
-        if result is not None and enrolled and result.value not in enrolled:
+        if result is None:
+            return None
+        if enrolled and result.value not in enrolled:
             result.reasons = [*result.reasons, Reason(code="unit.not_enrolled")]
+        # Só no meio do texto (uma menção de passagem) nunca chega para arrumar.
+        sources = {r.source for r in result.reasons if r.source}
+        if sources <= {"body"} and result.confidence > BODY_ONLY_MAX:
+            result.confidence = BODY_ONLY_MAX
+            result.reasons = [*result.reasons, Reason(code="unit.body_only")]
         return result
 
     def _unit_names(self, unit: FieldValue | None) -> list[str]:
@@ -256,11 +282,13 @@ class Classifier:
         return None, solution.score
 
     def _document_type(
-        self, signals: list[Signal], role: FieldValue | None, kind: DocumentKind, ext: str
+        self, signals: list[Signal], role: FieldValue | None, kind: DocumentKind, ext: str,
+        producer: str = "",
     ) -> tuple[FieldValue | None, bool]:
         """Agrupa tipos com as mesmas palavras-chave em famílias; escolhe a família e,
         dentro dela, o membro pelo papel (enunciado/resolução)."""
-        prior = self.settings.prior
+        prior = self.settings.type_prior if self.settings.type_prior is not None \
+            else self.settings.prior
         # Cada família é identificada pelo slug do primeiro membro: os empates desempatam
         # por esse nome. (Desempatar pela chave da família, um frozenset, dependia da
         # semente de hash do Python e mudava o resultado de execução para execução.)
@@ -285,6 +313,11 @@ class Classifier:
                 candidate.add(CODE_PROJECT_BOOST, Reason(code="type.code_project"))
             if ext and any(ext in m.term.extensions for m in members):
                 candidate.add(FORMAT_BOOST, Reason(code="type.format", params={"ext": ext}))
+            made_with = next((p for m in members for p in m.term.producers
+                              if producer and p.lower() in producer), None)
+            if made_with:
+                candidate.add(FORMAT_BOOST, Reason(code="type.producer",
+                                                   params={"producer": made_with}))
             family_candidates.append(candidate)
         ranked = rank(family_candidates)
         if not ranked:
@@ -303,7 +336,9 @@ class Classifier:
             match = next((m.term for m in members if m.term.role == wanted), None)
             if match is None:
                 match = next((m.term for m in members if m.term.role == "any"), members[0].term)
-            role_conf = role.confidence if role is not None else DEFAULT_STATEMENT_CONFIDENCE
+            # Sem nenhum sinal de enunciado nem de resolução, é um enunciado: não penaliza o
+            # tipo (só as alternativas mostram a hipótese de ser a resolução).
+            role_conf = role.confidence if role is not None else 1.0
             reason = Reason(code="type.role_solution" if wanted == ROLE_SOLUTION
                             else "type.role_statement")
             return match, role_conf, [reason]
@@ -313,8 +348,9 @@ class Classifier:
         alternatives: list[Alternative] = []
         for sibling in best_members:
             if sibling.term.slug != term.slug:
+                doubt = 1 - (role.confidence if role is not None else DEFAULT_STATEMENT_CONFIDENCE)
                 alternatives.append(Alternative(
-                    value=sibling.term.slug, confidence=round(family_conf * (1 - role_conf), 3)))
+                    value=sibling.term.slug, confidence=round(family_conf * doubt, 3)))
         for other in ranked[1:3]:
             other_term, _, _ = pick(families[other.value])
             alternatives.append(Alternative(value=other_term.slug,

@@ -5,6 +5,9 @@ classification:
   auto_file_threshold: 0.7
   # Constante da fórmula de confiança: melhor / (melhor + segundo + prior).
   prior: 0.6
+  # A mesma constante, só para o tipo de documento: com 0.4, uma palavra-chave forte no nome
+  # do ficheiro (ex.: "Ficha 5", "FT 2", "QA1") chega para o tipo. A cadeira fica com 0.6.
+  type_prior: 0.4
   # Peso de cada fonte de sinais.
   source_weights:
     filename: 1.0

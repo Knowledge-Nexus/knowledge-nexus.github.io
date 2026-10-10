@@ -37,6 +37,9 @@ class Term(Record):
     is_fallback: bool = False
     # Só para tipos de documento: formatos que por si só são indício do tipo.
     extensions: list[str] = Field(default_factory=list)
+    # Só para tipos de documento: programas que criaram o PDF (creator/producer) e que por
+    # si só são indício do tipo (ex.: PowerPoint → slides).
+    producers: list[str] = Field(default_factory=list)
     # Âmbito opcional: termo válido só numa instituição (slug).
     institution: str | None = None
 
@@ -51,6 +54,9 @@ class Vocabularies(Record):
     solution_origins: list[Term] = Field(default_factory=list)
     assessment_types: list[Term] = Field(default_factory=list)
     exam_seasons: list[Term] = Field(default_factory=list)
+    # Termos genéricos do ensino ("unidade curricular", "ficha de trabalho"…): nunca são o
+    # nome de uma cadeira, curso ou instituição, por isso não geram propostas.
+    generic_terms: list[str] = Field(default_factory=list)
 
     def terms(self, kind: VocabKind, institution: str | None = None) -> list[Term]:
         return [

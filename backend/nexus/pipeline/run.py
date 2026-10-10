@@ -57,7 +57,11 @@ from nexus.pipeline.bundles import (
     project_folders,
 )
 from nexus.pipeline.classify.classifier import CLASSIFIER_VERSION, Classifier, material_folder
-from nexus.pipeline.classify.proposals import ProposalCandidate
+from nexus.pipeline.classify.proposals import (
+    ProposalCandidate,
+    is_junk,
+    unsupported_sequel,
+)
 from nexus.pipeline.classify.signals import GENERATED_BATCH_RE
 from nexus.pipeline.extract import (
     ExtractionError,
@@ -251,17 +255,35 @@ class Pipeline:
                 self.report.errors.append((f"catalogo/{request.name}", str(exc)))
         self.repo.reload_catalog()
 
+    def _evidence_paths(self, proposal: CatalogProposal) -> list[str]:
+        docs = (self.repo.documents.get(e.document) for e in proposal.evidence)
+        return [s.path for d in docs if d is not None for s in d.sources]
+
     def _close_known_proposals(self) -> None:
-        """Uma proposta de cadeira cujo nome já é uma cadeira do catálogo (ex.: criada na
-        biblioteca, sem aceitar a proposta) fica aceite: já não falta nada."""
+        """Arruma as propostas abertas:
+        - a cadeira já existe no catálogo (ex.: criada na biblioteca, sem aceitar a proposta):
+          fica aceite, já não falta nada;
+        - as regras actuais já não a criariam (nome de pessoa, termo genérico, ruído de OCR,
+          "Licenciatura em …" como cadeira): fica rejeitada."""
         names: set[str] = set()
         for unit in self.repo.catalog.units.values():
             names.update(normalize(n) for n in (unit.name, unit.acronym or "", *unit.aliases))
         names.discard("")
+        generic = Classifier(self.repo.vocabularies, self.repo.catalog,
+                             self.settings.classification).generic
         for proposal in list(self.repo.proposals.values()):
-            name = normalize(str(proposal.data.get("name") or ""))
-            if proposal.kind == "unit" and proposal.status == "open" and name in names:
-                self.repo.save_proposal(proposal.model_copy(update={"status": "accepted"}))
+            if proposal.status != "open":
+                continue
+            raw = str(proposal.data.get("name") or "")
+            if proposal.kind == "unit" and normalize(raw) in names:
+                status = "accepted"
+            elif is_junk(proposal.kind, raw, generic) or (
+                    proposal.kind == "unit"
+                    and unsupported_sequel(raw, self._evidence_paths(proposal), self.repo.catalog)):
+                status = "rejected"
+            else:
+                continue
+            self.repo.save_proposal(proposal.model_copy(update={"status": status}))
 
     def _remove_unit(self, key: str, merge_into: str | None) -> None:
         """Apaga a cadeira; os documentos dela passam para `merge_into` ou voltam a ser
@@ -767,10 +789,7 @@ class Pipeline:
         for candidate in candidates:
             if candidate.kind == "unit" and "unit" not in weak:
                 continue
-            if candidate.kind == "institution" and catalog.institutions:
-                continue
-            if candidate.kind == "course" and catalog.courses:
-                continue
+            # Cursos e instituições: o motor só propõe os que ainda não estão no catálogo.
             pid = f"{candidate.kind}-{slugify(candidate.name, 50)}"
             existing = self.repo.proposals.get(pid)
             if existing is not None and existing.status != "open":

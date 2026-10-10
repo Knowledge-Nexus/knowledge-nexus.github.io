@@ -228,3 +228,107 @@ def test_sequel_unit_is_not_filed_in_the_first_and_is_proposed(catalog_root: Pat
         (p.kind, p.name, p.acronym) for p in found}
     # A primeira continua a ser reconhecida, e não se propõe a si própria.
     assert detect(["Análise Matemática I\nExame"], repo.catalog, paths=["AM1/exame.pdf"]) == []
+
+
+def _custom(units: list[tuple[str, str, str | None]]) -> Classifier:
+    """Classificador com o vocabulário por defeito e um catálogo só com estas cadeiras."""
+    from nexus.config import config_dir, load_settings
+    from nexus.datarepo.yamlio import read_yaml
+    from nexus.domain.catalog import Catalog, CurricularUnit
+    from nexus.domain.vocab import Vocabularies
+
+    vocab = Vocabularies.model_validate(read_yaml(config_dir() / "vocabularios.yaml"))
+    catalog = Catalog(units={
+        f"x/{slug}": CurricularUnit(slug=slug, institution="x", name=name, acronym=acronym)
+        for slug, name, acronym in units
+    })
+    return Classifier(vocab, catalog, load_settings().classification)
+
+
+def test_acronym_must_be_written_as_acronym() -> None:
+    """"SO" (Sistemas Operativos) não é a palavra "só" (sem acentos e em minúsculas eram
+    iguais: material de Direito ia parar a Sistemas Operativos)."""
+    classifier = _custom([("so", "Sistemas Operativos", "SO")])
+    law = classifier.classify(_doc("Acordao.pdf"), None,
+                              ["Acórdão do Tribunal\nSó é admissível recurso quando..."], None, [])
+    assert law.classification.unit is None
+    filed = classifier.classify(_doc("SO_aula3_processos.pdf"), None, ["Processos"], None, [])
+    assert filed.classification.value("unit") == "x/so"
+
+
+def test_folder_beats_enrolled_unit_with_weak_signal() -> None:
+    """A pasta da cadeira ganha a uma cadeira inscrita que só aparece nos metadados."""
+    from nexus.domain.extraction import ExtractionMeta
+
+    classifier = _custom([("pa", "Programação Aplicada", "PA"),
+                          ("poo", "Programação Orientada a Objectos", "POO")])
+    user = User(login=OWNER, enrollments=Enrollments(units=[UnitEnrollment(unit="x/poo")]))
+    meta = ExtractionMeta(sha256="0" * 64, extractor="pdf", extractor_version=1,
+                          metadata={"title": "Programação Orientada a Objectos - Java"})
+    doc = _doc("UFE/2020_2021/2º Semestre/Programação Aplicada/Ficha 5 - Sockets.pdf")
+    out = classifier.classify(doc, meta, ["Sockets em Java"], user, [])
+    assert out.classification.value("unit") == "x/pa"
+
+
+def test_unit_only_in_body_is_not_enough() -> None:
+    classifier = _custom([("ap", "Administração Pública", None)])
+    pages = ["Introdução\n" + "x " * 800 + "\na administração pública e o direito"]
+    out = classifier.classify(_doc("Introducao do Direito Administrativo.pdf"), None, pages,
+                              None, [])
+    unit = out.classification.unit
+    assert unit is not None and unit.confidence < 0.7
+    assert "unit" in out.weak_fields
+
+
+def test_pdf_made_with_powerpoint_suggests_slides() -> None:
+    from nexus.domain.extraction import ExtractionMeta
+
+    classifier = _custom([("pa", "Programação Aplicada", "PA")])
+    meta = ExtractionMeta(sha256="0" * 64, extractor="pdf", extractor_version=1,
+                          metadata={"creator": "Microsoft® PowerPoint® 2016"})
+    out = classifier.classify(_doc("LEI_PA_06 Applets.pdf"), meta, ["Applets e Gráficos"],
+                              None, [])
+    assert out.classification.value("document_type") == "slides"
+    assert any(r.code == "type.producer" for r in out.classification.document_type.reasons)  # type: ignore[union-attr]
+
+
+def test_proposals_reject_people_generic_terms_and_ocr_noise() -> None:
+    from nexus.domain.catalog import Catalog
+
+    header = ("Unidade Curricular\nDireito Administrativo\nBárbara Magalhães Bravo\n"
+              "Doutoramento em Direito\nEscola Superior de Tecnologia• e apósGestão de X")
+    found = detect([header], Catalog(), paths=["BMB/UC/doc.pdf"],
+                   generic=frozenset({"unidade curricular"}))
+    names = {(c.kind, c.name) for c in found}
+    assert not any("Bárbara" in n for _, n in names), names
+    assert not any(n == "Unidade Curricular" for _, n in names), names
+    assert ("course", "Doutoramento em Direito") in names
+    assert not any("apósGestão" in n for _, n in names), names
+
+
+def test_degree_and_institution_phrases_are_courses_and_institutions() -> None:
+    from nexus.domain.catalog import Catalog
+
+    header = ("PROVA ESCRITA DE DIREITO PENAL E DIREITO PROCESSUAL PENAL Via Académica\n"
+              "36.º CURSO DE FORMAÇÃO PARA OS TRIBUNAIS JUDICIAIS\n"
+              "Centro de Estudos Judiciários o tempo de duração da prova\n"
+              "Licenciatura em Engenharia Informática")
+    found = detect([header], Catalog(), paths=["LEI/CEJ/prova.pdf"])
+    names = {(c.kind, c.name) for c in found}
+    assert ("unit", "Direito Penal e Direito Processual Penal") in names, names
+    assert ("course", "Curso de Formação para os Tribunais Judiciais") in names, names
+    assert ("institution", "Centro de Estudos Judiciários") in names, names
+    assert ("course", "Licenciatura em Engenharia Informática") in names, names
+    assert not any(k == "unit" and n.startswith("Licenciatura") for k, n in names), names
+
+
+def test_sequels_only_from_folders_or_roman_numerals() -> None:
+    from nexus.domain.catalog import Catalog, CurricularUnit
+
+    catalog = Catalog(units={"x/tc": CurricularUnit(slug="tc", institution="x",
+                                                    name="Teoria da Computação", acronym="TC")})
+    chapter = detect(["Teoria da Computação 3 - Gramáticas"], catalog,
+                     paths=["UC/TC/TC3_Gramaticas.pdf"])
+    assert not any(c.name.startswith("Teoria da Computação I") for c in chapter)
+    sequel = detect(["Sebenta"], catalog, paths=["UC/Sebenta_TC_II_2526.pdf"])
+    assert any(c.name == "Teoria da Computação II" for c in sequel)

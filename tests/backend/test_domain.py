@@ -131,3 +131,18 @@ def test_catalog_request_keeps_fields_it_does_not_mention(tmp_path: Path) -> Non
     assert catalog.units["ufe/am"].keywords == ["limites"]
     assert catalog.courses["ufe/lei"].units == []
     assert [c.slug for c in catalog.courses_of_unit("ufe/am")] == ["lia"]
+
+
+def test_catalog_request_adds_aliases_without_losing_existing(tmp_path: Path) -> None:
+    """Acrescentar um nome alternativo na interface não apaga os que já existem."""
+    from nexus.datarepo.catalog_io import import_bundle, load_catalog
+    from nexus.datarepo.layout import Layout
+
+    layout = Layout(tmp_path)
+    unit = {"slug": "dc", "name": "Direito Civil", "aliases": ["DC"]}
+    import_bundle(layout, {"format": "nexus-catalogo", "version": 1, "institutions": [
+        {"slug": "cej", "name": "Centro de Estudos Judiciários", "units": [unit]}]})
+    import_bundle(layout, {"format": "nexus-catalogo", "version": 1, "institutions": [
+        {"slug": "cej", "name": "Centro de Estudos Judiciários",
+         "units": [{"slug": "dc", "name": "Direito Civil", "aliases": ["Civil", "DC"]}]}]})
+    assert load_catalog(layout).units["cej/dc"].aliases == ["DC", "Civil"]

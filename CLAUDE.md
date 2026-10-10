@@ -242,6 +242,31 @@ Dependências de sistema (Ubuntu/WSL2):
   Acaba quando o token expira ou o dono o apaga no GitHub.
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
+- **Classificação (regras que evitam erros conhecidos):**
+  - Siglas só como siglas: em maiúsculas e palavra inteira no texto original (`Signal.text`;
+    "SO" ≠ "só"); as de 2 letras não contam no corpo do texto.
+  - Todas as cadeiras competem; a inscrição só dá bónus (antes uma inscrita com um sinal
+    fraco ganhava à pasta da cadeira). Uma cadeira que só aparece no corpo fica abaixo do
+    limiar (`BODY_ONLY_MAX`, razão `unit.body_only`).
+  - Tipo: `producers` nos termos (programa que criou o PDF: PowerPoint → slides), sem sinal
+    de enunciado/resolução o tipo não é penalizado, e `type_prior` (0.4) só para o tipo; a
+    cadeira continua com `prior` (0.6).
+  - Medir antes de mudar: avaliar contra os campos `method: user` e contra as pastas da
+    origem (cadeira) num repositório real; zero erros com certeza alta.
+- **Propostas de catálogo** (`classify/proposals.py`): `acceptable()` recusa termos genéricos
+  (`generic_terms` + palavras-chave do vocabulário), nomes de pessoas
+  (`config/nomes-proprios.txt`), editoras e ruído de OCR; `_kind_of` reclassifica pela 1.ª
+  palavra ("Licenciatura em …" → curso, "Centro de Estudos …" → instituição); títulos de
+  provas ("Prova escrita de …") e "Curso de Formação …"; siglas só das pastas e que não sejam
+  de nada do catálogo; continuações ("X II") só das pastas ou com numeração romana no nome do
+  ficheiro. Cursos e instituições desconhecidos são propostos mesmo com outros no catálogo.
+  A cada execução, as propostas abertas que as regras já não criariam ficam rejeitadas e as
+  de cadeiras que já existem ficam aceites (`Pipeline._close_known_proposals`).
+- **Nomes alternativos acumulam:** nos pedidos de catálogo, `aliases` e `keywords` juntam-se
+  aos existentes (`_ADDITIVE` em `catalog_io.py`); "Editar cadeira" acrescenta nomes
+  alternativos (ex.: "Civil" para que a pasta «Civil» conte para "Direito Civil").
+- **Vocabulário do repositório de dados:** `catalogo/vocabularios.yaml` substitui o da
+  aplicação; ao mudar `config/vocabularios.yaml` (suba `version`), copiá-lo também para lá.
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso
   reclassifica o que não foi revisto pelo utilizador.
 - **Testes:**
