@@ -40,6 +40,9 @@ class Term(Record):
     # Só para tipos de documento: programas que criaram o PDF (creator/producer) e que por
     # si só são indício do tipo (ex.: PowerPoint → slides).
     producers: list[str] = Field(default_factory=list)
+    # Só para tipos de documento: palavras que, no nome do ficheiro, afastam o tipo (a pauta
+    # do «Teste 1» não é o enunciado do teste).
+    excluded_by: list[str] = Field(default_factory=list)
     # Âmbito opcional: termo válido só numa instituição (slug).
     institution: str | None = None
 

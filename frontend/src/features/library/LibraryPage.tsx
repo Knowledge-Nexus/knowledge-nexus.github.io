@@ -24,6 +24,7 @@ import { isPublic, PublicBadge, TypeVisibility, UnitVisibility } from "../../com
 import { useApp } from "../../data/context";
 import type { DocumentRow, UnitRow } from "../../data/types";
 import { joinBundle, separateBundle, suggestBundleName } from "../../lib/bundles";
+import { groupByYear, yearLabel } from "../../lib/docOrder";
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
@@ -211,12 +212,6 @@ export function BundleMembers(props: { lead: DocumentRow; members: DocumentRow[]
 }
 
 /** Ordem dentro de um tipo: mais recentes primeiro (ano, data da prova), depois o título. */
-function byRecency(a: DocumentRow, b: DocumentRow): number {
-  const key = (d: DocumentRow) =>
-    `${d.academic_year ?? ""}|${String(d.classification.date?.value ?? "")}`;
-  return key(b).localeCompare(key(a)) || a.display_name.localeCompare(b.display_name);
-}
-
 function UnitDetail(props: { unitKey: string }) {
   const { t } = useTranslation();
   const { meta, login, to, source, readOnly, notifyCommit } = useApp();
@@ -238,6 +233,10 @@ function UnitDetail(props: { unitKey: string }) {
     academicYear: year || undefined,
   });
   const toConfirm = allDocs.filter(typeToConfirm).length;
+  // Com mais de um ano lectivo na cadeira, cada cartão separa-os (o mesmo "FT 1" de dois anos
+  // parecia repetido).
+  const manyYears = new Set(allDocs.map((d) => d.academic_year ?? "")).size > 1;
+  const titleOf = (doc: DocumentRow) => documentTitle(doc, labels);
   const docs = onlyToConfirm ? allDocs.filter(typeToConfirm) : allDocs;
   const byType = new Map<string, DocumentRow[]>();
   for (const doc of docs) {
@@ -471,7 +470,8 @@ function UnitDetail(props: { unitKey: string }) {
         {[...byType.entries()]
           .sort(([a], [b]) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
           .map(([type, list]) => {
-            const sorted = [...list].sort(byRecency);
+            const years = groupByYear(list, titleOf);
+            const sorted = years.flatMap((g) => g.docs);
             const ids = sorted.map((d) => d.id);
             const all = ids.every((id) => selected.has(id));
             const label = labels.term("document_types", type);
@@ -526,33 +526,44 @@ function UnitDetail(props: { unitKey: string }) {
                       <TypeVisibility unitKey={props.unitKey} documentType={type} />
                     </div>
                   )}
-                  <div className="divide-y divide-line">
-                    {bundleEntries(sorted).map(({ doc, members }) => {
-                      const ids = [doc.id, ...members.map((m) => m.id)];
-                      return (
-                        // biome-ignore lint/a11y/noStaticElementInteractions: o documento arrasta-se para outro tipo
-                        <div
-                          key={doc.id}
-                          draggable={!readOnly}
-                          onDragStart={(e) => {
-                            const moving = ids.some((id) => selected.has(id))
-                              ? [...new Set([...selected, ...ids])]
-                              : ids;
-                            e.dataTransfer.setData(DOC_DRAG, JSON.stringify(moving));
-                            e.dataTransfer.effectAllowed = "all";
-                          }}
-                        >
-                          <DocumentLink
-                            doc={doc}
-                            groupedByType
-                            selected={ids.every((id) => selected.has(id))}
-                            onSelect={(on) => select(ids, on)}
-                          />
-                          <BundleMembers lead={doc} members={members} />
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {years.map((group) => (
+                    <div key={group.year ?? "sem-ano"}>
+                      {manyYears && (
+                        <h3 className="mt-3 border-b border-line pb-1 text-xs font-semibold tracking-wider text-muted uppercase first:mt-0">
+                          {group.year
+                            ? t("library.academic_year", { year: yearLabel(group.year) })
+                            : t("library.no_academic_year")}
+                        </h3>
+                      )}
+                      <div className="divide-y divide-line">
+                        {bundleEntries(group.docs).map(({ doc, members }) => {
+                          const ids = [doc.id, ...members.map((m) => m.id)];
+                          return (
+                            // biome-ignore lint/a11y/noStaticElementInteractions: o documento arrasta-se para outro tipo
+                            <div
+                              key={doc.id}
+                              draggable={!readOnly}
+                              onDragStart={(e) => {
+                                const moving = ids.some((id) => selected.has(id))
+                                  ? [...new Set([...selected, ...ids])]
+                                  : ids;
+                                e.dataTransfer.setData(DOC_DRAG, JSON.stringify(moving));
+                                e.dataTransfer.effectAllowed = "all";
+                              }}
+                            >
+                              <DocumentLink
+                                doc={doc}
+                                groupedByType
+                                selected={ids.every((id) => selected.has(id))}
+                                onSelect={(on) => select(ids, on)}
+                              />
+                              <BundleMembers lead={doc} members={members} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </Card>
               </div>
             );

@@ -65,6 +65,8 @@ class CompiledTerm:
     patterns: tuple[re.Pattern[str], ...]
     # forma normalizada → forma escrita no vocabulário (para as justificações)
     originals: dict[str, str] = field(default_factory=dict, compare=False, hash=False)
+    # `excluded_by` normalizado
+    excluded: tuple[str, ...] = field(default=(), compare=False, hash=False)
 
     @property
     def family_key(self) -> tuple[frozenset[str], frozenset[str]]:
@@ -80,7 +82,8 @@ def compile_terms(terms: list[Term]) -> list[CompiledTerm]:
             if norm:
                 originals.setdefault(norm, keyword)
         patterns = tuple(re.compile(p) for p in term.patterns)
-        out.append(CompiledTerm(term, tuple(originals), patterns, originals))
+        excluded = tuple(n for n in (normalize(k) for k in term.excluded_by) if n)
+        out.append(CompiledTerm(term, tuple(originals), patterns, originals, excluded))
     return out
 
 

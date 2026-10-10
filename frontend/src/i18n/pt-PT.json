@@ -172,6 +172,8 @@
   "library": {
     "title": "Biblioteca",
     "all_years": "Todos os anos",
+    "academic_year": "Ano lectivo {{year}}",
+    "no_academic_year": "Sem ano lectivo",
     "empty": "Ainda não há documentos arrumados.",
     "unfiled": "Por arrumar",
     "type_changed": "Tipo alterado para «{{type}}». A biblioteca actualiza-se depois do processamento.",

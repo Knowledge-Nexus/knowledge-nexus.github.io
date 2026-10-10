@@ -12,9 +12,12 @@
 # - `extensions` (só tipos de documento): formatos que por si só são indício do tipo.
 # - `producers` (só tipos de documento): programas que criaram o PDF (metadados creator /
 #   producer) e que por si só são indício do tipo (ex.: PowerPoint → slides).
+# - `excluded_by` (só tipos de documento): palavras que, no nome do ficheiro, afastam o tipo
+#   (a pauta do «Teste 1» não é o enunciado do teste).
 # - O código nunca depende de um slug concreto; só dos atributos (`is_assessment`,
-#   `role`, `is_submission`, `is_syllabus`, `is_fallback`, `extensions`, `producers`).
-version: 2
+#   `role`, `is_submission`, `is_syllabus`, `is_fallback`, `extensions`, `producers`,
+#   `excluded_by`).
+version: 3
 
 # Termos genéricos do ensino que nunca são o nome de uma cadeira (nem de um curso): não
 # geram propostas de catálogo. Comparados depois de normalizados.
@@ -77,12 +80,17 @@ document_types:
                prova oral, material de avaliação]
     # "fre1", "freq", "resfreq" nos nomes dos ficheiros.
     patterns: &assessment_patterns ['(\b|(?<=res))freq?\b']
+    # Pautas, listas e horários falam de testes e exames, mas não são o enunciado.
+    excluded_by: &assessment_excluded [pauta, pautas, classificação, classificações, classif,
+                                       resultados, notas, horário, horários, alunos,
+                                       admitidos, inscritos, calendário]
   - slug: resolucoes-avaliacao
     labels: { pt-PT: "Resoluções de avaliações", en: "Assessment solutions" }
     role: solution
     is_assessment: true
     keywords: *assessment_keywords
     patterns: *assessment_patterns
+    excluded_by: *assessment_excluded
   - slug: enunciados-trabalhos
     labels: { pt-PT: "Enunciados de trabalhos / projectos", en: "Assignments / projects" }
     role: statement
@@ -115,7 +123,8 @@ document_types:
   - slug: informacoes
     labels: { pt-PT: "Informações (pautas, horários, avisos)", en: "Notices (grades, timetables)" }
     role: any
-    keywords: [pauta, pautas, classificações, notas finais, resultados, horário, horários,
+    keywords: [pauta, pautas, classificação, classificações, classif, notas finais, resultados,
+               admitidos, em condições de realizar, horário, horários,
                horário de atendimento, atendimento, calendário, calendário de avaliações,
                aviso, avisos, planeamento, regulamento, lista de alunos, grades, timetable]
   - slug: outros
@@ -134,7 +143,7 @@ roles:
     keywords: [resolução, resoluções, resolvido, resolvida, resolvidos, solução, soluções,
                correcção, proposta de resolução, critérios de correcção, solutions,
                solution, answers, respostas, grelha, grelha de correcção,
-               tópicos de correcção, com soluções, com sol]
+               tópicos de correcção, com soluções, com sol, sols]
     # Abreviaturas comuns nos nomes dos ficheiros: res_fre1, corr_teste1, sol_exame,
     # resfreq… (o texto já vem normalizado: minúsculas, sem acentos, "fre1" → "fre 1").
     patterns: ['^(res|resol|corr|sol)\b', '^res(freq?|exame|teste|ficha)',

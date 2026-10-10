@@ -5,6 +5,18 @@ import type { DocumentRow } from "../data/types";
 import i18n from "../i18n";
 import type { Labels } from "./labels";
 
+/** "FT 0 REVISÕES de CÁLCULO" → "FT 0 Revisões de Cálculo": as palavras em maiúsculas com 5
+ * letras ou mais ficam só com a inicial; as siglas curtas (FT, LEI, TPC) ficam. */
+export function soften(text: string): string {
+  return text.replace(/\p{Lu}{5,}/gu, (word, offset: number, whole: string) => {
+    const before = whole[offset - 1] ?? " ";
+    const after = whole[offset + word.length] ?? " ";
+    // Só palavras inteiras: "MATIILEI1920" ou "MatII" ficam como estão.
+    if (/[\p{L}\d]/u.test(before) || /[\p{L}\d]/u.test(after)) return word;
+    return word[0] + word.slice(1).toLocaleLowerCase("pt");
+  });
+}
+
 function prettify(stem: string): string {
   const text = stem
     .replace(/\.[^.]+$/, "")
@@ -13,7 +25,8 @@ function prettify(stem: string): string {
     .replace(/(\d)([a-zà-ÿ])/gi, "$1 $2")
     .replace(/\s+/g, " ")
     .trim();
-  return text ? text[0]!.toUpperCase() + text.slice(1) : stem;
+  const soft = soften(text);
+  return soft ? soft[0]!.toUpperCase() + soft.slice(1) : stem;
 }
 
 export function originalName(doc: DocumentRow): string {

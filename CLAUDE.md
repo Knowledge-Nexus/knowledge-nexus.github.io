@@ -160,7 +160,8 @@ Dependências de sistema (Ubuntu/WSL2):
     "Como funciona" (`/ajuda`, textos em `guide.*`).
   - Sem sessão, a entrada do site é a biblioteca pública (`#/publico`); o ecrã de
     ligação está em `#/entrar` (botão "Entrar" no menu).
-  - Nas listas, o título vem da classificação (`lib/titles.ts`: "Exame · Época de recurso")
+  - Nas listas, o título vem da classificação (`lib/titles.ts`: "Exame · Época de recurso";
+    as palavras em maiúsculas com 5 letras ou mais ficam só com a inicial, `soften`)
     e a data e o nome original ficam na linha secundária; o formato aparece em
     `FileBadge` (cores `--color-file-*`). O original (PDF, versão PDF ou imagem) e o texto
     vêem-se com `components/DocumentViewer.tsx` (documento e «A rever»). Descarga em zip no
@@ -176,6 +177,9 @@ Dependências de sistema (Ubuntu/WSL2):
     Coimbra, `course_colors` em `data/reference/pt.json`, `lib/courseColors.ts`), com tons
     diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome. A
     biblioteca (e a pública) usa a largura toda do ecrã (`Main` em `components/Layout.tsx`).
+  - Dentro de uma cadeira, cada cartão de tipo separa os anos lectivos (o mais recente
+    primeiro) quando a cadeira tem mais de um, e ordena pela ordem natural: provas pela data e
+    pelo número, o resto pelo título ("FT 2" antes de "FT 10"; `lib/docOrder.ts`).
   - Depositar (`features/upload/UploadPage.tsx`): as cópias (mesmo SHA-256, qualquer nome)
     são detectadas logo ao escolher os ficheiros, repetidas na selecção ou já na biblioteca
     do utilizador (`ownedSha`), e não são enviadas (opção "Enviar também as cópias" envia só
@@ -275,6 +279,11 @@ Dependências de sistema (Ubuntu/WSL2):
     arruma com o tipo em dúvida (no mais provável, ou "Outros") e marca `type.to_confirm`;
     na biblioteca aparece «tipo por confirmar», com filtro e «Confirmar o tipo» (grava o tipo
     actual como `user`). Por defeito, desligada (regra 6).
+  - `excluded_by` nos tipos de documento (vocabulário): palavras que, no nome do ficheiro,
+    afastam o tipo (pautas, classificações, resultados e horários não são enunciados de
+    avaliação; vão para «Informações»).
+  - `normalize()` só unifica as grafias (cc/ct/pc/pt) em palavras com 4 letras ou mais: as
+    siglas curtas ficam ("TPC" não é "TC"). Igual em `frontend/src/lib/normalize.ts`.
   - Pastas de arrumação sem significado (`neutral_folders` no vocabulário: "Geral",
     "Materiais diversos"…) contam como pastas de material: não juntam ficheiros num conjunto.
   - Medir antes de mudar: avaliar contra os campos `method: user` e contra as pastas da

@@ -4,12 +4,14 @@
 const CAMEL = /(?<=[a-z])(?=[A-Z])/g;
 const NON_ALNUM = /[^a-z0-9]+/g;
 const LETTER_DIGIT = /(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])/g;
+// Só em palavras com 4 letras ou mais: as siglas curtas ficam como estão ("TPC" não é "TC").
 const SPELLING_RULES: [string, string][] = [
   ["cc", "c"],
   ["ct", "t"],
   ["pc", "c"],
   ["pt", "t"],
 ];
+const SPELLING_WORD = /\b[a-z]{4,}\b/g;
 
 export function stripAccents(text: string): string {
   return text.normalize("NFKD").replace(/\p{M}/gu, "");
@@ -18,9 +20,9 @@ export function stripAccents(text: string): string {
 export function normalize(text: string): string {
   let value = stripAccents(text.replace(CAMEL, " ")).toLowerCase().replace(NON_ALNUM, " ");
   value = value.replace(LETTER_DIGIT, " ");
-  for (const [from, to] of SPELLING_RULES) {
-    value = value.split(from).join(to);
-  }
+  value = value.replace(SPELLING_WORD, (word) =>
+    SPELLING_RULES.reduce((w, [from, to]) => w.split(from).join(to), word),
+  );
   return value.split(/\s+/).filter(Boolean).join(" ");
 }
 

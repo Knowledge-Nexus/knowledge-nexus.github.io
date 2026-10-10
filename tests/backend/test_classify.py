@@ -407,3 +407,33 @@ def test_text_mention_counts_less_against_the_folder_and_file_name() -> None:
     out = classifier.classify(doc, None, ["A Administração Pública em Portugal"], None, [])
     assert out.classification.value("unit") == "x/da"
     assert "unit" not in out.weak_fields
+
+
+def test_grade_lists_and_timetables_are_not_assessment_papers() -> None:
+    """`excluded_by`: a pauta do «Teste 1» não é o enunciado do teste."""
+    classifier = _custom([("m2", "Matemática II", None)])
+    base = "UC/2020_2021/2º Semestre/Matemática II"
+    for name in ("Classificações Teste 1.pdf", "resultados QA1 a QA3.pdf",
+                 "Horario_atend_exames.pdf"):
+        out = classifier.classify(_doc(f"{base}/{name}"), None,
+                                  ["Matemática II - Teste 1\nNome   Classificação"], None, [])
+        assert out.classification.value("document_type") == "informacoes", name
+    exam = classifier.classify(_doc(f"{base}/Teste 1.pdf"), None,
+                               ["Matemática II\nTeste 1\nDuração: 2 horas"], None, [])
+    assert exam.classification.value("document_type") == "enunciados-avaliacao"
+    quiz = classifier.classify(_doc(f"{base}/QA3_Mat II.pdf"), None,
+                               ["Matemática II\nQuestão de aula 3"], None, [])
+    assert quiz.classification.value("assessment_type") == "mini-teste"
+    assert quiz.classification.value("assessment_number") == 3
+
+
+def test_short_acronyms_are_not_respelled() -> None:
+    """A unificação das grafias (acção/ação) não toca nas siglas: "TPC" não é "TC"."""
+    from nexus.domain.text import normalize
+
+    assert normalize("Resolução TPC1") == "resolucao tpc 1"
+    assert normalize("Direcção do projecto") == "direcao do projeto"
+    classifier = _custom([("m2", "Matemática II", None)])
+    out = classifier.classify(_doc("UC/2019_2020/2º Semestre/Matemática II/Resolução TPC1.pdf"),
+                              None, ["Resolução do TPC1"], None, [])
+    assert out.classification.value("document_type") == "resolucoes-exercicios"

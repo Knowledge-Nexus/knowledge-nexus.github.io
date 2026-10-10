@@ -59,7 +59,9 @@ from nexus.pipeline.classify.years import score_dates, score_years
 #    pasta da cadeira tem de conter o nome dela ("Programação" não é "Programação Orientada a
 #    Objectos").
 # 9: uma cadeira rival que só aparece no texto pesa metade contra a do nome ou da pasta.
-CLASSIFIER_VERSION = 9
+# 10: siglas curtas fora da unificação de grafias ("TPC" ≠ "TC"); `excluded_by` nos tipos
+#     (pautas e horários deixam de ser enunciados de avaliação); "QA3" é o mini-teste 3.
+CLASSIFIER_VERSION = 10
 # Palavras do início da página 1 que contam como título para decidir o papel.
 ROLE_TITLE_WORDS = 40
 
@@ -75,7 +77,8 @@ ASSESSMENT_BOOST = 0.5
 CODE_PROJECT_BOOST = 1.5
 FORMAT_BOOST = 1.5
 _NUMBER_RE = re.compile(
-    r"\b(?:mini teste|miniteste|teste|frequencia|exame|trabalho|projeto|ficha|tp)"
+    r"\b(?:mini teste|miniteste|teste|frequencia|exame|trabalho|projeto|ficha|tp|qa"
+    r"|questao de aula|questao aula)"
     r" (?:n )?(\d{1,2})\b|\b(\d{1,2}) [oa] (?:mini teste|teste|frequencia|trabalho)\b"
 )
 _ORDINALS = {"primeir": 1, "segund": 2, "terceir": 3, "quart": 4, "quint": 5}
@@ -384,8 +387,13 @@ class Classifier:
             r[0].score for r in (score_terms(self.assessment_types, signals),
                                  score_terms(self.seasons, signals)) if r
         )
+        names_only = [s for s in signals if s.source == "filename"]
         family_candidates: list[Candidate] = []
         for key, members in families.items():
+            # "Classificações Teste 1.pdf" é uma pauta, não o enunciado do teste.
+            if any(contains_phrase(s.norm, word) for m in members for word in m.excluded
+                   for s in names_only):
+                continue
             candidate = score_term(members[0], signals, value=key)
             if any(m.term.is_assessment for m in members) and assessment_signal > 0:
                 candidate.add(min(assessment_signal, 4.0) * ASSESSMENT_BOOST,
