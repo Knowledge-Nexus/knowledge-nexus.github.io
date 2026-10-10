@@ -23,7 +23,12 @@ from nexus.domain.documents import (
     Reason,
 )
 from nexus.domain.extraction import ExtractionMeta
-from nexus.domain.text import contains_phrase, fix_spacing_accents, normalize
+from nexus.domain.text import (
+    contains_phrase,
+    contains_unit_phrase,
+    fix_spacing_accents,
+    normalize,
+)
 from nexus.domain.users import User
 from nexus.domain.vocab import ROLE_SOLUTION, ROLE_STATEMENT, Term, Vocabularies
 from nexus.pipeline import layout
@@ -85,8 +90,11 @@ def material_folder(vocab: Vocabularies) -> Callable[[str], bool]:
     """Uma pasta é de tipo de material quando o nome corresponde a um tipo de documento do
     vocabulário ("Material Prático", "Teóricas", "Testes"…)."""
     terms = compile_terms(vocab.document_types)
+    neutral = {normalize(n) for n in vocab.neutral_folders}
 
     def check(name: str) -> bool:
+        if normalize(name) in neutral:
+            return True
         signal = _signal("path", name, 1.0)
         return signal is not None and bool(score_terms(terms, [signal]))
     return check
@@ -143,7 +151,9 @@ class Classifier:
             value: FieldValue | None = getattr(fixed, name) if fixed is not None else None
             return value if value is not None and value.method != "heuristic" else None
 
-        result.unit = kept("unit") or self._unit(signals, owner)
+        folders = [parsed.unit for s in doc.sources
+                   if (parsed := layout.parse(layout.full_path(s.batch, s.path)))]
+        result.unit = kept("unit") or self._unit(signals, owner, folders)
         role_field, solution_score = self._role(signals, self._unit_names(result.unit))
         if kept("role") is not None:
             role_field = kept("role")
@@ -201,22 +211,36 @@ class Classifier:
         return Outcome(result, weak, found)
 
     def weak_fields(self, result: Classification, type_term: Term | None) -> list[str]:
+        threshold = self.settings.auto_file_threshold
+
+        def weak(name: str) -> bool:
+            value: FieldValue | None = getattr(result, name)
+            return value is None or value.value is None or (
+                not value.is_user and value.confidence < threshold)
+
         required = list(self.settings.required_fields)
+        if self.type_to_confirm(result):
+            # Arrumado na cadeira certa com o tipo por confirmar: o tipo (e o que só se exige
+            # às avaliações) não prende o documento em "A rever".
+            return [name for name in required if name != "document_type" and weak(name)]
         if type_term is not None and type_term.is_assessment:
             required += [f for f in self.settings.required_for_assessments if f not in required]
+        return [name for name in required if weak(name)]
+
+    def type_to_confirm(self, result: Classification) -> bool:
+        """Opção `file_uncertain_type`: a cadeira é certa e só o tipo está em dúvida."""
         threshold = self.settings.auto_file_threshold
-        weak: list[str] = []
-        for name in required:
-            value: FieldValue | None = getattr(result, name)
-            if value is None or value.value is None or (
-                not value.is_user and value.confidence < threshold
-            ):
-                weak.append(name)
-        return weak
+        unit, doc_type = result.unit, result.document_type
+        return (self.settings.file_uncertain_type
+                and unit is not None and unit.value is not None
+                and (unit.is_user or unit.confidence >= threshold)
+                and doc_type is not None and doc_type.value is not None
+                and not doc_type.is_user and doc_type.confidence < threshold)
 
     # --- campos ---------------------------------------------------------------------
 
-    def _unit(self, signals: list[Signal], owner: User | None) -> FieldValue | None:
+    def _unit(self, signals: list[Signal], owner: User | None,
+              folders: list[str] | None = None) -> FieldValue | None:
         prior = self.settings.prior
         boost = self.settings.enrollment_boost
         enrolled: set[str] = set()
@@ -239,7 +263,24 @@ class Classifier:
         if sources <= {"body"} and result.confidence > BODY_ONLY_MAX:
             result.confidence = BODY_ONLY_MAX
             result.reasons = [*result.reasons, Reason(code="unit.body_only")]
+        # A pasta da cadeira (organização da origem) diz outra: não se arruma sozinho
+        # ("AP" no nome do ficheiro era "avaliação periódica", não "Administração Pública").
+        if folders and result.confidence > BODY_ONLY_MAX \
+                and not self._matches_folder(str(result.value), folders):
+            result.confidence = BODY_ONLY_MAX
+            result.reasons = [*result.reasons, Reason(code="unit.other_folder",
+                                                      params={"folder": folders[0]})]
         return result
+
+    def _matches_folder(self, key: str, folders: list[str]) -> bool:
+        unit = self.catalog.units.get(key)
+        if unit is None:
+            return False
+        names = [normalize(n) for n in (unit.name, unit.acronym or "", unit.code or "",
+                                        *unit.aliases) if n]
+        return any(n and (contains_unit_phrase(normalize(f), n)
+                          or contains_unit_phrase(n, normalize(f)))
+                   for f in folders for n in names)
 
     def _unit_names(self, unit: FieldValue | None) -> list[str]:
         found = self.catalog.units.get(str(unit.value)) if unit and unit.value else None

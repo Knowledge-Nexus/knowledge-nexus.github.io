@@ -91,6 +91,7 @@ from nexus.storage.r2 import open_blob_store
 log = logging.getLogger("nexus.pipeline")
 
 EXTRACTION_FAILED = "review.extraction_failed"
+TYPE_TO_CONFIRM = "type.to_confirm"
 MAX_EVIDENCE = 10
 
 
@@ -844,6 +845,8 @@ class Pipeline:
         elif not doc.reached(Status.CLASSIFIED) and not reasons:
             return self._save(doc, original)
 
+        self._mark_type_to_confirm(doc, classifier.type_to_confirm(doc.classification)
+                                   and not reasons)
         if reasons:
             if doc.review is None or doc.review.status != "open":
                 doc.review = Review(status="open", reasons=reasons, opened_at=self.now)
@@ -875,6 +878,19 @@ class Pipeline:
                                 for f in required):
                 doc.advance(Status.REVIEWED, self.now)
         return self._save(doc, original)
+
+    @staticmethod
+    def _mark_type_to_confirm(doc: Document, unconfirmed: bool) -> None:
+        """Arrumado com o tipo em dúvida (`file_uncertain_type`): a razão `type.to_confirm`
+        mostra-o na biblioteca, para o dono confirmar ou arrastar para outro tipo."""
+        field = doc.classification.document_type
+        if field is None or field.method != METHOD_HEURISTIC:
+            return
+        has = any(r.code == TYPE_TO_CONFIRM for r in field.reasons)
+        if unconfirmed and not has:
+            field.reasons = [*field.reasons, Reason(code=TYPE_TO_CONFIRM)]
+        elif has and not unconfirmed:
+            field.reasons = [r for r in field.reasons if r.code != TYPE_TO_CONFIRM]
 
     def _open_unit_proposals(self, doc: Document) -> list[str]:
         return sorted(

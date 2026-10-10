@@ -196,7 +196,13 @@
     "make_public": "Tornar públicos",
     "make_private": "Tornar privados",
     "clear_selection": "Limpar selecção",
-    "documents_units": "{{count}} cadeira(s)"
+    "documents_units": "{{count}} cadeira(s)",
+    "type_to_confirm": "tipo por confirmar",
+    "type_to_confirm_hint": "Está na cadeira certa, mas o tipo foi a melhor hipótese. Se estiver errado, arrasta-o para o cartão do tipo certo.",
+    "only_to_confirm": "Só os com tipo por confirmar ({{count}})",
+    "confirm_types": "Confirmar o tipo ({{count}})",
+    "types_confirmed_one": "Tipo confirmado em {{count}} documento.",
+    "types_confirmed_other": "Tipo confirmado em {{count}} documentos."
   },
   "document": {
     "not_found": "Documento não encontrado.",

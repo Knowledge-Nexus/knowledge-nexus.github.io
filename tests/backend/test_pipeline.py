@@ -704,3 +704,29 @@ def test_stale_junk_proposals_are_rejected(catalog_root: Path) -> None:
     status = {p.id: p.status for p in DataRepo(catalog_root).proposals.values()}
     assert status == {"unit-barbara": "rejected", "unit-uc": "rejected",
                       "unit-lei": "rejected", "unit-alga3": "rejected", "unit-ok": "open"}
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_uncertain_type_is_filed_when_the_owner_chooses(catalog_root: Path, enabled: bool) -> None:
+    """Com a cadeira certa e o tipo em dúvida: por defeito vai para «A rever»; com
+    `file_uncertain_type`, fica arrumado e marcado «tipo por confirmar»."""
+    if enabled:
+        nexus_yaml = catalog_root / "nexus.yaml"
+        nexus_yaml.write_text(nexus_yaml.read_text()
+                              + "\nclassification:\n  file_uncertain_type: true\n")
+    base = "UFE/2020_2021/1º Semestre/Álgebra Linear e Geometria Analítica"
+    deposit(catalog_root, f"{base}/notas_soltas.txt").write_text(
+        "Matrizes e sistemas de equações lineares.\n")
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    assert doc["classification"]["unit"]["value"] == "ufe/alga"
+    codes = [r["code"] for r in doc["classification"]["document_type"]["reasons"]]
+    if enabled:
+        assert doc.get("filed_name") and doc["status"] == "filed", doc.get("review")
+        assert "type.to_confirm" in codes
+    else:
+        assert doc["review"]["status"] == "open"
+        assert "type.to_confirm" not in codes
+    again = docs(catalog_root)
+    run(catalog_root)
+    assert docs(catalog_root) == again, "idempotente"

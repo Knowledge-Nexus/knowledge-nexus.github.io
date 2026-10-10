@@ -57,6 +57,8 @@ class Vocabularies(Record):
     # Termos genéricos do ensino ("unidade curricular", "ficha de trabalho"…): nunca são o
     # nome de uma cadeira, curso ou instituição, por isso não geram propostas.
     generic_terms: list[str] = Field(default_factory=list)
+    # Pastas que só arrumam ("Geral", "Materiais diversos"…): não juntam ficheiros num conjunto.
+    neutral_folders: list[str] = Field(default_factory=list)
 
     def terms(self, kind: VocabKind, institution: str | None = None) -> list[Term]:
         return [

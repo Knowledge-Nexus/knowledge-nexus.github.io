@@ -332,3 +332,14 @@ def test_sequels_only_from_folders_or_roman_numerals() -> None:
     assert not any(c.name.startswith("Teoria da Computação I") for c in chapter)
     sequel = detect(["Sebenta"], catalog, paths=["UC/Sebenta_TC_II_2526.pdf"])
     assert any(c.name == "Teoria da Computação II" for c in sequel)
+
+
+def test_folder_naming_another_unit_blocks_auto_filing() -> None:
+    """A pasta da cadeira diz «Programação»: "AP" no nome do ficheiro (avaliação periódica)
+    não chega para arrumar em «Administração Pública»."""
+    classifier = _custom([("ap", "Administração Pública", "AP")])
+    doc = _doc("UC/2019_2020/1º Semestre/Programação/Material de Avaliação/LEI_Prog_AP1_Pauta.pdf")
+    out = classifier.classify(doc, None, ["Pauta"], None, [])
+    unit = out.classification.unit
+    assert unit is not None and unit.confidence < 0.7
+    assert any(r.code == "unit.other_folder" for r in unit.reasons)

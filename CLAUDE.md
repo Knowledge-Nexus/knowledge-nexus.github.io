@@ -75,6 +75,8 @@ Detalhes: `docs/arquitectura.md`, `docs/repo-dados.md`, `docs/modelo-dados.md`,
    marcados, nunca descartados.
 6. **Nunca arrumar à sorte.** Com confiança abaixo do limiar, o documento vai para
    "A rever", com justificação (códigos i18n) e alternativas.
+   Única excepção, se o dono a escolher (`file_uncertain_type`): com a cadeira certa, o tipo
+   em dúvida não prende o documento, que fica marcado «tipo por confirmar».
 7. **O pipeline nunca sobrepõe campos definidos pelo utilizador** (`method: user`) nem
    pela IA (`ai:*`).
 8. **Tudo o que a IA gera fica marcado** (`ai:<agente>`) e liga à fonte (sha256 + página).
@@ -251,6 +253,14 @@ Dependências de sistema (Ubuntu/WSL2):
   - Tipo: `producers` nos termos (programa que criou o PDF: PowerPoint → slides), sem sinal
     de enunciado/resolução o tipo não é penalizado, e `type_prior` (0.4) só para o tipo; a
     cadeira continua com `prior` (0.6).
+  - A pasta da cadeira (organização da origem) que nomeia outra cadeira impede arrumar
+    sozinho (razão `unit.other_folder`).
+  - Opção do dono `classification.file_uncertain_type` (no `nexus.yaml`): com a cadeira certa,
+    arruma com o tipo em dúvida (no mais provável, ou "Outros") e marca `type.to_confirm`;
+    na biblioteca aparece «tipo por confirmar», com filtro e «Confirmar o tipo» (grava o tipo
+    actual como `user`). Por defeito, desligada (regra 6).
+  - Pastas de arrumação sem significado (`neutral_folders` no vocabulário: "Geral",
+    "Materiais diversos"…) contam como pastas de material: não juntam ficheiros num conjunto.
   - Medir antes de mudar: avaliar contra os campos `method: user` e contra as pastas da
     origem (cadeira) num repositório real; zero erros com certeza alta.
 - **Propostas de catálogo** (`classify/proposals.py`): `acceptable()` recusa termos genéricos

@@ -8,6 +8,9 @@ classification:
   # A mesma constante, só para o tipo de documento: com 0.4, uma palavra-chave forte no nome
   # do ficheiro (ex.: "Ficha 5", "FT 2", "QA1") chega para o tipo. A cadeira fica com 0.6.
   type_prior: 0.4
+  # true: com a cadeira certa, arruma mesmo com o tipo em dúvida (fica "tipo por confirmar"
+  # na biblioteca, e corrige-se arrastando para outro tipo). false: vai para "A rever".
+  file_uncertain_type: false
   # Peso de cada fonte de sinais.
   source_weights:
     filename: 1.0

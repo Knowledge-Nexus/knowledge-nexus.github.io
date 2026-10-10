@@ -49,6 +49,9 @@ class ClassificationSettings(_Section):
     # Constante só para o tipo de documento (None: a mesma `prior`). O tipo pode ser menos
     # exigente do que a cadeira: um tipo trocado corrige-se arrastando na biblioteca.
     type_prior: float | None = None
+    # Com a cadeira certa, arruma mesmo com o tipo em dúvida (no tipo mais provável, ou em
+    # "Outros"), marcado "tipo por confirmar". Escolha do dono: por defeito, vai para "A rever".
+    file_uncertain_type: bool = False
     source_weights: SourceWeights = Field(default_factory=SourceWeights)
     enrollment_boost: float = 1.25
     academic_year_start_month: int = 9

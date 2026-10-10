@@ -35,6 +35,13 @@ import { UnitEditor } from "./UnitEditor";
 
 const DOC_DRAG = "application/x-nexus-docs";
 
+/** Arrumado na cadeira certa com o tipo em dúvida (o motor marca-o com `type.to_confirm`). */
+export function typeToConfirm(doc: DocumentRow): boolean {
+  return (
+    doc.classification.document_type?.reasons?.some((r) => r.code === "type.to_confirm") ?? false
+  );
+}
+
 export function DocumentLink(props: {
   doc: DocumentRow;
   showUnit?: boolean;
@@ -80,6 +87,11 @@ export function DocumentLink(props: {
         <span className="flex shrink-0 gap-1">
           {!readOnly && <PublicBadge value={doc.visibility} />}
           {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
+          {!readOnly && !doc.needs_review && typeToConfirm(doc) && (
+            <span title={t("library.type_to_confirm_hint")}>
+              <Badge tone="info">{t("library.type_to_confirm")}</Badge>
+            </span>
+          )}
         </span>
       </Link>
     </div>
@@ -215,14 +227,17 @@ function UnitDetail(props: { unitKey: string }) {
   const [dropType, setDropType] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const year = params.get("ano") ?? "";
+  const onlyToConfirm = params.get("confirmar") === "1";
   if (!meta) return null;
   const unit = labels.units.find((u) => u.key === props.unitKey);
-  const docs = meta.documents({
+  const allDocs = meta.documents({
     owner: login,
     unit: props.unitKey,
     filedOnly: true,
     academicYear: year || undefined,
   });
+  const toConfirm = allDocs.filter(typeToConfirm).length;
+  const docs = onlyToConfirm ? allDocs.filter(typeToConfirm) : allDocs;
   const byType = new Map<string, DocumentRow[]>();
   for (const doc of docs) {
     const key = doc.document_type ?? "outros";
@@ -277,9 +292,13 @@ function UnitDetail(props: { unitKey: string }) {
     }
   }
 
-  /** Arrastar documentos para outro cartão muda o tipo (fica definido por ti). */
-  async function changeType(ids: string[], type: string) {
-    const list = docs.filter((d) => ids.includes(d.id) && d.document_type !== type);
+  /** Grava o tipo de cada documento como escolha tua (`method: user`). */
+  async function writeTypes(
+    list: DocumentRow[],
+    typeOf: (doc: DocumentRow) => string,
+    message: string,
+    done: string,
+  ) {
     if (list.length === 0) return;
     setError(null);
     setBusy(t("common.saving"));
@@ -290,7 +309,7 @@ function UnitDetail(props: { unitKey: string }) {
           patch: (record) => {
             const classification = (record.classification as Record<string, unknown>) ?? {};
             classification.document_type = {
-              value: type,
+              value: typeOf(d),
               confidence: 1,
               method: "user",
               reasons: [{ code: "user.set", params: { login } }],
@@ -298,16 +317,38 @@ function UnitDetail(props: { unitKey: string }) {
             record.classification = classification;
           },
         })),
-        `tipo: ${list.length} documento(s) → ${type}`,
+        message,
       );
       notifyCommit();
       setSelected(new Set());
-      setNotice(t("library.type_changed", { type: labels.term("document_types", type) }));
+      setNotice(done);
     } catch (err) {
       setError(err);
     } finally {
       setBusy(null);
     }
+  }
+
+  /** Arrastar documentos para outro cartão muda o tipo (fica definido por ti). */
+  function changeType(ids: string[], type: string) {
+    const list = docs.filter((d) => ids.includes(d.id) && d.document_type !== type);
+    return writeTypes(
+      list,
+      () => type,
+      `tipo: ${list.length} documento(s) → ${type}`,
+      t("library.type_changed", { type: labels.term("document_types", type) }),
+    );
+  }
+
+  /** O tipo proposto estava certo: fica confirmado (deixa de estar "por confirmar"). */
+  function confirmTypes(list: DocumentRow[]) {
+    const pending = list.filter((d) => typeToConfirm(d) && d.document_type);
+    return writeTypes(
+      pending,
+      (d) => d.document_type ?? "outros",
+      `tipo confirmado: ${pending.length} documento(s)`,
+      t("library.types_confirmed", { count: pending.length }),
+    );
   }
 
   function dropOnType(event: DragEvent, type: string) {
@@ -391,6 +432,22 @@ function UnitDetail(props: { unitKey: string }) {
                 <option key={y}>{y}</option>
               ))}
             </select>
+            {!readOnly && (toConfirm > 0 || onlyToConfirm) && (
+              <label className="flex items-center gap-2 rounded-full border border-line-strong bg-sheet px-3 py-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--color-pen)]"
+                  checked={onlyToConfirm}
+                  onChange={(e) => {
+                    const next = new URLSearchParams(params);
+                    if (e.target.checked) next.set("confirmar", "1");
+                    else next.delete("confirmar");
+                    setParams(next);
+                  }}
+                />
+                {t("library.only_to_confirm", { count: toConfirm })}
+              </label>
+            )}
             {docs.length > 0 && (
               <Button
                 variant="secondary"
@@ -513,6 +570,13 @@ function UnitDetail(props: { unitKey: string }) {
                 </Button>
                 {!readOnly && (
                   <>
+                    {chosen.some(typeToConfirm) && (
+                      <Button variant="secondary" onClick={() => void confirmTypes(chosen)}>
+                        {t("library.confirm_types", {
+                          count: chosen.filter(typeToConfirm).length,
+                        })}
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       onClick={() => void setVisibility(chosen, "public")}

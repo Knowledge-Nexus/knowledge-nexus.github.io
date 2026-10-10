@@ -26,6 +26,12 @@ generic_terms: [unidade curricular, unidades curriculares, disciplina, cadeira, 
                 plano de estudos, ano lectivo, semestre, licenciatura, mestrado, doutoramento,
                 aula teórica, aula prática, sumários, exame final, frequência, mini-teste]
 
+# Pastas de arrumação que não dizem nada sobre o tipo (exportações do Moodle, do Inforestudante…):
+# como as pastas de material, não juntam os ficheiros num conjunto.
+neutral_folders: [geral, materiais sem tipo de material definido, outros, outros materiais,
+                  diversos, materiais diversos, documentos, ficheiros, material, materiais,
+                  recursos, conteúdos]
+
 document_types:
   - slug: slides
     labels: { pt-PT: "Teóricas / slides", en: "Lectures / slides" }
@@ -68,7 +74,7 @@ document_types:
                mini-testes, miniteste, prova, provas, época, exam, test, quiz, midterm,
                duração, cotação, cotações, número de estudante, número de aluno,
                sem consulta, com consulta, questões de aula, questão de aula, prova escrita,
-               prova oral]
+               prova oral, material de avaliação]
     # "fre1", "freq", "resfreq" nos nomes dos ficheiros.
     patterns: &assessment_patterns ['(\b|(?<=res))freq?\b']
   - slug: resolucoes-avaliacao
