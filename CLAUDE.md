@@ -177,9 +177,13 @@ Dependências de sistema (Ubuntu/WSL2):
     Coimbra, `course_colors` em `data/reference/pt.json`, `lib/courseColors.ts`), com tons
     diferentes para cursos da mesma cor; as cadeiras mantêm a cor estável pelo nome. A
     biblioteca (e a pública) usa a largura toda do ecrã (`Main` em `components/Layout.tsx`).
-  - Dentro de uma cadeira, cada cartão de tipo separa os anos lectivos (o mais recente
-    primeiro) quando a cadeira tem mais de um, e ordena pela ordem natural: provas pela data e
-    pelo número, o resto pelo título ("FT 2" antes de "FT 10"; `lib/docOrder.ts`).
+  - Página da cadeira (`UnitDetail` em `LibraryPage.tsx`): cabeçalho (nome, cursos, «Editar
+    cadeira» e «Descarregar tudo»; a visibilidade numa faixa em baixo), barra de filtros, e
+    depois a lista dos tipos à esquerda (fixa ao deslocar; leva ao cartão e aceita documentos
+    largados) e os cartões de tipo numa só coluna, com os documentos em grelha. Cada cartão
+    separa os anos lectivos (o mais recente primeiro) quando a cadeira tem mais de um, e
+    ordena pela ordem natural: provas pela data e pelo número, o resto pelo título ("FT 2"
+    antes de "FT 10"; `lib/docOrder.ts`).
   - Depositar (`features/upload/UploadPage.tsx`): as cópias (mesmo SHA-256, qualquer nome)
     são detectadas logo ao escolher os ficheiros, repetidas na selecção ou já na biblioteca
     do utilizador (`ownedSha`), e não são enviadas (opção "Enviar também as cópias" envia só

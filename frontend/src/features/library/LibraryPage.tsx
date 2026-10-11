@@ -222,6 +222,8 @@ function UnitDetail(props: { unitKey: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [dropType, setDropType] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [editing, setEditing] = useState(false);
+  const [unitSaved, setUnitSaved] = useState(false);
   const year = params.get("ano") ?? "";
   const onlyToConfirm = params.get("confirmar") === "1";
   if (!meta) return null;
@@ -383,192 +385,265 @@ function UnitDetail(props: { unitKey: string }) {
     }
   }
 
+  const types = [...byType.entries()].sort(
+    ([a], [b]) => typeOrder.indexOf(a) - typeOrder.indexOf(b),
+  );
+  // Largar um documento num tipo (no cartão ou na lista de tipos) muda-lhe o tipo.
+  const dropZone = (type: string) => ({
+    onDragOver: (e: DragEvent) => {
+      if (readOnly || !e.dataTransfer.types.includes(DOC_DRAG)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDropType(type);
+    },
+    onDragLeave: () => setDropType((h) => (h === type ? null : h)),
+    onDrop: (e: DragEvent) => dropOnType(e, type),
+  });
+  const goTo = (type: string) =>
+    document.getElementById(`tipo-${type}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-5 pb-20">
       <Link to={to("/biblioteca")} className="text-sm text-pen hover:underline">
         ← {t("library.back")}
       </Link>
-      <div className="flex overflow-hidden rounded-2xl border border-line bg-sheet">
-        <span className="w-4 shrink-0" style={{ backgroundColor: color }} />
-        <div className="flex flex-1 flex-wrap items-end justify-between gap-4 px-6 py-5">
-          <div>
-            <p className="text-xs font-semibold tracking-wider uppercase" style={{ color }}>
-              {unit?.acronym ?? unit?.code ?? ""}
-            </p>
-            <h1 className="font-serif text-3xl font-semibold text-ink">
-              {unit?.name ?? props.unitKey}
-            </h1>
-            {unit?.lecturers.length ? (
-              <p className="mt-1 text-sm text-muted">{unit.lecturers.join(", ")}</p>
-            ) : null}
-            {unit && (
-              <div className="mt-3">
-                <UnitCourses key={props.unitKey} unit={unit} />
-              </div>
-            )}
-            {unit && (
-              <div className="mt-3">
-                <UnitEditor key={props.unitKey} unit={unit} />
-              </div>
-            )}
-            <div className="mt-4">
-              <UnitVisibility key={props.unitKey} unitKey={props.unitKey} />
+
+      <header className="flex overflow-hidden rounded-2xl border border-line bg-sheet">
+        <span className="w-2 shrink-0" style={{ backgroundColor: color }} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-4 px-6 pt-5 pb-4">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-semibold tracking-wider uppercase" style={{ color }}>
+                {unit?.acronym ?? unit?.code ?? ""}
+              </p>
+              <h1 className="font-serif text-3xl font-semibold text-ink">
+                {unit?.name ?? props.unitKey}
+              </h1>
+              {unit?.lecturers.length ? (
+                <p className="text-sm text-muted">{unit.lecturers.join(", ")}</p>
+              ) : null}
+              {unit && (
+                <div className="pt-2">
+                  <UnitCourses key={props.unitKey} unit={unit} />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {unitSaved && <span className="text-sm text-sage">✓ {t("common.pending_sync")}</span>}
+              {!readOnly && unit && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEditing((v) => !v);
+                    setUnitSaved(false);
+                  }}
+                >
+                  {t("unit_edit.open")}
+                </Button>
+              )}
+              {docs.length > 0 && (
+                <Button
+                  variant="secondary"
+                  disabled={busy !== null}
+                  onClick={() => void download(docs, unitName)}
+                >
+                  <IconDownload size={16} /> {t("library.download_all", { count: docs.length })}
+                </Button>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label={t("library.all_years")}
-              className="rounded-full border border-line-strong bg-sheet px-3 py-1.5 text-sm"
-              value={year}
+          {editing && unit && (
+            <div className="border-t border-line px-6 py-4">
+              <UnitEditor
+                key={props.unitKey}
+                unit={unit}
+                onClose={() => setEditing(false)}
+                onSaved={() => {
+                  setEditing(false);
+                  setUnitSaved(true);
+                }}
+              />
+            </div>
+          )}
+          {!readOnly && (
+            <div className="border-t border-line bg-paper/60 px-6 py-3">
+              <UnitVisibility key={props.unitKey} unitKey={props.unitKey} />
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label={t("library.all_years")}
+          className="rounded-full border border-line-strong bg-sheet px-3 py-1.5 text-sm"
+          value={year}
+          onChange={(e) => {
+            const next = new URLSearchParams(params);
+            if (e.target.value) next.set("ano", e.target.value);
+            else next.delete("ano");
+            setParams(next);
+          }}
+        >
+          <option value="">{t("library.all_years")}</option>
+          {meta.academicYears().map((y) => (
+            <option key={y}>{y}</option>
+          ))}
+        </select>
+        {!readOnly && (toConfirm > 0 || onlyToConfirm) && (
+          <label className="flex items-center gap-2 rounded-full border border-line-strong bg-sheet px-3 py-1.5 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-pen)]"
+              checked={onlyToConfirm}
               onChange={(e) => {
                 const next = new URLSearchParams(params);
-                if (e.target.value) next.set("ano", e.target.value);
-                else next.delete("ano");
+                if (e.target.checked) next.set("confirmar", "1");
+                else next.delete("confirmar");
                 setParams(next);
               }}
-            >
-              <option value="">{t("library.all_years")}</option>
-              {meta.academicYears().map((y) => (
-                <option key={y}>{y}</option>
-              ))}
-            </select>
-            {!readOnly && (toConfirm > 0 || onlyToConfirm) && (
-              <label className="flex items-center gap-2 rounded-full border border-line-strong bg-sheet px-3 py-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-[var(--color-pen)]"
-                  checked={onlyToConfirm}
-                  onChange={(e) => {
-                    const next = new URLSearchParams(params);
-                    if (e.target.checked) next.set("confirmar", "1");
-                    else next.delete("confirmar");
-                    setParams(next);
-                  }}
-                />
-                {t("library.only_to_confirm", { count: toConfirm })}
-              </label>
-            )}
-            {docs.length > 0 && (
-              <Button
-                variant="secondary"
-                disabled={busy !== null}
-                onClick={() => void download(docs, unitName)}
-              >
-                <IconDownload size={16} /> {t("library.download_all", { count: docs.length })}
-              </Button>
-            )}
-          </div>
-        </div>
+            />
+            {t("library.only_to_confirm", { count: toConfirm })}
+          </label>
+        )}
+        {!readOnly && types.length > 1 && (
+          <p className="text-xs text-muted sm:ml-auto">{t("library.drag_type_hint")}</p>
+        )}
       </div>
+
       {error ? <ErrorBox error={error} /> : null}
       {notice && <Notice>{notice}</Notice>}
       {docs.length === 0 && <Empty>{t("library.empty")}</Empty>}
-      {!readOnly && byType.size > 1 && (
-        <p className="-mb-2 text-xs text-muted">{t("library.drag_type_hint")}</p>
-      )}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,28rem),1fr))] gap-4">
-        {[...byType.entries()]
-          .sort(([a], [b]) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
-          .map(([type, list]) => {
-            const years = groupByYear(list, titleOf);
-            const sorted = years.flatMap((g) => g.docs);
-            const ids = sorted.map((d) => d.id);
-            const all = ids.every((id) => selected.has(id));
-            const label = labels.term("document_types", type);
-            return (
-              // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
-              <div
-                key={type}
-                role="group"
-                aria-label={label}
-                onDragOver={(e) => {
-                  if (readOnly || !e.dataTransfer.types.includes(DOC_DRAG)) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setDropType(type);
-                }}
-                onDragLeave={() => setDropType((h) => (h === type ? null : h))}
-                onDrop={(e) => dropOnType(e, type)}
-                className={`rounded-2xl transition ${dropType === type ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
-              >
-                <Card
-                  title={
-                    <span className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-[var(--color-pen)]"
-                        checked={all}
-                        onChange={() => select(ids, !all)}
-                        aria-label={t("library.select_type", { type: label })}
-                      />
-                      {label}
-                      <span className="font-sans text-xs font-normal text-muted">
-                        {list.length}
-                      </span>
+
+      {types.length > 0 && (
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <nav aria-label={t("library.types_nav")} className="min-w-0 lg:sticky lg:top-4">
+            <p className="mb-2 hidden text-xs font-semibold tracking-wider text-muted uppercase lg:block">
+              {t("library.types_nav")}
+            </p>
+            <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+              {types.map(([type, list]) => (
+                <li key={type} className="shrink-0">
+                  <button
+                    type="button"
+                    {...dropZone(type)}
+                    onClick={() => goTo(type)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left text-sm whitespace-nowrap transition hover:border-line-strong hover:bg-sheet ${dropType === type ? "border-gold bg-marker-soft" : "border-transparent"}`}
+                  >
+                    <span className="truncate text-ink" title={labels.term("document_types", type)}>
+                      {labels.term("document_types", type)}
                     </span>
-                  }
-                  actions={
-                    <button
-                      type="button"
-                      className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
-                      title={t("library.download_type", { type: label })}
-                      aria-label={t("library.download_type", { type: label })}
-                      disabled={busy !== null}
-                      onClick={() => void download(sorted, `${unitName} - ${label}`)}
-                    >
-                      <IconDownload size={16} />
-                    </button>
-                  }
+                    <span className="rounded-full bg-paper px-2 text-xs text-muted">
+                      {list.length}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="space-y-6">
+            {types.map(([type, list]) => {
+              const years = groupByYear(list, titleOf);
+              const sorted = years.flatMap((g) => g.docs);
+              const ids = sorted.map((d) => d.id);
+              const all = ids.every((id) => selected.has(id));
+              const label = labels.term("document_types", type);
+              return (
+                // biome-ignore lint/a11y/useSemanticElements: zona de largar, não um formulário
+                <div
+                  key={type}
+                  id={`tipo-${type}`}
+                  role="group"
+                  aria-label={label}
+                  {...dropZone(type)}
+                  className={`scroll-mt-4 rounded-2xl transition ${dropType === type ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
                 >
-                  {!readOnly && (
-                    <div className="-mt-2 mb-2 flex items-center gap-2 text-xs text-muted">
-                      <span>{t("visibility.type_row")}</span>
-                      <TypeVisibility unitKey={props.unitKey} documentType={type} />
-                    </div>
-                  )}
-                  {years.map((group) => (
-                    <div key={group.year ?? "sem-ano"}>
-                      {manyYears && (
-                        <h3 className="mt-3 border-b border-line pb-1 text-xs font-semibold tracking-wider text-muted uppercase first:mt-0">
-                          {group.year
-                            ? t("library.academic_year", { year: yearLabel(group.year) })
-                            : t("library.no_academic_year")}
-                        </h3>
-                      )}
-                      <div className="divide-y divide-line">
-                        {bundleEntries(group.docs).map(({ doc, members }) => {
-                          const ids = [doc.id, ...members.map((m) => m.id)];
-                          return (
-                            // biome-ignore lint/a11y/noStaticElementInteractions: o documento arrasta-se para outro tipo
-                            <div
-                              key={doc.id}
-                              draggable={!readOnly}
-                              onDragStart={(e) => {
-                                const moving = ids.some((id) => selected.has(id))
-                                  ? [...new Set([...selected, ...ids])]
-                                  : ids;
-                                e.dataTransfer.setData(DOC_DRAG, JSON.stringify(moving));
-                                e.dataTransfer.effectAllowed = "all";
-                              }}
-                            >
-                              <DocumentLink
-                                doc={doc}
-                                groupedByType
-                                selected={ids.every((id) => selected.has(id))}
-                                onSelect={(on) => select(ids, on)}
-                              />
-                              <BundleMembers lead={doc} members={members} />
-                            </div>
-                          );
-                        })}
+                  <Card
+                    title={
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-[var(--color-pen)]"
+                          checked={all}
+                          onChange={() => select(ids, !all)}
+                          aria-label={t("library.select_type", { type: label })}
+                        />
+                        {label}
+                        <span className="font-sans text-xs font-normal text-muted">
+                          {list.length}
+                        </span>
+                      </span>
+                    }
+                    actions={
+                      <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted">
+                        {!readOnly && (
+                          <>
+                            <span className="hidden sm:inline">{t("visibility.type_row")}</span>
+                            <TypeVisibility unitKey={props.unitKey} documentType={type} />
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
+                          title={t("library.download_type", { type: label })}
+                          aria-label={t("library.download_type", { type: label })}
+                          disabled={busy !== null}
+                          onClick={() => void download(sorted, `${unitName} - ${label}`)}
+                        >
+                          <IconDownload size={16} />
+                        </button>
                       </div>
+                    }
+                  >
+                    <div className="space-y-4">
+                      {years.map((group) => (
+                        <div key={group.year ?? "sem-ano"}>
+                          {manyYears && (
+                            <h3 className="mb-1 text-xs font-semibold tracking-wider text-muted uppercase">
+                              {group.year
+                                ? t("library.academic_year", { year: yearLabel(group.year) })
+                                : t("library.no_academic_year")}
+                            </h3>
+                          )}
+                          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-x-6 border-t border-line">
+                            {bundleEntries(group.docs).map(({ doc, members }) => {
+                              const ids = [doc.id, ...members.map((m) => m.id)];
+                              return (
+                                // biome-ignore lint/a11y/noStaticElementInteractions: o documento arrasta-se para outro tipo
+                                <div
+                                  key={doc.id}
+                                  className="min-w-0 border-b border-line"
+                                  draggable={!readOnly}
+                                  onDragStart={(e) => {
+                                    const moving = ids.some((id) => selected.has(id))
+                                      ? [...new Set([...selected, ...ids])]
+                                      : ids;
+                                    e.dataTransfer.setData(DOC_DRAG, JSON.stringify(moving));
+                                    e.dataTransfer.effectAllowed = "all";
+                                  }}
+                                >
+                                  <DocumentLink
+                                    doc={doc}
+                                    groupedByType
+                                    selected={ids.every((id) => selected.has(id))}
+                                    onSelect={(on) => select(ids, on)}
+                                  />
+                                  <BundleMembers lead={doc} members={members} />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </Card>
-              </div>
-            );
-          })}
-      </div>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {(chosen.length > 0 || busy) && (
         <div className="leather fixed inset-x-0 bottom-0 z-20 border-t border-gold/40 px-4 py-3 text-white lg:left-[17rem]">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">

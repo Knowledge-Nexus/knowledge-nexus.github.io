@@ -27,7 +27,7 @@ export function Card(props: {
       className={`rounded-2xl border border-line bg-sheet p-5 shadow-[0_1px_0_rgba(29,39,51,0.04),0_8px_24px_-18px_rgba(29,39,51,0.25)] ${props.className ?? ""}`}
     >
       {(props.title || props.actions) && (
-        <header className="mb-4 flex items-center justify-between gap-3">
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           {props.title && (
             <h2 className="font-serif text-lg font-semibold text-ink">{props.title}</h2>
           )}

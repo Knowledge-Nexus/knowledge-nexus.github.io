@@ -93,6 +93,7 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
     .click();
   await expect(page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf")).toBeVisible();
   await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await expect(page).toHaveURL(/#\/documento\//);
 
   // Documento: classificação explicada + PDF renderizado pelo pdf.js
   await expect(page.getByText("Enunciados de avaliação")).toBeVisible();
@@ -530,7 +531,7 @@ test("editar e remover uma cadeira", async ({ page }) => {
   await page.getByLabel("Os documentos dela passam para:").selectOption({ index: 1 });
   page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: "Remover cadeira" }).click();
-  await expect(page.getByRole("button", { name: "Editar cadeira" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remover cadeira" })).toBeHidden();
   commit = fake.repos.get(REPO)!.commits.at(-1)!;
   request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
   expect(request.units_remove[0].unit).toBe("ufe/am1");

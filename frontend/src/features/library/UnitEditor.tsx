@@ -8,11 +8,11 @@ import { useApp } from "../../data/context";
 import type { CatalogBundle, UnitRow } from "../../data/types";
 import { slugify } from "../../lib/normalize";
 
-export function UnitEditor(props: { unit: UnitRow }) {
+/** Formulário para editar ou remover a cadeira; o botão que o abre está no cabeçalho. */
+export function UnitEditor(props: { unit: UnitRow; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation();
   const { meta, source, notifyCommit, readOnly } = useApp();
   const { unit } = props;
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(unit.name);
   const [acronym, setAcronym] = useState(unit.acronym ?? "");
   const [slug, setSlug] = useState(unit.slug);
@@ -20,7 +20,6 @@ export function UnitEditor(props: { unit: UnitRow }) {
   const [mergeInto, setMergeInto] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [saved, setSaved] = useState(false);
   if (!meta || readOnly) return null;
   const institution = meta.institutions().find((i) => i.slug === unit.institution);
   const others = meta
@@ -36,8 +35,7 @@ export function UnitEditor(props: { unit: UnitRow }) {
     try {
       await source.catalogRequest(bundle, message);
       notifyCommit();
-      setSaved(true);
-      setOpen(false);
+      props.onSaved();
     } catch (err) {
       setError(err);
     } finally {
@@ -94,23 +92,6 @@ export function UnitEditor(props: { unit: UnitRow }) {
   }
 
   const input = "rounded-lg border border-line-strong bg-sheet px-2 py-1 text-sm";
-  if (!open) {
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="text-sm text-pen hover:underline"
-          onClick={() => {
-            setOpen(true);
-            setSaved(false);
-          }}
-        >
-          {t("unit_edit.open")}
-        </button>
-        {saved && <span className="text-sm text-sage">✓ {t("common.pending_sync")}</span>}
-      </div>
-    );
-  }
   return (
     <div className="space-y-3 rounded-xl border border-line bg-paper p-4 text-sm">
       <div className="flex flex-wrap gap-3">
@@ -157,7 +138,7 @@ export function UnitEditor(props: { unit: UnitRow }) {
         <Button disabled={busy || !slug || (slug !== unit.slug && taken)} onClick={save}>
           {t("unit_edit.save")}
         </Button>
-        <Button variant="secondary" disabled={busy} onClick={() => setOpen(false)}>
+        <Button variant="secondary" disabled={busy} onClick={props.onClose}>
           {t("unit_edit.cancel")}
         </Button>
       </div>
