@@ -17,6 +17,10 @@ class GitError(RuntimeError):
     pass
 
 
+class RemoteBusy(GitError):
+    """O remoto mudou durante cada tentativa (alguém está a gravar na interface)."""
+
+
 class Git:
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -90,7 +94,8 @@ class Git:
             return True
         stderr = out.stderr.decode(errors="replace")
         if "rejected" in stderr or "non-fast-forward" in stderr or "fetch first" in stderr:
-            log.warning("git push rejeitado para %s/%s: %s", remote, branch, stderr.strip())
+            # Esperado quando a interface grava durante o processamento: quem chama decide.
+            log.debug("git push rejeitado para %s/%s: %s", remote, branch, stderr.strip())
             return False
         raise GitError(f"git push falhou: {stderr.strip()}")
 

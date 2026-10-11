@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import subprocess
 from pathlib import Path
 
@@ -14,5 +15,9 @@ def test_push_logs_rejection_reason(tmp_path: Path, monkeypatch, caplog) -> None
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    assert not Git(tmp_path).push()
+    # A razão fica no registo de depuração; quem chama (o `nexus servir`) diz o que se passa
+    # numa linha curta, sem os avisos do git.
+    with caplog.at_level(logging.DEBUG):
+        assert not Git(tmp_path).push()
     assert "fetch first" in caplog.text
+    assert all(r.levelno < logging.WARNING for r in caplog.records)

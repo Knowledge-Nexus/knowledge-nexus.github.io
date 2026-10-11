@@ -44,7 +44,9 @@ convenções ou comandos.
   de dados desliga o job (`if:` no `nexus.yml`). Sem nada no depósito, o workflow não instala
   o OCR e só publica os índices se estiverem desactualizados. Quando a aplicação tem commits
   novos, o `nexus servir` sai com o código 75 (`UPDATE_EXIT`) e o `vigiar-deposito.bat` faz
-  `git pull` e volta a arrancá-lo.
+  `git pull` e volta a arrancá-lo. Antes de processar, espera que o remoto fique 20 s sem
+  commits (`wait_until_quiet`: quem arruma na interface grava vários seguidos); um envio
+  recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:

@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from nexus.datarepo.git import Git, GitError
+from nexus.datarepo.git import Git, GitError, RemoteBusy
 from nexus.datarepo.store import DataRepo
 from nexus.index.builder import MANIFEST, build_indices
 from nexus.pipeline.run import Pipeline, RunReport
+
+log = logging.getLogger(__name__)
 
 INDICES_BRANCH = "indices"
 
@@ -109,6 +112,8 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
             result.pushed = True
             break
         result.notes.append(f"push rejeitado (tentativa {attempt}); a sincronizar com {remote}")
+        log.info("o repositório mudou durante o processamento (tentativa %d de %d): "
+                 "a juntar as alterações e a processar de novo", attempt, max_attempts)
         git.run("fetch", "-q", remote, branch)
         git.run("reset", "-q", "--hard", base or f"{remote}/{branch}")
         try:
@@ -120,7 +125,8 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                 "`git pull --rebase` e corre de novo (nada foi perdido)"
             ) from exc
     else:
-        raise GitError("não foi possível publicar depois de várias tentativas")
+        raise RemoteBusy("o repositório continua a mudar (alterações feitas na interface); "
+                         "nada se perdeu, volta-se a tentar no próximo ciclo")
 
     if publish_indices:
         head = git.head() if use_git else None

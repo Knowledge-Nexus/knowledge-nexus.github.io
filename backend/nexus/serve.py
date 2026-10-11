@@ -11,7 +11,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from nexus.datarepo.git import Git, GitError
+from nexus.datarepo.git import Git, GitError, RemoteBusy
 from nexus.publish import process_and_publish
 
 log = logging.getLogger(__name__)
@@ -22,6 +22,10 @@ log = logging.getLogger(__name__)
 UPDATE_EXIT = 75
 # De quanto em quanto tempo (segundos) se vê se a aplicação tem uma versão nova.
 UPDATE_EVERY = 600
+# Quem arruma na interface grava vários commits seguidos (ex.: arrastar cadeiras): espera-se
+# que o remoto fique este tempo sem mudanças antes de processar, até ao máximo indicado.
+QUIET_SECONDS = 20
+QUIET_MAX_WAIT = 180
 
 
 def remote_has_news(git: Git, remote: str, branch: str) -> bool:
@@ -31,17 +35,37 @@ def remote_has_news(git: Git, remote: str, branch: str) -> bool:
     return count.strip().isdigit() and int(count) > 0
 
 
+def wait_until_quiet(git: Git, remote: str, branch: str,
+                     sleep: Callable[[float], None] = time.sleep,
+                     now: Callable[[], float] = time.time) -> None:
+    """Espera que o remoto fique `QUIET_SECONDS` sem commits novos (no máximo
+    `QUIET_MAX_WAIT`): processar a meio de uma série de alterações era trabalho deitado fora,
+    e o envio seria recusado pela alteração seguinte."""
+    waited = 0.0
+    while waited < QUIET_MAX_WAIT:
+        stamp = git.run("log", "-1", "--format=%ct", f"{remote}/{branch}", check=False).strip()
+        age = now() - int(stamp) if stamp.isdigit() else QUIET_SECONDS
+        if age >= QUIET_SECONDS:
+            return
+        pause = min(QUIET_SECONDS - age + 1, QUIET_MAX_WAIT - waited)
+        sleep(pause)
+        waited += pause
+        git.run("fetch", "-q", remote, branch)
+
+
 def serve_once(root: Path, remote: str = "origin", branch: str = "main",
-               force: bool = False) -> bool:
+               force: bool = False, sleep: Callable[[float], None] = time.sleep) -> bool:
     """Um ciclo. Devolve True se processou."""
     git = Git(root)
     news = remote_has_news(git, remote, branch)
     if not (news or force):
         return False
     if news:
+        wait_until_quiet(git, remote, branch, sleep)
         git.run("pull", "--rebase", "-q", remote, branch)
     # O resultado já vem processado: o push não deve pôr o Actions a fazê-lo outra vez.
-    result = process_and_publish(root, push=True, remote=remote, branch=branch, skip_ci=True)
+    result = process_and_publish(root, push=True, remote=remote, branch=branch, skip_ci=True,
+                                 max_attempts=5)
     for line in result.report.summary():
         log.info(line)
     for note in result.notes:
@@ -81,8 +105,10 @@ def serve(root: Path, interval: int = 60, once: bool = False,
     cycle = 0
     while True:
         try:
-            serve_once(root, force=force)
+            serve_once(root, force=force, sleep=sleep)
             force = False
+        except RemoteBusy as exc:
+            log.info("%s", exc)
         except GitError as exc:
             log.error("falhou, tenta de novo no próximo ciclo: %s", exc)
         except Exception:

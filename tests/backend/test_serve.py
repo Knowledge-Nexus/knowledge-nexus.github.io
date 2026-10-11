@@ -4,7 +4,14 @@ import subprocess
 from pathlib import Path
 
 from nexus.datarepo.git import Git
-from nexus.serve import app_has_update, remote_has_news, serve, serve_once
+from nexus.serve import (
+    QUIET_SECONDS,
+    app_has_update,
+    remote_has_news,
+    serve,
+    serve_once,
+    wait_until_quiet,
+)
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -74,3 +81,47 @@ def test_serve_stops_when_the_app_has_a_new_version(tmp_path: Path) -> None:
     assert serve(tmp_path, interval=600, sleep=sleeps.append, has_update=lambda: True)
     assert sleeps == []
     assert not serve(tmp_path, once=True, has_update=lambda: True)
+
+
+class _QuietGit:
+    """Remoto que recebe um commit novo a meio da espera."""
+
+    def __init__(self, stamps: list[int]) -> None:
+        self.stamps = stamps
+        self.fetches = 0
+
+    def run(self, *args: str, check: bool = True) -> str:
+        if args[0] == "log":
+            return str(self.stamps[min(self.fetches, len(self.stamps) - 1)])
+        if args[0] == "fetch":
+            self.fetches += 1
+        return ""
+
+
+def test_waits_until_the_interface_stops_writing() -> None:
+    """Uma série de alterações na interface (ex.: arrastar cadeiras) processa-se de uma vez,
+    quando o remoto fica uns segundos parado, em vez de a cada commit."""
+    clock = [1000.0]
+    git = _QuietGit([995, 1010])  # o último commit tinha 5 s; chega outro durante a espera
+
+    def sleep(seconds: float) -> None:
+        clock[0] += seconds
+
+    wait_until_quiet(git, "origin", "main", sleep, lambda: clock[0])  # type: ignore[arg-type]
+    assert git.fetches == 2
+    assert clock[0] - 1010 >= QUIET_SECONDS
+
+
+def test_busy_remote_is_not_an_error(tmp_path: Path, monkeypatch, caplog) -> None:
+    import logging
+
+    from nexus import serve as serve_module
+    from nexus.datarepo.git import RemoteBusy
+
+    def busy(*args, **kwargs):
+        raise RemoteBusy("o repositório continua a mudar")
+
+    monkeypatch.setattr(serve_module, "serve_once", busy)
+    with caplog.at_level(logging.INFO, logger="nexus.serve"):
+        assert serve(tmp_path, interval=600, sleep=lambda s: None, has_update=lambda: True)
+    assert [r.levelno for r in caplog.records if "continua a mudar" in r.message] == [logging.INFO]
