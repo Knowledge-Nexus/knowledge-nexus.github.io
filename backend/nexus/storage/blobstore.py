@@ -15,6 +15,10 @@ from nexus.datarepo.layout import Layout
 
 
 class BlobStore(Protocol):
+    def unavailable(self) -> str | None:
+        """Porque não se pode gravar agora (ex.: faltam as credenciais), ou None."""
+        ...
+
     def exists(self, sha256: str) -> bool: ...
 
     def put(self, source: Path, sha256: str, ext: str, move: bool) -> None: ...
@@ -37,6 +41,9 @@ class GitRepoBlobStore:
                 for line in out.splitlines():
                     self._tracked.add(Path(line).name.split(".", 1)[0])
         return self._tracked
+
+    def unavailable(self) -> str | None:
+        return None
 
     def exists(self, sha256: str) -> bool:
         return self.layout.find_original(sha256) is not None or sha256 in self._tracked_shas()

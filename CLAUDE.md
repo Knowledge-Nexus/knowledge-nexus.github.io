@@ -37,7 +37,9 @@ convenções ou comandos.
   para o R2 (`storage/r2.py`, `HybridBlobStore`: lê do git ou do R2, grava no R2); a interface
   descarrega-os pelo Worker (`worker/`), que valida o token do GitHub no repositório privado.
   Credenciais `NEXUS_R2_*` só no ambiente (segredos no Actions); o cliente só é criado quando
-  é preciso. Migração: `nexus migrar-blobs`.
+  é preciso. Sem elas (`BlobStore.unavailable()`), os ficheiros novos esperam no depósito em
+  vez de irem para `_erros/` (`StorageUnavailable`), e o que lá foi parar por isso volta ao
+  depósito (`Pipeline._retry_storage_failures`). Migração: `nexus migrar-blobs`.
 - **Processamento: Actions ou local.** A quota de minutos do Actions num repositório privado
   esgota-se com OCR de depósitos grandes. `nexus servir` processa no computador do dono e
   marca os seus commits com `[skip ci]`; a variável `NEXUS_PROCESSAMENTO=local` no repositório

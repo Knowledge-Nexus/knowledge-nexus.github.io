@@ -104,7 +104,23 @@ Com `storage.backend: r2` no `nexus.yaml` (e `storage.r2_bucket`, `storage.max_g
 originais novos vão para o R2 em vez de `originais/`. O motor lê as credenciais do ambiente:
 
 - `NEXUS_R2_ENDPOINT`, `NEXUS_R2_ACCESS_KEY_ID`, `NEXUS_R2_SECRET_ACCESS_KEY`.
-- **No teu computador:** exporta-as antes de `nexus servir` (ex.: no `~/.bashrc` do WSL).
+- **Onde estão:** no painel da Cloudflare, *R2 → Manage R2 API Tokens → Create API token*
+  (permissão *Object Read & Write*, só para o bucket). A página mostra o *Access Key ID*, o
+  *Secret Access Key* (só uma vez) e o endpoint `https://<id da conta>.r2.cloudflarestorage.com`.
+- **No teu computador (WSL), para o `vigiar-deposito.bat`:** acrescenta ao fim do
+  `~/.bashrc` (abre com `nano ~/.bashrc`):
+
+  ```bash
+  export NEXUS_R2_ENDPOINT="https://<id da conta>.r2.cloudflarestorage.com"
+  export NEXUS_R2_ACCESS_KEY_ID="<access key id>"
+  export NEXUS_R2_SECRET_ACCESS_KEY="<secret access key>"
+  ```
+
+  Guarda, fecha a janela do `.bat` e abre-a de novo. Para confirmar, num terminal novo do
+  Ubuntu: `env | grep NEXUS_R2` mostra as três. Sem elas, o `nexus servir` avisa ao arrancar.
+- **Sem as credenciais**, os ficheiros novos ficam à espera no depósito (não vão para
+  `_erros/`) e são processados quando elas existirem; o que versões anteriores mandaram para
+  `_erros/` por esse motivo volta sozinho ao depósito.
 - **No Actions:** cria-as como segredos do repositório de dados (*Settings → Secrets and
   variables → Actions → Secrets*); o workflow passa-as ao motor (`secrets: inherit`).
 - Uma execução que não toca nos originais (ex.: uma correcção) corre sem elas.

@@ -86,7 +86,7 @@ from nexus.pipeline.intake import DepositItem, scan_deposit
 from nexus.pipeline.lotes import expand_lotes
 from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
 from nexus.review import set_proposal_status
-from nexus.storage.r2 import open_blob_store
+from nexus.storage.r2 import StorageUnavailable, open_blob_store
 
 log = logging.getLogger("nexus.pipeline")
 
@@ -168,6 +168,7 @@ class Pipeline:
         self.layout = repo.layout
         self.settings = repo.settings
         self.blobs = open_blob_store(repo.layout, repo.settings.storage)
+        self._storage_warned = False
         self.cache_dir = cache_dir or default_cache_dir()
         self.reclassify_all = reclassify_all
         self.max_items = max_items
@@ -190,6 +191,7 @@ class Pipeline:
 
     def run(self) -> RunReport:
         self.repo.check_format()
+        self._retry_storage_failures()
         with tempfile.TemporaryDirectory(prefix="nexus-") as tmp:
             self.workdir = Path(tmp)
             lotes = expand_lotes(self.layout.deposit_root, self.workdir,
@@ -321,6 +323,15 @@ class Pipeline:
 
     def _intake(self, item: DepositItem) -> None:
         self.repo.ensure_user(item.login)
+        # Sem onde guardar o original (ex.: faltam as credenciais do R2), o ficheiro espera no
+        # depósito, sem gastar tempo a extrair o texto. Uma referência (`*.ref.yaml`) não grava.
+        reason = self.blobs.unavailable() if item.kind != "ref" else None
+        if reason:
+            self.report.skipped.append((item.label, reason))
+            if not self._storage_warned:
+                log.warning("%s", reason)
+                self._storage_warned = True
+            return
         staging = _Staging()
         try:
             if item.kind == "ref":
@@ -332,7 +343,8 @@ class Pipeline:
             else:
                 self._intake_file(item, staging)
             self._apply(staging)
-        except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
+        except (MissingToolError, ArchiveToolMissing, PartsIncomplete,
+                StorageUnavailable) as exc:
             self.report.skipped.append((item.label, str(exc)))
             log.warning("adiado %s: %s", item.label, exc)
         except Exception as exc:
@@ -603,6 +615,39 @@ class Pipeline:
         write_text_if_changed(errors / log_name, text)
         self.report.errors.append((item.label, str(exc)))
 
+    def _retry_storage_failures(self) -> None:
+        """Devolve ao depósito o que foi para `_erros/` só por faltarem as credenciais do R2
+        (versões anteriores do motor davam erro em vez de esperar): é processado de novo."""
+        root = self.layout.deposit_root
+        if not root.is_dir():
+            return
+        for log_file in sorted(root.glob(f"*/{ERRORS_DIR}/**/*{LOG_SUFFIX}")):
+            text = log_file.read_text(encoding="utf-8", errors="replace")
+            if "Faltam NEXUS_R2" not in text and "StorageUnavailable" not in text:
+                continue
+            label = next((line[len("item: "):] for line in text.splitlines()
+                          if line.startswith("item: ")), "")
+            errors = log_file.parents[0]
+            login_dir = next(p for p in log_file.parents if p.parent == root)
+            batch = errors.relative_to(login_dir / ERRORS_DIR)
+            prefix = f"{login_dir.name}/{batch.as_posix()}/" if batch.parts else \
+                f"{login_dir.name}/"
+            rel = label[len(prefix):] if label.startswith(prefix) else ""
+            if not rel:
+                continue
+            moved = False
+            for path in sorted(p for p in errors.rglob("*") if p.is_file() and p != log_file):
+                inside = path.relative_to(errors).as_posix()
+                if inside == rel or inside.startswith((f"{rel}.nexus-", f"{rel}/")):
+                    target = login_dir / batch / inside
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(path, target)
+                    moved = True
+            log_file.unlink()
+            if moved:
+                self.report.warnings.append(
+                    f"de volta ao depósito (faltavam as credenciais do R2): {rel}")
+
     def _remove_empty_dirs(self) -> None:
         root = self.layout.deposit_root
         if not root.is_dir():
@@ -632,7 +677,8 @@ class Pipeline:
     def _reconcile_one(self, doc_id: str, classifier: Classifier) -> None:
         try:
             self._reconcile(self.repo.documents[doc_id].model_copy(deep=True), classifier)
-        except (MissingToolError, ArchiveToolMissing, PartsIncomplete) as exc:
+        except (MissingToolError, ArchiveToolMissing, PartsIncomplete,
+                StorageUnavailable) as exc:
             self.report.skipped.append((doc_id, str(exc)))
         except Exception as exc:
             log.exception("falhou a reconciliação de %s", doc_id)

@@ -171,6 +171,14 @@ def servir(
     _repo(repo)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     typer.echo(f"a vigiar {repo} a cada {intervalo} s (Ctrl+C para parar)")
+    from nexus.datarepo.store import DataRepo
+    from nexus.storage.r2 import missing_credentials
+
+    if DataRepo(repo).settings.storage.backend == "r2" and (missing := missing_credentials()):
+        typer.echo(
+            f"aviso: os originais vão para o Cloudflare R2, mas faltam {', '.join(missing)}. "
+            "Os ficheiros novos ficam no depósito até as definires (docs/configuracao.md, 4.2)."
+        )
     try:
         updated = serve(repo, interval=intervalo, once=uma_vez)
     except KeyboardInterrupt:

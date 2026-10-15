@@ -813,3 +813,41 @@ def test_course_can_have_units_of_other_institutions(catalog_root: Path, tmp_pat
     run(catalog_root)
     course = DataRepo(catalog_root).catalog.courses["outra/gestao"]
     assert [link.unit for link in course.units] == ["ufe/calculo", "estatistica"]
+
+
+def test_missing_r2_credentials_keep_files_waiting(catalog_root: Path, monkeypatch) -> None:
+    """Sem as credenciais do R2, os ficheiros novos esperam no depósito (não vão para
+    `_erros/`); o que lá foi parar por isso (versões anteriores) volta ao depósito; e, com
+    as credenciais, tudo é processado."""
+    from test_r2 import FakeS3
+
+    from nexus.storage import r2
+
+    nexus_yaml = catalog_root / "nexus.yaml"
+    nexus_yaml.write_text(nexus_yaml.read_text() + "\nstorage:\n  backend: r2\n  r2_bucket: b\n")
+    for name in r2.R2_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    batch = "20261015T140426Z-xly8"
+    src = gerar.pdf_nativo(deposit(catalog_root, "AM1/Exame_Recurso_2023-24.pdf"), gerar.EXAME_AM1)
+    errors = catalog_root / "deposito" / OWNER / "_erros" / batch
+    errors.mkdir(parents=True)
+    gerar.pdf_nativo(errors / "Livro.pdf", gerar.SLIDES_ALGA)
+    (errors / "Livro.pdf.log").write_text(
+        f"data: x\nitem: {OWNER}/{batch}/Livro.pdf\ntipo: file\n"
+        "erro: RuntimeError: Faltam NEXUS_R2_ENDPOINT, NEXUS_R2_ACCESS_KEY_ID ou "
+        "NEXUS_R2_SECRET_ACCESS_KEY.\n")
+
+    report = run(catalog_root).report
+    back = deposit(catalog_root, "Livro.pdf", batch=batch)
+    assert src.exists() and back.exists(), "ficam à espera no depósito"
+    assert not (errors / "Livro.pdf.log").exists()
+    assert not report.errors and not docs(catalog_root)
+    assert all("credenciais do Cloudflare R2" in reason for _, reason in report.skipped)
+
+    for name in r2.R2_VARIABLES:
+        monkeypatch.setenv(name, "x")
+    fake = FakeS3()
+    monkeypatch.setattr(r2, "_s3_client", lambda: fake)
+    report = run(catalog_root).report
+    assert not src.exists() and not back.exists()
+    assert len(docs(catalog_root)) == 2 and len(fake.objects) == 2

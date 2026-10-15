@@ -17,21 +17,37 @@ PREFIX = "blobs/"
 GB = 1_000_000_000  # o R2 conta em GB decimais
 
 
+R2_VARIABLES = ("NEXUS_R2_ENDPOINT", "NEXUS_R2_ACCESS_KEY_ID", "NEXUS_R2_SECRET_ACCESS_KEY")
+
+
 class QuotaExceeded(RuntimeError):
     """O envio ultrapassaria o limite de espaço definido pelo dono."""
+
+
+class StorageUnavailable(RuntimeError):
+    """Os originais vão para o R2 e faltam as credenciais: os ficheiros novos esperam no
+    depósito (não vão para `_erros/`) e são processados quando as credenciais existirem."""
+
+
+def missing_credentials() -> list[str]:
+    return [name for name in R2_VARIABLES if not os.environ.get(name)]
+
+
+def unavailable_message(missing: list[str]) -> str:
+    return (f"faltam as credenciais do Cloudflare R2 ({', '.join(missing)}); "
+            "os ficheiros ficam no depósito até as definires (docs/configuracao.md, 4.2)")
 
 
 def _s3_client() -> Any:
     import boto3
     from botocore.config import Config
 
-    endpoint = os.environ.get("NEXUS_R2_ENDPOINT")
-    key = os.environ.get("NEXUS_R2_ACCESS_KEY_ID")
-    secret = os.environ.get("NEXUS_R2_SECRET_ACCESS_KEY")
-    if not (endpoint and key and secret):
-        raise RuntimeError(
-            "Faltam NEXUS_R2_ENDPOINT, NEXUS_R2_ACCESS_KEY_ID ou NEXUS_R2_SECRET_ACCESS_KEY."
-        )
+    missing = missing_credentials()
+    if missing:
+        raise StorageUnavailable(unavailable_message(missing))
+    endpoint = os.environ["NEXUS_R2_ENDPOINT"]
+    key = os.environ["NEXUS_R2_ACCESS_KEY_ID"]
+    secret = os.environ["NEXUS_R2_SECRET_ACCESS_KEY"]
     return boto3.client(
         "s3", endpoint_url=endpoint, aws_access_key_id=key, aws_secret_access_key=secret,
         region_name="auto", config=Config(retries={"max_attempts": 8, "mode": "standard"}),
@@ -52,6 +68,12 @@ class R2BlobStore:
         if self._client is None:
             self._client = _s3_client()
         return self._client
+
+    def unavailable(self) -> str | None:
+        if self._client is not None:
+            return None
+        missing = missing_credentials()
+        return unavailable_message(missing) if missing else None
 
     def used_bytes(self) -> int:
         """Espaço ocupado no bucket (lido uma vez e actualizado a cada envio)."""
@@ -110,6 +132,9 @@ class HybridBlobStore:
         self.git = git
         self.remote = remote
 
+    def unavailable(self) -> str | None:
+        return self.remote.unavailable()
+
     def exists(self, sha256: str) -> bool:
         return self.git.exists(sha256) or self.remote.exists(sha256)
 
@@ -136,4 +161,5 @@ def open_blob_store(layout: Any, settings: StorageSettings) -> BlobStore:
     return HybridBlobStore(git, R2BlobStore(settings.r2_bucket, int(settings.max_gb * GB)))
 
 
-__all__ = ["HybridBlobStore", "QuotaExceeded", "R2BlobStore", "open_blob_store"]
+__all__ = ["HybridBlobStore", "QuotaExceeded", "R2BlobStore", "StorageUnavailable",
+           "missing_credentials", "open_blob_store"]
