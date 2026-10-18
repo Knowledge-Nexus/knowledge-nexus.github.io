@@ -784,7 +784,17 @@ export function LibraryPage() {
           </ul>
         </Card>
       )}
-      {unfiled.length > 0 && (
+      {unfiled.length > 0 && readOnly && (
+        <Card title={t("library.unfiled_view_only")}>
+          <p className="mb-2 text-sm text-ink-soft">{t("library.unfiled_view_only_help")}</p>
+          <div className="divide-y divide-line">
+            {unfiled.map((doc) => (
+              <DocumentLink key={doc.id} doc={doc} showUnit />
+            ))}
+          </div>
+        </Card>
+      )}
+      {unfiled.length > 0 && !readOnly && (
         <Link
           to={to("/rever")}
           className="block rounded-2xl border border-marker/60 bg-marker-soft px-5 py-4 text-sm text-ink"

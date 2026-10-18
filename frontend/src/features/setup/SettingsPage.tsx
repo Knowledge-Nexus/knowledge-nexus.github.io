@@ -74,58 +74,67 @@ export function SettingsPage() {
       </Card>
       {!guest && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
       {!guest && source instanceof GitHubDataSource && <AccessManager source={source} />}
-      <Card title={t("settings.sharing")}>
-        <div className="space-y-2 text-sm">
-          <p className="text-ink-soft">{t("settings.sharing_intro")}</p>
-          <p>{t("settings.sharing_count", { count: publicCount })}</p>
-          <a className="inline-flex items-center gap-1.5 text-pen underline" href="#/publico">
-            <IconGlobe size={15} /> {t("settings.sharing_public_page")}
-          </a>
-          <p className="text-xs text-muted">{t("settings.sharing_setup")}</p>
-        </div>
-      </Card>
-      <Card title={t("settings.enrollments")}>
-        <div className="space-y-3 text-sm">
-          <ul className="grid gap-1 sm:grid-cols-2">
-            {labels.units.map((u) => (
-              <li key={u.key}>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selection.has(u.key)}
-                    onChange={(e) => {
-                      const next = new Set(selection);
-                      if (e.target.checked) next.add(u.key);
-                      else next.delete(u.key);
-                      setSelection(next);
-                    }}
-                  />
-                  {labels.unit(u.key)}
-                </label>
-              </li>
-            ))}
-          </ul>
-          <label>
-            {t("setup.academic_year")}{" "}
-            <select
-              className="rounded border border-line-strong px-2 py-1"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
-              {academicYears().map((y) => (
-                <option key={y}>{y}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={tutor} onChange={(e) => setTutor(e.target.checked)} />
-            {t("settings.tutor_mode")}
-          </label>
-          {error ? <ErrorBox error={error} /> : null}
-          {saved && <p className="text-sage">✓ {t("common.pending_sync")}</p>}
-          <Button onClick={() => void save()}>{t("common.save")}</Button>
-        </div>
-      </Card>
+      {/* «Só ver e descarregar»: nada do que se segue muda o material, mas grava escolhas. */}
+      {guest?.scope !== "read" && (
+        <>
+          <Card title={t("settings.sharing")}>
+            <div className="space-y-2 text-sm">
+              <p className="text-ink-soft">{t("settings.sharing_intro")}</p>
+              <p>{t("settings.sharing_count", { count: publicCount })}</p>
+              <a className="inline-flex items-center gap-1.5 text-pen underline" href="#/publico">
+                <IconGlobe size={15} /> {t("settings.sharing_public_page")}
+              </a>
+              <p className="text-xs text-muted">{t("settings.sharing_setup")}</p>
+            </div>
+          </Card>
+          <Card title={t("settings.enrollments")}>
+            <div className="space-y-3 text-sm">
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {labels.units.map((u) => (
+                  <li key={u.key}>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selection.has(u.key)}
+                        onChange={(e) => {
+                          const next = new Set(selection);
+                          if (e.target.checked) next.add(u.key);
+                          else next.delete(u.key);
+                          setSelection(next);
+                        }}
+                      />
+                      {labels.unit(u.key)}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <label>
+                {t("setup.academic_year")}{" "}
+                <select
+                  className="rounded border border-line-strong px-2 py-1"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                >
+                  {academicYears().map((y) => (
+                    <option key={y}>{y}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={tutor}
+                  onChange={(e) => setTutor(e.target.checked)}
+                />
+                {t("settings.tutor_mode")}
+              </label>
+              {error ? <ErrorBox error={error} /> : null}
+              {saved && <p className="text-sage">✓ {t("common.pending_sync")}</p>}
+              <Button onClick={() => void save()}>{t("common.save")}</Button>
+            </div>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

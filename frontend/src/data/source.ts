@@ -11,7 +11,13 @@ import {
   parseAccesses,
   stringifyAccesses,
 } from "../lib/access";
-import { type AnnotationFile, parseAnnotations, stringifyAnnotations } from "../lib/annotations";
+import {
+  type AnnotationFile,
+  parseAnnotations,
+  readLocalAnnotations,
+  stringifyAnnotations,
+  writeLocalAnnotations,
+} from "../lib/annotations";
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
 import { slugify } from "../lib/normalize";
@@ -181,6 +187,14 @@ export class GitHubDataSource implements DataSource {
     readonly guest?: GuestInfo,
   ) {}
 
+  /**
+   * Entrou com um código «só ver e descarregar»: o token só tem leitura (o GitHub recusa as
+   * escritas) e a interface não mostra nada que mude o repositório.
+   */
+  get viewOnly(): boolean {
+    return this.guest?.scope === "read";
+  }
+
   /** O registo dos acessos temporários (`acessos.yaml`); vazio se ainda não existir. */
   async accesses(): Promise<AccessEntry[]> {
     try {
@@ -231,6 +245,7 @@ export class GitHubDataSource implements DataSource {
     maxAttempts = 5,
     onProgress?: (done: number, total: number) => void,
   ): Promise<string> {
+    if (this.viewOnly) return Promise.reject(new Error("acesso só para ver e descarregar"));
     const signed = this.guest ? `${message}\n\n${guestTrailer(this.guest.name)}` : message;
     return commitChanges(this.client, this.repo, changes, signed, maxAttempts, onProgress);
   }
@@ -320,7 +335,13 @@ export class GitHubDataSource implements DataSource {
     return `anotacoes/convidados/${fingerprint ? `${name}-${fingerprint}` : name}`;
   }
 
+  /** Com «só ver e descarregar», as marcas ficam só no browser de quem lê. */
+  private localAnnotationsKey(docId: string): string {
+    return `nexus.marcas.${this.repo.owner}/${this.repo.name}.${this.annotationsDir}.${docId}`;
+  }
+
   async annotations(docId: string): Promise<AnnotationFile | null> {
+    if (this.viewOnly) return readLocalAnnotations(this.localAnnotationsKey(docId));
     try {
       return parseAnnotations(
         await this.client.rawText(
@@ -337,6 +358,10 @@ export class GitHubDataSource implements DataSource {
   }
 
   async saveAnnotations(file: AnnotationFile): Promise<void> {
+    if (this.viewOnly) {
+      writeLocalAnnotations(this.localAnnotationsKey(file.document), file);
+      return;
+    }
     await this.commit(
       [
         {

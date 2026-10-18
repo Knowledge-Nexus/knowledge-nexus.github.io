@@ -7,7 +7,7 @@ import { useLabels } from "../../lib/labels";
 
 export function SearchPage() {
   const { t } = useTranslation();
-  const { meta, login, to, readOnly } = useApp();
+  const { meta, login, to, visitor } = useApp();
   const labels = useLabels(meta);
   const index = useSearchIndex();
   const [params, setParams] = useSearchParams();
@@ -40,8 +40,8 @@ export function SearchPage() {
         <input
           type="search"
           className="min-w-64 flex-1 rounded-xl border border-line-strong px-3 py-2"
-          placeholder={t(readOnly ? "search.placeholder_public" : "search.placeholder")}
-          aria-label={t(readOnly ? "search.placeholder_public" : "search.placeholder")}
+          placeholder={t(visitor ? "search.placeholder_public" : "search.placeholder")}
+          aria-label={t(visitor ? "search.placeholder_public" : "search.placeholder")}
           value={query}
           onChange={(e) => set("q", e.target.value)}
           autoFocus

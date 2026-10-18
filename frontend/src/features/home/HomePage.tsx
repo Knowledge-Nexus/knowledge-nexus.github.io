@@ -68,7 +68,7 @@ function FirstSteps(props: { catalog: boolean; documents: number; review: number
 
 export function HomePage() {
   const { t } = useTranslation();
-  const { meta, login, indexLoading, indexError, readOnly, to } = useApp();
+  const { meta, login, indexLoading, indexError, readOnly, visitor, to } = useApp();
   const labels = useLabels(meta);
   if (indexError) return <ErrorBox error={indexError} />;
   if (indexLoading) return <Spinner />;
@@ -80,10 +80,13 @@ export function HomePage() {
 
   return (
     <div className="space-y-8">
-      {readOnly ? (
+      {visitor ? (
         <PageHeader title={t("public.title")} subtitle={t("public.subtitle", { owner: login })} />
       ) : (
-        <PageHeader title={t(`home.${greeting()}`)} subtitle={t("home.subtitle")} />
+        <PageHeader
+          title={t(`home.${greeting()}`)}
+          subtitle={t(readOnly ? "home.subtitle_view_only" : "home.subtitle")}
+        />
       )}
 
       {!readOnly && (
@@ -109,8 +112,10 @@ export function HomePage() {
         </Link>
       )}
 
-      {noCatalog && readOnly ? (
+      {noCatalog && visitor ? (
         <Empty>{t("public.unavailable")}</Empty>
+      ) : noCatalog && readOnly ? (
+        <Empty>{t("library.empty")}</Empty>
       ) : noCatalog ? (
         <Empty
           action={

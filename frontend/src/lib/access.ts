@@ -8,6 +8,7 @@
 
 import YAML from "yaml";
 import { sha256Hex } from "./files";
+import type { AccessScope } from "./invite";
 
 export const ACCESS_FILE = "acessos.yaml";
 /** Página dos tokens do dono no GitHub (para apagar um de vez). */
@@ -28,8 +29,14 @@ export interface AccessEntry {
   /** Fim do acesso decidido pelo dono (nunca depois do fim do token). */
   until: string | null;
   status: AccessStatus;
+  /** «Acesso total» ou «Só ver e descarregar» (sem campo: total, como os antigos). */
+  scope?: AccessScope;
   created_at: string;
   updated_at?: string;
+}
+
+export function scopeOf(entry: { scope?: AccessScope }): AccessScope {
+  return entry.scope === "read" ? "read" : "full";
 }
 
 export function accessState(entry: AccessEntry, now = Date.now()): AccessState {

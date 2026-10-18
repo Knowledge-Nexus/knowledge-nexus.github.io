@@ -3,7 +3,11 @@
 // (ex.: https://knowledge-nexus.github.io/estudo-publico/), por isso não há token nem
 // limites da API: são ficheiros estáticos.
 
-import { type AnnotationFile, parseAnnotations, stringifyAnnotations } from "../lib/annotations";
+import {
+  type AnnotationFile,
+  readLocalAnnotations,
+  writeLocalAnnotations,
+} from "../lib/annotations";
 import { getCached, putCached } from "./cache";
 import type { WorkflowRun } from "./github/client";
 import type { RepoRef } from "./github/commit";
@@ -92,15 +96,11 @@ export class PublicDataSource implements DataSource {
   }
 
   async annotations(docId: string): Promise<AnnotationFile | null> {
-    try {
-      return parseAnnotations(localStorage.getItem(this.annotationsKey(docId)));
-    } catch {
-      return null;
-    }
+    return readLocalAnnotations(this.annotationsKey(docId));
   }
 
   async saveAnnotations(file: AnnotationFile): Promise<void> {
-    localStorage.setItem(this.annotationsKey(file.document), stringifyAnnotations(file));
+    writeLocalAnnotations(this.annotationsKey(file.document), file);
   }
 
   upload = readOnly;

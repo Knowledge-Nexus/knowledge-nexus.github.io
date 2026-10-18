@@ -192,6 +192,22 @@ export class GitHubClient {
     return new Uint8Array(await response.arrayBuffer());
   }
 
+  /**
+   * O token pode escrever no repositório? Cria o blob vazio (que não muda nada: não fica
+   * em nenhum commit). Um token só de leitura recebe 403. Serve para confirmar o tipo de
+   * um código de acesso antes de o dar.
+   */
+  async canWrite(owner: string, name: string): Promise<boolean> {
+    try {
+      await this.createBlob(owner, name, new Uint8Array());
+      return true;
+    } catch (error) {
+      if (error instanceof GitHubError && (error.status === 403 || error.status === 404))
+        return false;
+      throw error;
+    }
+  }
+
   async headSha(owner: string, name: string, branch: string): Promise<string> {
     const ref = await this.json<{ object: { sha: string } }>(
       "GET",

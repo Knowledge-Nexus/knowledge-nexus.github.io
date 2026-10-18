@@ -33,7 +33,9 @@ export async function connect(session: StoredSession, fetchImpl?: FetchLike): Pr
     throw error;
   }
   if (!info.private) throw new Error("public");
-  if (info.permissions && info.permissions.push === false) throw new Error("no_push");
+  // «Só ver e descarregar» não precisa (nem deve ter) escrita.
+  if (session.guest?.scope !== "read" && info.permissions && info.permissions.push === false)
+    throw new Error("no_push");
   const branch = info.default_branch || session.branch || "main";
   const repo = { owner: session.owner, name: session.name, branch };
   const guest = session.guest
@@ -73,7 +75,11 @@ export function ConnectPage(props: {
     if (!invite || !parsed) return setCodeError(t("connect.errors.code_invalid"));
     setBusy(true);
     try {
-      const guest = { name: invite.name, ...(invite.until ? { until: invite.until } : {}) };
+      const guest = {
+        name: invite.name,
+        ...(invite.until ? { until: invite.until } : {}),
+        ...(invite.scope === "read" ? { scope: invite.scope } : {}),
+      };
       const connected = await connect(
         { ...parsed, branch: "main", token: invite.token, remember: false, guest },
         props.fetchImpl,

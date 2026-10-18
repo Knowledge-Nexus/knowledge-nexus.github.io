@@ -28,6 +28,8 @@ export class FakeGitHub {
   repos = new Map<string, FakeRepo>();
   login = "aluna";
   token = "token-de-teste";
+  /** Tokens só de leitura (Contents: Read-only): o GitHub recusa-lhes qualquer escrita. */
+  readOnlyTokens = new Set<string>();
   /** Chamado antes de cada updateRef: permite simular pushes concorrentes. */
   beforeUpdateRef?: (repo: FakeRepo) => void;
   private blobs = new Map<string, Uint8Array>();
@@ -113,8 +115,12 @@ export class FakeGitHub {
   fetch = async (input: string, init: RequestInit = {}): Promise<Response> => {
     const url = new URL(input);
     const method = (init.method ?? "GET").toUpperCase();
-    const auth = new Headers(init.headers).get("Authorization");
-    if (auth !== `Bearer ${this.token}`) return json(401, { message: "Bad credentials" });
+    const auth = new Headers(init.headers).get("Authorization") ?? "";
+    const bearer = auth.replace(/^Bearer /, "");
+    const readOnly = this.readOnlyTokens.has(bearer);
+    if (bearer !== this.token && !readOnly) return json(401, { message: "Bad credentials" });
+    if (readOnly && method !== "GET")
+      return json(403, { message: "Resource not accessible by personal access token" });
     const path = decodeURIComponent(url.pathname);
     const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
 

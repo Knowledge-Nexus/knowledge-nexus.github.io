@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HashRouter, Link, Navigate, Route, Routes } from "react-router";
 import { Layout } from "./components/Layout";
 import { buttonClass, Empty, ErrorBox, Spinner } from "./components/ui";
 import { DataProvider, useApp } from "./data/context";
 import { fetchPublicManifest, PublicDataSource } from "./data/public";
-import { clearSession, loadSession, saveSession, setFlash } from "./data/session";
+import { clearSession, hasFlash, loadSession, saveSession, setFlash } from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
 import { HelpPage } from "./features/help/HelpPage";
 import { HomePage } from "./features/home/HomePage";
@@ -23,25 +23,29 @@ const queryClient = new QueryClient({
 });
 
 function Home() {
-  const { manifest, meta, indexLoading } = useApp();
+  const { manifest, meta, indexLoading, readOnly } = useApp();
   if (indexLoading || manifest === undefined) return <Spinner />;
-  if (!manifest || !meta || meta.institutions().length === 0)
+  if (!readOnly && (!manifest || !meta || meta.institutions().length === 0))
     return <Navigate to="/configuracao" replace />;
   return <Navigate to="/inicio" replace />;
 }
 
 function Shell(props: { connected: Connected; onLogout: () => void }) {
+  // «Só ver e descarregar»: as páginas que só servem para mudar o material não existem.
+  const viewOnly = props.connected.source.viewOnly;
+  const writing = (element: ReactNode) =>
+    viewOnly ? <Navigate to="/biblioteca" replace /> : element;
   return (
-    <DataProvider source={props.connected.source} onLogout={props.onLogout}>
+    <DataProvider source={props.connected.source} onLogout={props.onLogout} readOnly={viewOnly}>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/inicio" element={<HomePage />} />
-          <Route path="/configuracao" element={<SetupPage />} />
-          <Route path="/depositar" element={<UploadPage />} />
+          <Route path="/configuracao" element={writing(<SetupPage />)} />
+          <Route path="/depositar" element={writing(<UploadPage />)} />
           <Route path="/biblioteca" element={<LibraryPage />} />
           <Route path="/documento/:id" element={<DocumentPage />} />
-          <Route path="/rever" element={<ReviewPage />} />
+          <Route path="/rever" element={writing(<ReviewPage />)} />
           <Route path="/pesquisa" element={<SearchPage />} />
           <Route path="/definicoes" element={<SettingsPage />} />
           <Route path="/ajuda" element={<HelpPage />} />
@@ -87,7 +91,7 @@ function PublicShell() {
     );
   }
   return (
-    <DataProvider source={source} onLogout={noop} readOnly base="/publico">
+    <DataProvider source={source} onLogout={noop} visitor base="/publico">
       <Layout>
         <Routes>
           <Route index element={<HomePage />} />
@@ -172,7 +176,11 @@ export function App() {
               connected ? (
                 <Shell connected={connected} onLogout={logout} />
               ) : (
-                <Navigate to={restoreError || toEntry ? "/entrar" : "/publico"} replace />
+                // Saída forçada (acesso suspenso ou terminado): a razão aparece na entrada.
+                <Navigate
+                  to={restoreError || toEntry || hasFlash() ? "/entrar" : "/publico"}
+                  replace
+                />
               )
             }
           />

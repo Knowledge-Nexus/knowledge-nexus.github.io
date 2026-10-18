@@ -294,6 +294,14 @@ Dependências de sistema (Ubuntu/WSL2):
   Quem o recebe entra em «Recebeste um código de acesso?»; a sessão fica com `guest`, aparece
   uma faixa com o nome e o prazo, e cada commit leva `Feito por: <nome> (acesso temporário)`.
   Acaba quando o token expira ou o dono o apaga no GitHub.
+  Dois tipos (`AccessScope`, campo `scope` no código e no registo; sem campo = total):
+  «Acesso total» e «Só ver e descarregar» (`read`: token só com `contents=read`). Antes de
+  gerar o código, `checkToken` confirma com `GitHubClient.canWrite` (cria o blob vazio) que o
+  token de leitura NÃO escreve (e que o total escreve): é o GitHub que impede as alterações.
+  Na sessão, `GitHubDataSource.viewOnly` → `readOnly` no `DataProvider` (sem edição, sem
+  «Depositar», «A rever», configuração nem estado do processamento; `commit()` recusa) e as
+  marcas de leitura ficam no localStorage. `visitor` é só a página pública (`PublicLayout`).
+  O GitHub simulado tem `readOnlyTokens` (escritas → 403).
 - **Gerir os acessos** (`lib/access.ts`, `features/setup/AccessManager.tsx`, só para o dono):
   cada código fica no registo `acessos.yaml` do repositório de dados (id, nome, SHA-256 do
   token, fim do token, prazo, `active|paused|revoked`; nunca o token) e o código em si só no

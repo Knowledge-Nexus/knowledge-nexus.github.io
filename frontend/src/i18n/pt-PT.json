@@ -16,7 +16,9 @@
     "upload_hint": "Enviar ficheiros, sem arrumar",
     "library_hint": "O teu material, por cadeira",
     "review_hint": "Confirmar as dúvidas",
-    "search_hint": "Encontrar em todo o texto"
+    "search_hint": "Encontrar em todo o texto",
+    "view_only": "Só ver e descarregar",
+    "view_only_hint": "Este acesso não muda nada no material."
   },
   "common": {
     "loading": "A carregar…",
@@ -210,7 +212,9 @@
     "only_to_confirm": "Só os com tipo por confirmar ({{count}})",
     "confirm_types": "Confirmar o tipo ({{count}})",
     "types_confirmed_one": "Tipo confirmado em {{count}} documento.",
-    "types_confirmed_other": "Tipo confirmado em {{count}} documentos."
+    "types_confirmed_other": "Tipo confirmado em {{count}} documentos.",
+    "unfiled_view_only": "Ainda por arrumar",
+    "unfiled_view_only_help": "Documentos que o dono ainda não confirmou. Podes abri-los e descarregá-los na mesma."
   },
   "document": {
     "not_found": "Documento não encontrado.",
@@ -346,7 +350,8 @@
     "step_deposit": "Depositar material",
     "step_review": "Confirmar o que ficou em dúvida",
     "step_done": "feito",
-    "how_link": "Como funciona?"
+    "how_link": "Como funciona?",
+    "subtitle_view_only": "Podes ver e descarregar todo o material desta biblioteca."
   },
   "visibility": {
     "private": "Privada",
@@ -594,8 +599,8 @@
   },
   "invite": {
     "title": "Dar acesso temporário a outra pessoa",
-    "intro": "Cria um código para alguém te ajudar a organizar o material (cadeiras, cursos, instituições, «A rever»…) durante uns dias. A pessoa entra com o código, sem conta própria, e o acesso acaba sozinho no fim do prazo.",
-    "person": "Nome de quem vai ajudar",
+    "intro": "Cria um código para outra pessoa entrar sem conta própria durante uns dias: para te ajudar a organizar o material ou só para o ver e descarregar. O acesso acaba sozinho no fim do prazo.",
+    "person": "Nome de quem recebe o acesso",
     "person_placeholder": "ex.: Ana",
     "days": "Durante",
     "days_option_one": "{{count}} dia",
@@ -615,8 +620,26 @@
     "revoke_link": "os teus tokens",
     "banner": "Acesso temporário de {{name}}, dado pelo dono deste material",
     "errors": {
-      "no_access": "Esse token não abre o repositório de dados. Confirma que o seleccionaste em «Repository access» e que deste permissão de escrita em «Contents»."
-    }
+      "no_access": "Esse token não abre o repositório de dados. Confirma que o seleccionaste em «Repository access» e que deste permissão de escrita em «Contents».",
+      "not_read_only": "Esse token pode alterar o repositório. Para «Só ver e descarregar», cria um token só com «Contents: Read-only» (o link acima já vem assim) e cola-o aqui.",
+      "read_only_token": "Esse token só tem leitura. Para «Acesso total», cria-o com «Contents: Read and write» (o link acima já vem assim)."
+    },
+    "scope_title": "Que acesso queres dar?",
+    "scope": {
+      "full": "Acesso total",
+      "read": "Só ver e descarregar"
+    },
+    "scope_help": {
+      "full": "Vê e descarrega tudo, e também deposita, corrige e arruma, como tu.",
+      "read": "Vê e descarrega tudo, também o que é privado. Não consegue mudar nada: o próprio token só tem leitura."
+    },
+    "scope_token": {
+      "full": "Permissões já escolhidas: «Contents» com leitura e escrita e «Actions» só leitura.",
+      "read": "Permissões já escolhidas: só «Contents» com leitura («Read-only»). Não acrescentes escrita: o código só é gerado se o token não puder alterar nada."
+    },
+    "ready_read": "Código «só ver e descarregar» para {{name}}",
+    "warn_scope_read": "Pode ver e descarregar tudo neste repositório, incluindo o que é privado, mas não consegue mudar nada (o GitHub recusa-o). As marcas de leitura dela ficam só no browser dela.",
+    "banner_read": "Acesso só para ver e descarregar de {{name}}, dado pelo dono deste material"
   },
   "edit": {
     "title": "Mudar o nome",

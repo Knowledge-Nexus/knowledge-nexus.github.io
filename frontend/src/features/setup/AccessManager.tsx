@@ -14,12 +14,13 @@ import {
   accessState,
   clampUntil,
   newAccessId,
+  scopeOf,
   storeCode,
   storedCodes,
   TOKENS_PAGE,
   tokenFingerprint,
 } from "../../lib/access";
-import { decodeInvite, encodeInvite, tokenPageUrl } from "../../lib/invite";
+import { type AccessScope, decodeInvite, encodeInvite, tokenPageUrl } from "../../lib/invite";
 import { formatWhen } from "../../lib/labels";
 
 const input = "rounded-lg border border-line-strong bg-sheet px-2 py-1 text-sm";
@@ -41,19 +42,40 @@ function toLocalInput(iso: string | null): string {
   return local.toISOString().slice(0, 16);
 }
 
-/** Confirma que o token abre o repositório (privado) e pode escrever; devolve o fim dele. */
+/**
+ * Confirma que o token abre o repositório (privado) e que as permissões batem com o tipo de
+ * código: acesso total precisa de escrita; «só ver e descarregar» NÃO pode ter escrita (é o
+ * próprio GitHub que impede as alterações). Devolve o fim do token.
+ */
 export async function checkToken(
   token: string,
   owner: string,
   name: string,
+  scope: AccessScope = "full",
   fetchImpl?: FetchLike,
 ): Promise<string | null> {
   const client = new GitHubClient(token.trim(), fetchImpl);
   const info = await client.repo(owner, name).catch(() => null);
   if (!info) throw new Error("no_access");
   if (!info.private) throw new Error("public");
-  if (info.permissions && info.permissions.push === false) throw new Error("no_push");
+  if (scope === "full" && info.permissions && info.permissions.push === false)
+    throw new Error("no_push");
+  const writes = await client.canWrite(owner, name);
+  if (scope === "read" && writes) throw new Error("not_read_only");
+  if (scope === "full" && !writes) throw new Error("read_only_token");
   return client.tokenExpiration;
+}
+
+/** Mensagem para os erros de `checkToken`. */
+export function tokenErrorText(t: (key: string) => string, reason: string): string {
+  const known: Record<string, string> = {
+    no_access: "invite.errors.no_access",
+    public: "connect.errors.public",
+    no_push: "connect.errors.no_push",
+    not_read_only: "invite.errors.not_read_only",
+    read_only_token: "invite.errors.read_only_token",
+  };
+  return known[reason] ? t(known[reason]) : reason;
 }
 
 export const accessesKey = (source: GitHubDataSource) => [
@@ -186,6 +208,7 @@ function AccessRow(props: {
   const [revoked, setRevoked] = useState(false);
   const closed = state === "revoked";
   const label = entry.name;
+  const scope = scopeOf(entry);
 
   async function setUntil(wanted: Date) {
     const next = clampUntil(wanted, entry.token_expires);
@@ -206,7 +229,13 @@ function AccessRow(props: {
   async function renew() {
     setRenewError(null);
     try {
-      const expires = await checkToken(token, props.repo.owner, props.repo.name, props.fetchImpl);
+      const expires = await checkToken(
+        token,
+        props.repo.owner,
+        props.repo.name,
+        scope,
+        props.fetchImpl,
+      );
       const fingerprint = await tokenFingerprint(token);
       const until = entry.until && Date.parse(entry.until) > Date.now() ? entry.until : null;
       const code = encodeInvite({
@@ -214,6 +243,7 @@ function AccessRow(props: {
         token: token.trim(),
         name: entry.name,
         ...((until ?? expires) ? { until: (until ?? expires) as string } : {}),
+        ...(scope === "read" ? { scope } : {}),
       });
       await props.change(
         (e) => ({
@@ -228,13 +258,7 @@ function AccessRow(props: {
       setToken("");
       setPanel("code");
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      const known: Record<string, string> = {
-        no_access: t("invite.errors.no_access"),
-        public: t("connect.errors.public"),
-        no_push: t("connect.errors.no_push"),
-      };
-      setRenewError(known[reason] ?? reason);
+      setRenewError(tokenErrorText(t, err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -252,6 +276,7 @@ function AccessRow(props: {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium text-ink">{entry.name}</span>
         <Badge tone={TONE[state]}>{t(`access.state.${state}`)}</Badge>
+        <Badge tone={scope === "read" ? "info" : "neutral"}>{t(`invite.scope.${scope}`)}</Badge>
         <span className="text-xs text-muted">
           {[
             entry.until ? t("access.until", { when: formatWhen(entry.until) }) : null,
@@ -404,10 +429,12 @@ function AccessRow(props: {
 
       {panel === "renew" && (
         <div className="space-y-2 rounded-xl border border-line bg-paper p-3 text-xs">
-          <p className="text-ink-soft">{t("access.renew_help")}</p>
+          <p className="text-ink-soft">
+            {t("access.renew_help")} {t(`invite.scope_token.${scope}`)}
+          </p>
           <a
             className="text-pen underline"
-            href={tokenPageUrl(props.repo.owner, props.repo.name, entry.name, 30)}
+            href={tokenPageUrl(props.repo.owner, props.repo.name, entry.name, 30, scope)}
             target="_blank"
             rel="noreferrer"
           >
@@ -460,12 +487,19 @@ function ImportCode(props: {
       const fingerprint = await tokenFingerprint(invite.token);
       if (props.known.some((e) => e.token_sha256 === fingerprint))
         return setMessage(t("access.import_known"));
+      const scope = invite.scope ?? "full";
       const expires = await checkToken(
         invite.token,
         props.repo.owner,
         props.repo.name,
+        scope,
         props.fetchImpl,
-      ).catch(() => {
+      ).catch((err: unknown) => {
+        const reason = err instanceof Error ? err.message : "";
+        // Um token que não bate com o tipo do código diz porquê; o resto é um token que já
+        // não abre o repositório (expirou ou foi apagado).
+        if (reason === "not_read_only" || reason === "read_only_token")
+          throw new Error(tokenErrorText(t, reason));
         throw new Error(t("connect.errors.code_expired"));
       });
       const now = new Date().toISOString();
@@ -478,6 +512,7 @@ function ImportCode(props: {
           token_expires: expires,
           until: invite.until ?? expires,
           status: "active",
+          ...(scope === "read" ? { scope } : {}),
           created_at: now,
         },
         code.trim(),

@@ -735,7 +735,7 @@ test("acesso temporário: o dono cria um código e outra pessoa entra com ele", 
   const fake = await withFakeGitHub(page);
   await login(page, fake);
   await page.getByRole("link", { name: "Definições" }).first().click();
-  await page.getByLabel("Nome de quem vai ajudar").fill("Ana");
+  await page.getByLabel("Nome de quem recebe o acesso").fill("Ana");
   await expect(page.getByRole("link", { name: /Criar o token no GitHub/ })).toHaveAttribute(
     "href",
     /expires_in=7.*contents=write/,
@@ -768,11 +768,81 @@ test("acesso temporário: o dono cria um código e outra pessoa entra com ele", 
     .toContain("Feito por: Ana (acesso temporário)");
 });
 
+test("código «só ver e descarregar»: vê e descarrega tudo, não muda nada", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  fake.readOnlyTokens.add("token-so-leitura");
+  await login(page, fake);
+  await page.getByRole("link", { name: "Definições" }).first().click();
+  await page.getByRole("radio", { name: /Só ver e descarregar/ }).check();
+  await page.getByLabel("Nome de quem recebe o acesso").fill("Rui");
+  const tokenLink = page.getByRole("link", { name: /Criar o token no GitHub/ });
+  await expect(tokenLink).toHaveAttribute("href", /contents=read/);
+  await expect(tokenLink).not.toHaveAttribute("href", /contents=write|actions=/);
+  // Um token que pode escrever é recusado: o «só ver» tem de vir do próprio GitHub.
+  await page.getByLabel("Cola aqui o token criado").fill(fake.token);
+  await page.getByRole("button", { name: "Gerar o código" }).click();
+  await expect(page.getByText(/Esse token pode alterar o repositório/)).toBeVisible();
+  await page.getByLabel("Cola aqui o token criado").fill("token-so-leitura");
+  await page.getByRole("button", { name: "Gerar o código" }).click();
+  const code = await page.getByLabel("Código de acesso").inputValue();
+  expect(code.startsWith("KN1-")).toBe(true);
+  const registry = YAML.parse(fake.text(REPO, "acessos.yaml")!);
+  expect(registry.accesses[0]).toMatchObject({ name: "Rui", scope: "read" });
+
+  // Rui entra com o código: vê tudo, nada para mudar.
+  await page.getByRole("button", { name: "Terminar sessão" }).first().click();
+  await page.goto("/#/entrar");
+  await page.getByLabel("Código de acesso").fill(code);
+  await page.getByRole("button", { name: "Entrar com o código" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Acesso só para ver e descarregar de Rui" }),
+  ).toBeVisible();
+  const commits = fake.repos.get(REPO)!.commits.length;
+  const nav = page.getByRole("navigation", { name: "principal", exact: true });
+  await expect(nav.getByRole("link", { name: "Depositar" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: /A rever/ })).toHaveCount(0);
+  await nav.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Novo curso" })).toHaveCount(0);
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await expect(page.getByRole("button", { name: "Editar cadeira" })).toHaveCount(0);
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Editar:/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Mudar o nome" })).toHaveCount(0);
+  await expect(page.getByText("Notas pessoais")).toHaveCount(0);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Descarregar original" }).click();
+  expect((await download).suggestedFilename()).toBe("Exame_Recurso_2023-24.pdf");
+
+  // As marcas ficam só no browser dele; as páginas de mudar o material não abrem.
+  await page.getByRole("button", { name: "Ler", exact: true }).click();
+  const reader = page.getByRole("dialog", { name: "Modo de leitura" });
+  await expect(reader.locator("[data-page='1'] canvas")).toBeVisible();
+  await reader.getByRole("button", { name: /^Caneta/ }).click();
+  const sheet = (await reader.locator("[data-page='1']").boundingBox())!;
+  await page.mouse.move(sheet.x + sheet.width * 0.3, sheet.y + sheet.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(sheet.x + sheet.width * 0.5, sheet.y + sheet.height * 0.55, { steps: 6 });
+  await page.mouse.up();
+  await reader.getByRole("button", { name: /Sair do modo de leitura/ }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => Object.keys(localStorage).some((k) => k.includes("convidados/rui"))),
+    )
+    .toBe(true);
+  await page.goto("/#/depositar");
+  await expect(page).toHaveURL(/#\/biblioteca/);
+  expect(fake.repos.get(REPO)!.commits.length).toBe(commits);
+});
+
 test("gerir os acessos: suspender, reactivar e terminar um código", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
   await page.getByRole("link", { name: "Definições" }).first().click();
-  await page.getByLabel("Nome de quem vai ajudar").fill("Ana");
+  await page.getByLabel("Nome de quem recebe o acesso").fill("Ana");
   await page.getByLabel("Cola aqui o token criado").fill(fake.token);
   await page.getByRole("button", { name: "Gerar o código" }).click();
   const code = await page.getByLabel("Código de acesso").inputValue();

@@ -127,18 +127,27 @@ originais novos vão para o R2 em vez de `originais/`. O motor lê as credenciai
 
 ## 4.3 Dar acesso temporário a outra pessoa
 
-Para alguém te ajudar a organizar (cadeiras, cursos, instituições, «A rever»…) sem conta
-própria no GitHub:
+Para alguém entrar sem conta própria no GitHub. Há dois tipos de código:
 
-1. **Definições → Dar acesso temporário a outra pessoa:** escreve o nome e o prazo.
+- **Acesso total:** a pessoa vê, descarrega, deposita e organiza (cadeiras, cursos,
+  instituições, «A rever»…), como tu.
+- **Só ver e descarregar:** a pessoa vê e descarrega tudo, incluindo o que é privado, e não
+  consegue mudar nada. Não é só a interface a esconder botões: o token tem apenas leitura
+  (*Contents: Read-only*), por isso o próprio GitHub recusa qualquer alteração. O código só é
+  gerado se o token não conseguir escrever. As marcas de leitura dessa pessoa ficam só no
+  browser dela; «Depositar», «A rever» e o resto que muda o material não aparecem.
+
+1. **Definições → Dar acesso temporário a outra pessoa:** escolhe o tipo de acesso e escreve
+   o nome e o prazo.
 2. **Criar o token no GitHub:** a página abre já preenchida (nome, prazo e permissões). Em
    *Repository access* escolhe *Only select repositories* e o repositório de dados; depois
    *Generate token* e copia-o.
 3. **Cola o token e gera o código** (`KN1-…`). Envia-o só a essa pessoa, por um canal privado.
 4. A pessoa abre o site, vai a **Entrar → Recebeste um código de acesso?** e cola-o.
 
-- Quem tem o código faz tudo o que tu fazes no site (ver, depositar, organizar), até ao fim
-  do prazo. Cada alteração fica no histórico com «Feito por: <nome> (acesso temporário)».
+- Com acesso total, quem tem o código faz tudo o que tu fazes no site (ver, depositar,
+  organizar), até ao fim do prazo. Cada alteração fica no histórico com «Feito por: <nome>
+  (acesso temporário)».
 - Para acabar antes do prazo, apaga o token em *GitHub → Settings → Developer settings →
   Personal access tokens*.
 - Para uma ajuda duradoura, é melhor convidar a pessoa como colaboradora do repositório de

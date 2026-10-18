@@ -4,6 +4,13 @@
 // pessoa grava leva o nome dela na mensagem do commit.
 //
 // O código NÃO é cifrado: é o próprio token, por isso é tão secreto como ele.
+//
+// Há dois tipos de código:
+//   - «Acesso total» (`full`): o token pode escrever (depositar, corrigir, arrumar).
+//   - «Só ver e descarregar» (`read`): o token só tem leitura, por isso o próprio GitHub
+//     recusa qualquer alteração; a interface também esconde tudo o que muda alguma coisa.
+
+export type AccessScope = "full" | "read";
 
 export interface Invite {
   /** "dono/nome" do repositório de dados. */
@@ -13,6 +20,8 @@ export interface Invite {
   name: string;
   /** Fim previsto do acesso (ISO), só para mostrar; quem manda é o prazo do token. */
   until?: string;
+  /** Sem campo (códigos antigos): acesso total. */
+  scope?: AccessScope;
 }
 
 const PREFIX = "KN1-";
@@ -47,6 +56,7 @@ export function decodeInvite(code: string): Invite | null {
       token: data.token,
       name: typeof data.name === "string" && data.name.trim() ? data.name.trim() : "convidado",
       ...(typeof data.until === "string" ? { until: data.until } : {}),
+      ...(data.scope === "read" ? { scope: "read" as const } : {}),
     };
   } catch {
     return null;
@@ -55,18 +65,27 @@ export function decodeInvite(code: string): Invite | null {
 
 /**
  * Página do GitHub para criar o token, já preenchida: nome, descrição, dono do repositório,
- * prazo e permissões (conteúdo: escrita; Actions: leitura, para o estado do processamento).
+ * prazo e permissões. Acesso total: conteúdo com escrita e Actions com leitura (estado do
+ * processamento). Só ver e descarregar: conteúdo só com leitura, mais nada.
  * O repositório em si escolhe-se à mão ("Only select repositories").
  */
-export function tokenPageUrl(owner: string, repoName: string, person: string, days: number) {
-  const name = `Knowledge Nexus: ${person}`.slice(0, 40);
+export function tokenPageUrl(
+  owner: string,
+  repoName: string,
+  person: string,
+  days: number,
+  scope: AccessScope = "full",
+) {
+  const read = scope === "read";
+  const name = `Knowledge Nexus${read ? " (ler)" : ""}: ${person}`.slice(0, 40);
   const params = new URLSearchParams({
     name,
-    description: `Acesso temporário de ${person} a ${owner}/${repoName} (Knowledge Nexus).`,
+    description: read
+      ? `Acesso só para ver e descarregar, de ${person}, a ${owner}/${repoName} (Knowledge Nexus).`
+      : `Acesso temporário de ${person} a ${owner}/${repoName} (Knowledge Nexus).`,
     target_name: owner,
     expires_in: String(days),
-    contents: "write",
-    actions: "read",
+    ...(read ? { contents: "read" } : { contents: "write", actions: "read" }),
   });
   return `https://github.com/settings/personal-access-tokens/new?${params}`;
 }

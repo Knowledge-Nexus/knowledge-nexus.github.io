@@ -11,6 +11,7 @@ import { Brand } from "./Brand";
 import {
   IconBooks,
   IconCheckList,
+  IconEye,
   IconGlobe,
   IconHelp,
   IconHome,
@@ -121,8 +122,8 @@ function PublicLayout(props: { children: ReactNode }) {
 
 export function Layout(props: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { meta, login, source, readOnly } = useApp();
-  if (readOnly) return <PublicLayout>{props.children}</PublicLayout>;
+  const { meta, login, source, readOnly, visitor } = useApp();
+  if (visitor) return <PublicLayout>{props.children}</PublicLayout>;
   const review = meta?.counts(login).review ?? 0;
   const items = (dark: boolean) => (
     <>
@@ -133,13 +134,15 @@ export function Layout(props: { children: ReactNode }) {
         label={t("nav.home")}
         hint={t("nav.home_hint")}
       />
-      <NavItem
-        dark={dark}
-        to="/depositar"
-        icon={<IconInbox />}
-        label={t("nav.upload")}
-        hint={t("nav.upload_hint")}
-      />
+      {!readOnly && (
+        <NavItem
+          dark={dark}
+          to="/depositar"
+          icon={<IconInbox />}
+          label={t("nav.upload")}
+          hint={t("nav.upload_hint")}
+        />
+      )}
       <NavItem
         dark={dark}
         to="/biblioteca"
@@ -147,14 +150,16 @@ export function Layout(props: { children: ReactNode }) {
         label={t("nav.library")}
         hint={t("nav.library_hint")}
       />
-      <NavItem
-        dark={dark}
-        to="/rever"
-        icon={<IconCheckList />}
-        label={t("nav.review")}
-        hint={t("nav.review_hint")}
-        badge={review}
-      />
+      {!readOnly && (
+        <NavItem
+          dark={dark}
+          to="/rever"
+          icon={<IconCheckList />}
+          label={t("nav.review")}
+          hint={t("nav.review_hint")}
+          badge={review}
+        />
+      )}
       <NavItem
         dark={dark}
         to="/pesquisa"
@@ -177,7 +182,13 @@ export function Layout(props: { children: ReactNode }) {
           <NavItem to="/ajuda" icon={<IconHelp />} label={t("nav.help")} />
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
           <div className="rounded-xl border border-gold/30 bg-white/5 px-3 py-2.5 text-white/80 [&_p]:text-white/80">
-            <PipelineStatus />
+            {readOnly ? (
+              <p className="flex items-center gap-1.5 text-xs font-medium !text-gold-light">
+                <IconEye size={14} /> {t("nav.view_only")}
+              </p>
+            ) : (
+              <PipelineStatus />
+            )}
             <p
               className="mt-1 truncate text-xs !text-white/50"
               title={`${source.repo.owner}/${source.repo.name}`}
@@ -190,7 +201,7 @@ export function Layout(props: { children: ReactNode }) {
       <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 [&_p]:text-white/80">
           <Brand size={30} dark />
-          <PipelineStatus compact />
+          {!readOnly && <PipelineStatus compact />}
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
           {items(true)}
@@ -235,7 +246,7 @@ function GuestBanner() {
       role="status"
       className="mb-6 rounded-xl border border-gold/50 bg-marker-soft px-4 py-2 text-sm text-ink"
     >
-      {t("invite.banner", { name: guest.name })}
+      {t(guest.scope === "read" ? "invite.banner_read" : "invite.banner", { name: guest.name })}
       {until ? ` ${t("invite.until", { when: formatWhen(until) })}` : ""}.
     </p>
   );

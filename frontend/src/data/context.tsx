@@ -13,8 +13,10 @@ import type { IndexManifest } from "./types";
 interface AppData {
   source: DataSource;
   login: string;
-  /** Modo de visitante (material público): nada se edita. */
+  /** Nada se edita: visitante do material público ou código «só ver e descarregar». */
   readOnly: boolean;
+  /** Visitante da página pública (sem sessão): só o material público. */
+  visitor: boolean;
   /** Prefixo das rotas ("" ou "/publico"); usar `to()` nos links internos. */
   base: string;
   to: (path: string) => string;
@@ -44,11 +46,13 @@ export function DataProvider(props: {
   source: DataSource;
   onLogout: () => void;
   readOnly?: boolean;
+  visitor?: boolean;
   base?: string;
   children: ReactNode;
 }) {
   const { source } = props;
-  const readOnly = props.readOnly ?? false;
+  const visitor = props.visitor ?? false;
+  const readOnly = (props.readOnly ?? false) || visitor;
   const base = props.base ?? "";
   const queryClient = useQueryClient();
   const [pendingSince, setPendingSince] = useState<number | null>(null);
@@ -110,6 +114,7 @@ export function DataProvider(props: {
       source,
       login: source.login,
       readOnly,
+      visitor,
       base,
       to: (path: string) => `${base}${path}`,
       manifest,
@@ -126,6 +131,7 @@ export function DataProvider(props: {
     [
       source,
       readOnly,
+      visitor,
       base,
       manifest,
       metaQuery.data,

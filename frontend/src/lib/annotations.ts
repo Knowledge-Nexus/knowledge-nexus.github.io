@@ -125,6 +125,19 @@ export function stringifyAnnotations(file: AnnotationFile): string {
   return `${head},\n  "pages": {${body ? `\n${body}\n  ` : ""}}\n}\n`;
 }
 
+/** Marcas guardadas só neste browser (visitantes e acessos «só ver e descarregar»). */
+export function readLocalAnnotations(key: string): AnnotationFile | null {
+  try {
+    return parseAnnotations(localStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
+export function writeLocalAnnotations(key: string, file: AnnotationFile): void {
+  localStorage.setItem(key, stringifyAnnotations(file));
+}
+
 export function markCount(pages: PageMarks): number {
   return Object.values(pages).reduce((sum, list) => sum + list.length, 0);
 }

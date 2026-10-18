@@ -31,4 +31,17 @@ describe("códigos de acesso temporário", () => {
     expect(url.searchParams.get("name")!.length).toBeLessThanOrEqual(40);
     expect(guestTrailer("Ana")).toContain("Ana");
   });
+
+  it("código «só ver e descarregar»: o tipo vai no código e o token só tem leitura", () => {
+    const code = encodeInvite({ repo: "a/b", token: "t", name: "Rui", scope: "read" });
+    expect(decodeInvite(code)?.scope).toBe("read");
+    // Os códigos antigos (sem tipo) são de acesso total.
+    expect(decodeInvite(encodeInvite({ repo: "a/b", token: "t", name: "Rui" }))?.scope).toBe(
+      undefined,
+    );
+    const url = new URL(tokenPageUrl("Knowledge-Nexus", "estudo-dados", "Rui", 7, "read"));
+    expect(url.searchParams.get("contents")).toBe("read");
+    expect(url.searchParams.get("actions")).toBeNull();
+    expect(url.searchParams.get("name")!.length).toBeLessThanOrEqual(40);
+  });
 });

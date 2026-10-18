@@ -1,3 +1,5 @@
+import type { AccessScope } from "../lib/invite";
+
 // Sessão local: repositório de dados + token. O token fica APENAS neste browser:
 // em sessionStorage por defeito, ou em localStorage se o utilizador pedir "lembrar".
 
@@ -16,6 +18,8 @@ export interface GuestInfo {
   until?: string;
   /** SHA-256 do token: identifica o acesso no registo `acessos.yaml` (`lib/access.ts`). */
   token_sha256?: string;
+  /** «Só ver e descarregar» (`read`) ou acesso total (sem campo). */
+  scope?: AccessScope;
 }
 
 const KEY = "nexus.session";
@@ -27,6 +31,15 @@ export function setFlash(code: string): void {
     sessionStorage.setItem(FLASH, code);
   } catch {
     // sem armazenamento: a pessoa volta só ao ecrã de entrada
+  }
+}
+
+/** Há uma mensagem à espera (sem a gastar): a saída vai para o ecrã de entrada. */
+export function hasFlash(): boolean {
+  try {
+    return sessionStorage.getItem(FLASH) !== null;
+  } catch {
+    return false;
   }
 }
 
