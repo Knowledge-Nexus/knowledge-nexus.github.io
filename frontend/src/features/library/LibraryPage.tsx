@@ -13,6 +13,7 @@ import {
   Badge,
   Button,
   Card,
+  EditButton,
   Empty,
   ErrorBox,
   Notice,
@@ -416,9 +417,21 @@ function UnitDetail(props: { unitKey: string }) {
               <p className="text-xs font-semibold tracking-wider uppercase" style={{ color }}>
                 {unit?.acronym ?? unit?.code ?? ""}
               </p>
-              <h1 className="font-serif text-3xl font-semibold text-ink">
-                {unit?.name ?? props.unitKey}
-              </h1>
+              <div className="flex items-start gap-1">
+                <h1 className="font-serif text-3xl font-semibold text-ink">
+                  {unit?.name ?? props.unitKey}
+                </h1>
+                {!readOnly && unit && !editing && (
+                  <EditButton
+                    className="mt-1.5"
+                    label={t("unit_edit.pencil", { name: unit.name })}
+                    onClick={() => {
+                      setEditing(true);
+                      setUnitSaved(false);
+                    }}
+                  />
+                )}
+              </div>
               {unit?.lecturers.length ? (
                 <p className="text-sm text-muted">{unit.lecturers.join(", ")}</p>
               ) : null}
@@ -709,6 +722,7 @@ export function LibraryPage() {
   const [creating, setCreating] = useState(false);
   const [creatingCourse, setCreatingCourse] = useState(false);
   const [institutionsOpen, setInstitutionsOpen] = useState(false);
+  const [institutionToEdit, setInstitutionToEdit] = useState<string | null>(null);
   const selectedUnit = params.get("uc") ?? "";
 
   if (indexError) return <ErrorBox error={indexError} />;
@@ -742,7 +756,16 @@ export function LibraryPage() {
           ) : undefined
         }
       />
-      {institutionsOpen && <InstitutionManager onDone={() => setInstitutionsOpen(false)} />}
+      {institutionsOpen && (
+        <InstitutionManager
+          key={institutionToEdit ?? ""}
+          initial={institutionToEdit}
+          onDone={() => {
+            setInstitutionsOpen(false);
+            setInstitutionToEdit(null);
+          }}
+        />
+      )}
       {creatingCourse && <CourseCreator onDone={() => setCreatingCourse(false)} />}
       {creating && <UnitCreator onDone={() => setCreating(false)} />}
       {organizing && (
@@ -770,7 +793,14 @@ export function LibraryPage() {
         </Link>
       )}
       {labels.units.length === 0 && <Empty>{t("library.empty")}</Empty>}
-      <Shelves units={labels.units} />
+      <Shelves
+        units={labels.units}
+        onEditInstitution={(slug) => {
+          setInstitutionToEdit(slug);
+          setInstitutionsOpen(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
     </div>
   );
 }

@@ -96,7 +96,7 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
   await expect(page).toHaveURL(/#\/documento\//);
 
   // Documento: classificação explicada + PDF renderizado pelo pdf.js
-  await expect(page.getByText("Enunciados de avaliação")).toBeVisible();
+  await expect(page.getByText("Enunciados de avaliação").first()).toBeVisible();
   await expect(page.locator("canvas")).toBeVisible();
   await expect
     .poll(() =>
@@ -226,6 +226,27 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.getByRole("link", { name: "Corrigir classificação" })).toHaveCount(0);
   await expect(page.getByText("Notas pessoais")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Editar:/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Mudar o nome" })).toHaveCount(0);
+  // Quem visita também lê e marca, mas as marcas ficam só no seu browser.
+  await page.getByRole("button", { name: "Ler", exact: true }).click();
+  const reader = page.getByRole("dialog", { name: "Modo de leitura" });
+  await expect(reader.locator("[data-page='1'] canvas")).toBeVisible();
+  await reader.getByRole("button", { name: /^Caneta/ }).click();
+  const sheet = (await reader.locator("[data-page='1']").boundingBox())!;
+  await page.mouse.move(sheet.x + sheet.width * 0.3, sheet.y + sheet.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(sheet.x + sheet.width * 0.5, sheet.y + sheet.height * 0.55, { steps: 6 });
+  await page.mouse.up();
+  await reader.getByRole("button", { name: /Sair do modo de leitura/ }).click();
+  await expect(reader).toBeHidden();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).some((key) => key.startsWith("nexus.marcas.publico.")),
+      ),
+    )
+    .toBe(true);
   await page.getByRole("link", { name: "Pesquisa" }).click();
   await page.getByLabel("Procura em todo o material partilhado…").fill("sucessao");
   await expect(page.locator("mark").first()).toBeVisible();
@@ -546,7 +567,7 @@ test("criar e remover um curso (com o nome escrito para confirmar)", async ({ pa
   await expect(lei).toBeVisible({ timeout: 20_000 });
 
   await page.getByRole("button", { name: "Novo curso" }).click();
-  await page.getByLabel("Grau").selectOption("mestrado");
+  await page.getByRole("combobox", { name: /^Grau/ }).selectOption("mestrado");
   await page.getByLabel("Nome do curso").fill("Ciência de Dados");
   await page.getByRole("button", { name: "Criar curso" }).click();
   await expect(page.getByRole("button", { name: "Criar curso" })).toBeHidden();
@@ -574,6 +595,107 @@ test("criar e remover um curso (com o nome escrito para confirmar)", async ({ pa
   await expect(
     page.getByRole("complementary", { name: "Sem curso" }).getByText("Bases de Dados"),
   ).toBeVisible();
+});
+
+test("modo de leitura: as marcas são só de quem as faz e o original fica igual", async ({
+  page,
+}) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
+  await page.getByRole("button", { name: "Ler", exact: true }).click();
+  const reader = page.getByRole("dialog", { name: "Modo de leitura" });
+  await expect(reader.locator("[data-page='1'] canvas")).toBeVisible();
+  const marks = reader.locator("[data-page] svg path");
+
+  await reader.getByRole("button", { name: /^Marcador/ }).click();
+  const sheet = (await reader.locator("[data-page='1']").boundingBox())!;
+  await page.mouse.move(sheet.x + sheet.width * 0.2, sheet.y + sheet.height * 0.2);
+  await page.mouse.down();
+  await page.mouse.move(sheet.x + sheet.width * 0.7, sheet.y + sheet.height * 0.21, { steps: 10 });
+  await page.mouse.up();
+  await expect(marks).toHaveCount(1);
+
+  // «Ver o original» esconde as marcas (e desliga as ferramentas); desfazer e refazer.
+  await reader.getByRole("button", { name: /Ver o original/ }).click();
+  await expect(marks).toHaveCount(0);
+  await expect(reader.getByText("Original, sem as tuas marcas")).toBeVisible();
+  await reader.getByRole("button", { name: /Ver com as tuas marcas/ }).click();
+  await reader.getByRole("button", { name: /Desfazer/ }).click();
+  await expect(marks).toHaveCount(0);
+  await reader.getByRole("button", { name: /Refazer/ }).click();
+  await expect(marks).toHaveCount(1);
+
+  // Sair grava: um commit só com o ficheiro das marcas desta pessoa.
+  await page.keyboard.press("Escape");
+  await expect(reader).toBeHidden();
+  await expect
+    .poll(() => fake.repos.get(REPO)!.commits.at(-1)?.message ?? "")
+    .toContain("marcas de leitura");
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.paths).toEqual([expect.stringMatching(/^anotacoes\/aluna\/[0-9a-f-]+\.json$/)]);
+  const file = JSON.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(file.pages["1"]).toHaveLength(1);
+  expect(file.pages["1"][0]).toMatchObject({ kind: "highlight", color: "yellow" });
+  await expect(page.getByText("1 marca numa página.")).toBeVisible();
+
+  // Lápis na página do documento: o número da prova e o nome.
+  await page.getByRole("button", { name: "Editar: Número" }).click();
+  const number = page.getByRole("form", { name: "Editar: Número" });
+  await number.getByRole("spinbutton").fill("2");
+  await number.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("a actualizar")).toBeVisible();
+  let record = YAML.parse(fake.text(REPO, fake.repos.get(REPO)!.commits.at(-1)!.paths[0]!)!);
+  expect(record.classification.assessment_number).toMatchObject({ value: 2, method: "user" });
+
+  await page.getByRole("button", { name: "Mudar o nome" }).click();
+  const title = page.getByRole("form", { name: "Mudar o nome" });
+  await title.getByLabel("Nome", { exact: true }).fill("Exame de recurso de AM1");
+  await title.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("heading", { name: "Exame de recurso de AM1" })).toBeVisible();
+  record = YAML.parse(fake.text(REPO, fake.repos.get(REPO)!.commits.at(-1)!.paths[0]!)!);
+  expect(record.classification.title).toMatchObject({
+    value: "Exame de recurso de AM1",
+    method: "user",
+  });
+});
+
+test("lápis na biblioteca: o nome de um curso e de uma cadeira", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  const lei = page.getByRole("region", { name: "Engenharia Informática" });
+  await expect(lei).toBeVisible({ timeout: 20_000 });
+  await lei
+    .getByRole("button", { name: /Mudar o nome ou o grau de «Engenharia Informática»/ })
+    .click();
+  const form = lei.getByRole("form", { name: "Mudar o curso" });
+  await form.getByLabel("Nome do curso").fill("Engenharia Informática e de Computadores");
+  await form.getByRole("button", { name: "Guardar" }).click();
+  await expect(form).toBeHidden();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  const request = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  // Sem `units`: as cadeiras do curso ficam como estão.
+  expect(request.institutions[0].courses).toHaveLength(1);
+  expect(request.institutions[0].courses[0]).toMatchObject({
+    slug: "lei",
+    name: "Engenharia Informática e de Computadores",
+  });
+  expect(request.institutions[0].courses[0]).not.toHaveProperty("units");
+
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: /Mudar o nome, a sigla ou os nomes alternativos/ })
+    .click();
+  await expect(page.getByRole("button", { name: "Remover cadeira" })).toBeVisible();
 });
 
 test.describe("PDF num ecrã de alta densidade", () => {

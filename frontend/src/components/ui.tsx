@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { FieldValue, Reason } from "../data/types";
+import { IconPencil } from "./icons";
 
 export function PageHeader(props: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
@@ -219,4 +220,19 @@ export function unitColor(key: string | null | undefined): string {
   let hash = 0;
   for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return SPINES[hash % SPINES.length]!;
+}
+
+/** Lápis discreto ao lado de um valor que o dono (ou quem tem um código de acesso) pode mudar. */
+export function EditButton(props: { label: string; onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={props.label}
+      title={props.label}
+      onClick={props.onClick}
+      className={`inline-grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-pen-soft hover:text-pen focus-visible:bg-pen-soft focus-visible:text-pen ${props.className ?? ""}`}
+    >
+      <IconPencil size={15} />
+    </button>
+  );
 }

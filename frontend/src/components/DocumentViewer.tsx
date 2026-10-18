@@ -6,13 +6,16 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApp } from "../data/context";
 import type { DocumentRow } from "../data/types";
+import type { PageMarks } from "../lib/annotations";
+import { formatBytes } from "../lib/files";
 import { Markdown } from "./Markdown";
 import { PdfViewer } from "./PdfViewer";
+import { usePdf } from "./pdf";
 import { Button, Empty, ErrorBox, Spinner } from "./ui";
 
 export const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp"]);
 
-function useBinary(path: string | null) {
+export function useBinary(path: string | null) {
   const { source } = useApp();
   return useQuery({
     queryKey: ["binary", path],
@@ -64,11 +67,14 @@ export function OriginalPane(props: {
   doc: DocumentRow;
   page: number;
   setPage: (p: number) => void;
+  /** As marcas de leitura de quem vê (só a ver; editam-se no modo de leitura). */
+  marks?: PageMarks;
 }) {
+  const { t } = useTranslation();
   const { doc } = props;
-  const pdfPath = doc.ext === "pdf" ? doc.original_path : doc.rendition;
   const isImage = IMAGE_EXTS.has(doc.ext);
-  const binary = useBinary(pdfPath ?? (isImage ? doc.original_path : null));
+  const pdf = usePdf(isImage ? undefined : doc);
+  const binary = useBinary(isImage ? doc.original_path : null);
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!isImage || !binary.data) return;
@@ -76,12 +82,31 @@ export function OriginalPane(props: {
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [isImage, binary.data, doc.mime]);
-  if (binary.isLoading) return <Spinner />;
-  if (binary.error) return <ErrorBox error={binary.error} />;
+  const loading = isImage ? binary.isLoading : pdf.isLoading;
+  const error = isImage ? binary.error : pdf.error;
+  if (loading)
+    return (
+      <div className="space-y-1">
+        <Spinner />
+        {doc.size >= 8 * 1024 * 1024 && (
+          <p className="text-xs text-muted">
+            {t("reader.loading_big", { size: formatBytes(doc.size) })}
+          </p>
+        )}
+      </div>
+    );
+  if (error) return <ErrorBox error={error} />;
   if (isImage && url)
     return <img src={url} alt={doc.display_name} className="max-w-full rounded border" />;
-  if (pdfPath && binary.data)
-    return <PdfViewer data={binary.data} page={props.page} onPageChange={props.setPage} />;
+  if (pdf.data)
+    return (
+      <PdfViewer
+        pdf={pdf.data}
+        page={props.page}
+        onPageChange={props.setPage}
+        marks={props.marks}
+      />
+    );
   return null;
 }
 

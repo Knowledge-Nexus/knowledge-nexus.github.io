@@ -54,7 +54,9 @@
     "solution_origin": "Origem da resolução",
     "topics": "Tópicos",
     "date": "Data da prova",
-    "variant": "Versão"
+    "variant": "Versão",
+    "title": "Nome",
+    "institution": "Instituição"
   },
   "status": {
     "received": "Recebido",
@@ -242,7 +244,22 @@
     "copies_text": "Estes ficheiros têm exactamente o mesmo texto, página a página, e por isso só este aparece na biblioteca. Os originais continuam guardados.",
     "copy_of": "Este ficheiro tem exactamente o mesmo texto que {{name}}, por isso aparece só uma vez na biblioteca. O original continua guardado.",
     "open_original": "Abrir o que aparece na biblioteca",
-    "not_same": "Não são iguais"
+    "not_same": "Não são iguais",
+    "read": "Ler",
+    "read_continue": "Continuar a ler · p. {{page}}",
+    "open_reader": "Abrir no modo de leitura",
+    "original_name": "Ficheiro original: {{name}}",
+    "pages_count_one": "{{count}} página",
+    "pages_count_other": "{{count}} páginas",
+    "my_marks": "As tuas marcas",
+    "marks_count_one": "{{count}} marca",
+    "marks_count_other": "{{count}} marcas",
+    "marks_pages_one": "numa página.",
+    "marks_pages_other": "em {{count}} páginas.",
+    "no_marks": "Ainda sem marcas. No modo de leitura podes marcar, sublinhar e escrever por cima.",
+    "marks_private": "Só tu as vês: os outros (e «Ver o original») mostram o documento sem elas.",
+    "marks_open": "Ver as marcas",
+    "marks_start": "Começar a marcar"
   },
   "review": {
     "title": "A rever",
@@ -478,7 +495,8 @@
     "new": "Nova instituição",
     "taken": "Já existe uma instituição com este identificador.",
     "create": "Criar instituição",
-    "close": "Fechar"
+    "close": "Fechar",
+    "edit_one": "Editar a instituição «{{name}}»"
   },
   "course_create": {
     "open": "Novo curso",
@@ -529,7 +547,8 @@
     "remove_merge_confirm": "Remover «{{name}}» e passar os documentos para «{{target}}»? O nome antigo fica como nome alternativo de «{{target}}». Os ficheiros não são apagados.",
     "aliases": "Acrescentar nomes alternativos",
     "aliases_placeholder": "ex.: Civil, Direito Civil",
-    "aliases_help": "Separados por vírgulas. O material com estes nomes nas pastas, nos ficheiros ou no título passa a ser reconhecido como desta cadeira (ex.: a pasta «Civil»)."
+    "aliases_help": "Separados por vírgulas. O material com estes nomes nas pastas, nos ficheiros ou no título passa a ser reconhecido como desta cadeira (ex.: a pasta «Civil»).",
+    "pencil": "Mudar o nome, a sigla ou os nomes alternativos de «{{name}}»"
   },
   "access": {
     "title": "Acessos que deste",
@@ -598,5 +617,89 @@
     "errors": {
       "no_access": "Esse token não abre o repositório de dados. Confirma que o seleccionaste em «Repository access» e que deste permissão de escrita em «Contents»."
     }
+  },
+  "edit": {
+    "title": "Mudar o nome",
+    "title_reset": "Voltar ao nome automático",
+    "field": "Editar: {{field}}",
+    "no_value": "Sem valor",
+    "pending": "a actualizar",
+    "institution_hint": "A instituição é a da cadeira: escolhe a instituição e depois a cadeira."
+  },
+  "reader": {
+    "title": "Modo de leitura",
+    "close": "Sair do modo de leitura (Esc)",
+    "page": "p. {{page}} de {{total}}",
+    "pages": "p. {{from}}–{{to}} de {{total}}",
+    "page_label": "Página {{page}}",
+    "single": "Uma página de cada vez",
+    "spread": "Livro aberto (duas páginas)",
+    "fit_page": "Ajustar à página",
+    "fit_width": "Ajustar à largura",
+    "rotate": "Rodar a página (R)",
+    "tone": "Tom da página: {{tone}}",
+    "tones": {
+      "paper": "papel",
+      "sepia": "sépia",
+      "night": "noite"
+    },
+    "text_view": "Ver o texto da página",
+    "page_view": "Ver a página",
+    "panel": "Índice e marcas",
+    "fullscreen": "Ecrã inteiro (F)",
+    "previous": "Página anterior",
+    "next": "Página seguinte",
+    "slider": "Ir para a página",
+    "tools": "Ferramentas",
+    "tool_read": "Ler (L)",
+    "tool_highlight": "Marcador (M): em linha recta; com Shift, à mão livre",
+    "tool_underline": "Sublinhar (S)",
+    "tool_pen": "Caneta (C)",
+    "tool_eraser": "Borracha (B): passa por cima de uma marca para a apagar",
+    "color": "Cor: {{color}}",
+    "colors": {
+      "yellow": "amarelo",
+      "green": "verde",
+      "blue": "azul",
+      "pink": "rosa",
+      "red": "vermelho",
+      "ink": "tinta"
+    },
+    "size": "Espessura: {{size}}",
+    "sizes": {
+      "thin": "fina",
+      "medium": "média",
+      "thick": "grossa"
+    },
+    "undo": "Desfazer (Ctrl+Z)",
+    "redo": "Refazer (Ctrl+Shift+Z)",
+    "clear_page": "Limpar a página",
+    "clear_pages": "Limpar as páginas à vista",
+    "clear_all": "Limpar tudo",
+    "clear_all_confirm": "Apagar todas as tuas marcas deste documento? Se te arrependeres, «Desfazer» trá-las de volta.",
+    "clear_all_yes": "Apagar todas",
+    "show_original": "Ver o original, sem as tuas marcas",
+    "show_marks": "Ver com as tuas marcas",
+    "original_badge": "Original, sem as tuas marcas",
+    "state_saved": "Marcas guardadas",
+    "state_local": "Marcas guardadas neste browser",
+    "state_pending": "Por guardar…",
+    "state_saving": "A guardar as marcas…",
+    "state_error": "Não deu para guardar: tenta outra vez daqui a pouco",
+    "marks_error": "Não deu para ler as tuas marcas. As ferramentas ficam desligadas, para não as perderes.",
+    "outline": "Índice do documento",
+    "no_outline": "Este documento não traz índice.",
+    "my_marks": "As tuas marcas",
+    "private_note": "Só tu as vês; o original fica igual.",
+    "no_marks": "Ainda não marcaste nada: escolhe o marcador, o sublinhado ou a caneta.",
+    "marks_on_page_one": "Página {{page}} · {{count}} marca",
+    "marks_on_page_other": "Página {{page}} · {{count}} marcas",
+    "loading_big": "Documento grande ({{size}}): pode demorar a abrir.",
+    "style": "Cor e espessura: {{color}}, {{size}}",
+    "style_title": "Cor e espessura"
+  },
+  "course_edit": {
+    "title": "Mudar o curso",
+    "open": "Mudar o nome ou o grau de «{{name}}»"
   }
 }

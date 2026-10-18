@@ -3,6 +3,7 @@
 // (ex.: https://knowledge-nexus.github.io/estudo-publico/), por isso não há token nem
 // limites da API: são ficheiros estáticos.
 
+import { type AnnotationFile, parseAnnotations, stringifyAnnotations } from "../lib/annotations";
 import { getCached, putCached } from "./cache";
 import type { WorkflowRun } from "./github/client";
 import type { RepoRef } from "./github/commit";
@@ -68,6 +69,38 @@ export class PublicDataSource implements DataSource {
 
   async binary(path: string): Promise<Uint8Array> {
     return new Uint8Array(await (await get(`${this.base}${path}`)).arrayBuffer());
+  }
+
+  /** Pedido parcial (o GitHub Pages aceita-os): os PDFs grandes abrem sem esperar. */
+  async binaryRange(path: string, begin: number, end: number): Promise<Uint8Array | null> {
+    const controller = new AbortController();
+    const res = await fetch(`${this.base}${path}`, {
+      headers: { Range: `bytes=${begin}-${end - 1}` },
+      signal: controller.signal,
+    });
+    if (res.status !== 206) {
+      controller.abort();
+      if (begin === 0 || res.status === 404) return null;
+      throw new Error(`${res.status} ao ler ${path}`);
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  /** Sem sessão, as marcas de leitura ficam só neste browser. */
+  private annotationsKey(docId: string): string {
+    return `nexus.marcas.publico.${docId}`;
+  }
+
+  async annotations(docId: string): Promise<AnnotationFile | null> {
+    try {
+      return parseAnnotations(localStorage.getItem(this.annotationsKey(docId)));
+    } catch {
+      return null;
+    }
+  }
+
+  async saveAnnotations(file: AnnotationFile): Promise<void> {
+    localStorage.setItem(this.annotationsKey(file.document), stringifyAnnotations(file));
   }
 
   upload = readOnly;

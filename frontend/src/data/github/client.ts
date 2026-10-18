@@ -162,6 +162,36 @@ export class GitHubClient {
     return new Uint8Array(await response.arrayBuffer());
   }
 
+  /**
+   * Bytes [begin, end) de um original no R2 (pedido parcial). null se não estiver lá ou se o
+   * Worker não aceitar pedidos parciais (aí descarrega-se tudo, com `storedBlob`).
+   */
+  async storedRange(
+    storageUrl: string,
+    owner: string,
+    name: string,
+    sha256: string,
+    begin: number,
+    end: number,
+  ): Promise<Uint8Array | null> {
+    const controller = new AbortController();
+    const response = await this.fetchImpl(`${storageUrl}/blob/${sha256}`, {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "X-Nexus-Repo": `${owner}/${name}`,
+        Range: `bytes=${begin}-${end - 1}`,
+      },
+      signal: controller.signal,
+    });
+    if (response.status === 404) return null;
+    if (response.status !== 206) {
+      controller.abort(); // o ficheiro inteiro: não vale a pena trazê-lo por aqui
+      if (response.ok) return null;
+      throw new GitHubError(response.status, response.statusText);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
   async headSha(owner: string, name: string, branch: string): Promise<string> {
     const ref = await this.json<{ object: { sha: string } }>(
       "GET",

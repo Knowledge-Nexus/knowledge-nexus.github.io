@@ -49,6 +49,8 @@ convenções ou comandos.
   `git pull` e volta a arrancá-lo. Antes de processar, espera que o remoto fique 20 s sem
   commits (`wait_until_quiet`: quem arruma na interface grava vários seguidos); um envio
   recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
+  Commits só com marcas de leitura (`anotacoes/`) ou `acessos.yaml` não são processados
+  (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
@@ -188,6 +190,33 @@ Dependências de sistema (Ubuntu/WSL2):
     separa os anos lectivos (o mais recente primeiro) quando a cadeira tem mais de um, e
     ordena pela ordem natural: provas pela data e pelo número, o resto pelo título ("FT 2"
     antes de "FT 10"; `lib/docOrder.ts`).
+  - Página do documento (`features/document/DocumentPage.tsx`): o título é o nome dado pelo
+    dono (`classification.title`) ou o de `documentTitle`, com «Ler» («Continuar a ler · p. N»,
+    `lib/reader.ts`), o original (ou o texto) à esquerda e a classificação à direita.
+  - **Modo de leitura** (`features/document/Reader.tsx`, `?ler=1`, num portal no `<body>`):
+    só o documento sobre fundo preto (`bg-night`), uma página ou livro aberto (capa sozinha,
+    depois pares; `spreadPages`), ajustar à página/largura, zoom, rodar, tom (papel, sépia,
+    noite), texto da página, índice do PDF, ecrã inteiro, teclado (setas, Esc, L/M/S/C/B,
+    Ctrl+Z) e deslizar do dedo. As barras escondem-se ao fim de uns segundos a ler.
+  - **Marcas de leitura** (`lib/annotations.ts`, `features/document/useMarks.ts`,
+    `components/MarksLayer.tsx`): marcador e sublinhado (segmento recto, endireitado na
+    horizontal; com Shift, à mão livre), caneta, borracha, desfazer/refazer, limpar a página,
+    limpar tudo (com confirmação) e «Ver o original» (sem marcas). São só de quem as faz:
+    `anotacoes/<login>/<id>.json` (convidados numa pasta própria; `annotationsDir`), um
+    commit uns segundos depois da última alteração e ao sair, com rascunho no localStorage
+    até gravar; no material público, só no browser. Coordenadas da página sem a rotação do
+    leitor (largura `PAGE_UNITS`), por isso seguem o zoom e a rotação. Cores
+    `--color-mark-*` (`@theme static`, porque se usam em `var()` no SVG).
+  - PDFs (`components/pdf.ts`, `usePdf`): um só `PDFDocumentProxy` por documento (página e
+    leitor), fechado quando sai da cache. Acima de 4 MB, se o armazenamento aceitar pedidos
+    parciais (`DataSource.binaryRange`: Worker do R2 ou GitHub Pages), abre por partes
+    (`PDFDataRangeTransport`) e só traz as páginas que se vêem.
+  - **Editar no sítio** (só o dono e quem tem código de acesso; nunca visitantes): lápis
+    (`EditButton` em `components/ui.tsx`) no nome do documento e em cada campo da
+    classificação (`features/document/DocumentFields.tsx`, `setUserField`: `method: user`;
+    "sem valor" grava `null` como escolha; a instituição muda-se escolhendo uma cadeira de
+    outra), no nome da cadeira (`UnitEditor`), no nome e grau de um curso (`CourseRenamer`,
+    pedido sem `units`) e no nome da instituição de uma estante (`InstitutionManager initial`).
   - Depositar (`features/upload/UploadPage.tsx`): as cópias (mesmo SHA-256, qualquer nome)
     são detectadas logo ao escolher os ficheiros, repetidas na selecção ou já na biblioteca
     do utilizador (`ownedSha`), e não são enviadas (opção "Enviar também as cópias" envia só

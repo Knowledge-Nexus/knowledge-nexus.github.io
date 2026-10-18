@@ -34,12 +34,16 @@ export function originalName(doc: DocumentRow): string {
 }
 
 /**
+ * O nome que o dono lhe deu (se deu), ou um título a partir da classificação.
  * `withType`: incluir o tipo (quando a lista não está já agrupada por tipo).
  */
 export function documentTitle(doc: DocumentRow, labels: Labels, withType = false): string {
   const c = doc.classification;
   const parts: string[] = [];
   const type = doc.document_type ? labels.term("document_types", doc.document_type) : null;
+  const named = c.title?.value;
+  if (typeof named === "string" && named.trim())
+    return withType && type && !doc.assessment_type ? `${type} · ${named}` : named;
   if (doc.assessment_type) {
     const assessment = labels.term("assessment_types", doc.assessment_type);
     parts.push(doc.assessment_number ? `${assessment} ${doc.assessment_number}` : assessment);

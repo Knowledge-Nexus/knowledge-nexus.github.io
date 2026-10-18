@@ -15,6 +15,8 @@ export const CLASSIFICATION_FIELDS = [
   "topics",
   "date",
   "variant",
+  // Nome dado pelo dono (lápis no título do documento); o motor nunca o define.
+  "title",
 ] as const;
 export type ClassificationField = (typeof CLASSIFICATION_FIELDS)[number];
 
@@ -256,7 +258,8 @@ export interface CatalogBundle {
       slug: string;
       name: string;
       degree?: string;
-      units: { unit: string; curricular_year?: number; semester?: number }[];
+      /** Sem `units`, o motor mantém as cadeiras do curso (só muda o nome ou o grau). */
+      units?: { unit: string; curricular_year?: number; semester?: number }[];
     }[];
     units?: CatalogUnitInput[];
   }[];

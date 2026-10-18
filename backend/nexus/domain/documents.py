@@ -51,6 +51,7 @@ CLASSIFICATION_FIELDS: tuple[str, ...] = (
     "topics",
     "date",
     "variant",
+    "title",
 )
 
 
@@ -100,6 +101,9 @@ class Classification(Record):
     # Avaliações: data da prova (AAAA-MM-DD) e versão/turno ("A", "B"…), para nomes únicos.
     date: FieldValue | None = None
     variant: FieldValue | None = None
+    # Nome dado pelo dono na interface (lápis no título): substitui o título calculado nas
+    # listas e, fora das avaliações, o nome original no nome arrumado. O motor nunca o define.
+    title: FieldValue | None = None
 
     def value(self, name: str) -> Any:
         field: FieldValue | None = getattr(self, name)

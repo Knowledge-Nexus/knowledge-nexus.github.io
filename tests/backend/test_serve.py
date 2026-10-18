@@ -7,6 +7,7 @@ from nexus.datarepo.git import Git
 from nexus.serve import (
     QUIET_SECONDS,
     app_has_update,
+    only_personal,
     remote_has_news,
     serve,
     serve_once,
@@ -37,6 +38,36 @@ def test_remote_has_news_after_other_clone_pushes(tmp_path: Path) -> None:
     _git(a, "commit", "-q", "-m", "dois")
     _git(a, "push", "-q", "origin", "HEAD:main")
     assert remote_has_news(Git(b), "origin", "main")
+
+
+def test_reading_marks_alone_are_not_processed(tmp_path: Path, monkeypatch) -> None:
+    """As marcas de leitura (e o registo dos acessos) não passam pelo pipeline: só se traz."""
+    import nexus.serve as serve_module
+
+    assert only_personal(["anotacoes/aluna/abc.json", "acessos.yaml"])
+    assert not only_personal(["anotacoes/aluna/abc.json", "documentos/abc.yaml"])
+    assert not only_personal([])
+    bare = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(bare)], check=True)
+    a, b = tmp_path / "a", tmp_path / "b"
+    subprocess.run(["git", "clone", "-q", str(bare), str(a)], check=True, capture_output=True)
+    (a / "x.txt").write_text("1")
+    _git(a, "add", "-A")
+    _git(a, "commit", "-q", "-m", "um")
+    _git(a, "push", "-q", "origin", "HEAD:main")
+    subprocess.run(["git", "clone", "-q", str(bare), str(b)], check=True, capture_output=True)
+    (a / "anotacoes" / "aluna").mkdir(parents=True)
+    (a / "anotacoes" / "aluna" / "doc.json").write_text("{}")
+    _git(a, "add", "-A")
+    _git(a, "commit", "-q", "-m", "marcas")
+    _git(a, "push", "-q", "origin", "HEAD:main")
+    processed: list[Path] = []
+    monkeypatch.setattr(serve_module, "wait_until_quiet", lambda *a, **k: None)
+    monkeypatch.setattr(serve_module, "process_and_publish",
+                        lambda root, **k: processed.append(root))
+    assert not serve_once(b)
+    assert processed == []
+    assert (b / "anotacoes" / "aluna" / "doc.json").exists()  # trazido do remoto
 
 
 def test_serve_commits_skip_ci(git_root: Path) -> None:

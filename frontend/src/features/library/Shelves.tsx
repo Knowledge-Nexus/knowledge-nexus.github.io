@@ -6,14 +6,14 @@
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router";
-import { ErrorBox, Notice, unitColor } from "../../components/ui";
+import { EditButton, ErrorBox, Notice, unitColor } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { CatalogBundle, CourseRow, UnitRow } from "../../data/types";
 import { type CourseColor, courseColors } from "../../lib/courseColors";
 import { unitRef } from "../../lib/courseLinks";
 import { normalize, slugify } from "../../lib/normalize";
 import { courseTitle, degreeOf } from "../../lib/reference";
-import { CourseRemover } from "./CourseManager";
+import { CourseRemover, CourseRenamer } from "./CourseManager";
 import { UnitBook } from "./LibraryPage";
 
 const DRAG_TYPE = "application/x-nexus-unit";
@@ -61,13 +61,18 @@ function bundleFor(
   };
 }
 
-export function Shelves(props: { units: UnitRow[] }) {
+export function Shelves(props: {
+  units: UnitRow[];
+  /** Lápis no nome da instituição de uma estante (abre o editor de instituições). */
+  onEditInstitution?: (slug: string) => void;
+}) {
   const { t } = useTranslation();
   const { meta, login, source, notifyCommit, readOnly } = useApp();
   const [overrides, setOverrides] = useState<Record<string, Link[]>>({});
   const [created, setCreated] = useState<Record<string, CourseRow>>({});
   const [hover, setHover] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -321,9 +326,26 @@ export function Shelves(props: { units: UnitRow[] }) {
                 <h2 className="font-serif text-xl font-semibold" style={{ color }}>
                   {courseTitle(shelf.course.name)}
                 </h2>
+                {!readOnly && !shelf.proposalId && renaming !== key && (
+                  <EditButton
+                    label={t("course_edit.open", { name: courseTitle(shelf.course.name) })}
+                    onClick={() => {
+                      setRenaming(key);
+                      setRemoving(null);
+                    }}
+                  />
+                )}
                 {institutions.length > 1 && (
-                  <span className="text-xs font-semibold tracking-wider text-muted uppercase">
+                  <span className="flex items-center gap-0.5 text-xs font-semibold tracking-wider text-muted uppercase">
                     {institutionOf(shelf.course.institution)}
+                    {!readOnly && props.onEditInstitution && (
+                      <EditButton
+                        label={t("institution_edit.edit_one", {
+                          name: institutionOf(shelf.course.institution),
+                        })}
+                        onClick={() => props.onEditInstitution?.(shelf.course.institution)}
+                      />
+                    )}
                   </span>
                 )}
                 {shelf.proposalId && (
@@ -344,6 +366,16 @@ export function Shelves(props: { units: UnitRow[] }) {
                   </button>
                 )}
               </header>
+              {renaming === key && (
+                <CourseRenamer
+                  course={shelf.course}
+                  onCancel={() => setRenaming(null)}
+                  onSaved={() => {
+                    setRenaming(null);
+                    setSaved(true);
+                  }}
+                />
+              )}
               {removing === key && (
                 <CourseRemover
                   course={shelf.course}

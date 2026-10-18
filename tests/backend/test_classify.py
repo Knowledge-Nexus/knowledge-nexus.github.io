@@ -193,6 +193,22 @@ def test_assessment_date_variant_and_ordinal(catalog_root: Path) -> None:
     assert c.value("variant") == "B" and c.value("date") == "2025-01-24"
 
 
+def test_user_title_names_the_filed_document(catalog_root: Path) -> None:
+    """O nome dado pelo dono (lápis no título) substitui o nome original no nome arrumado,
+    fora das avaliações (essas continuam com o tipo, o número e a época)."""
+    from nexus.domain.documents import FieldValue
+    from nexus.pipeline.filing import filed_name
+
+    classifier, repo = _classifier(catalog_root)
+    c = classifier.classify(_doc("MRN/apontamentos_cap3.pdf"), None,
+                            ["Métodos e Resolução Numérica\nApontamentos"], None,
+                            []).classification
+    c.title = FieldValue(value="Resumo do capítulo 3", confidence=1, method="user")
+    doc = _doc("MRN/apontamentos_cap3.pdf").model_copy(update={"classification": c})
+    assert "resumo-do-capitulo-3" in filed_name(doc, repo.vocabularies)
+    assert "cap3" not in filed_name(doc, repo.vocabularies)
+
+
 def test_unique_name() -> None:
     from nexus.pipeline.filing import unique_name
 

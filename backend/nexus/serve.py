@@ -26,6 +26,16 @@ UPDATE_EVERY = 600
 # que o remoto fique este tempo sem mudanças antes de processar, até ao máximo indicado.
 QUIET_SECONDS = 20
 QUIET_MAX_WAIT = 180
+# O que a interface grava e o pipeline não usa (as marcas de leitura de cada pessoa e o
+# registo dos acessos temporários): commits só com isto não precisam de processamento.
+PERSONAL_PREFIXES = ("anotacoes/",)
+PERSONAL_FILES = ("acessos.yaml",)
+
+
+def only_personal(paths: list[str]) -> bool:
+    """Todos os ficheiros alterados são pessoais (ver `PERSONAL_PREFIXES`)."""
+    return bool(paths) and all(
+        p in PERSONAL_FILES or p.startswith(PERSONAL_PREFIXES) for p in paths)
 
 
 def remote_has_news(git: Git, remote: str, branch: str) -> bool:
@@ -62,7 +72,12 @@ def serve_once(root: Path, remote: str = "origin", branch: str = "main",
         return False
     if news:
         wait_until_quiet(git, remote, branch, sleep)
+        changed = git.run("diff", "--name-only", f"HEAD...{remote}/{branch}",
+                          check=False).split()
         git.run("pull", "--rebase", "-q", remote, branch)
+        if not force and only_personal(changed):
+            log.debug("só marcas de leitura ou acessos: nada a processar")
+            return False
     # O resultado já vem processado: o push não deve pôr o Actions a fazê-lo outra vez.
     result = process_and_publish(root, push=True, remote=remote, branch=branch, skip_ci=True,
                                  max_attempts=5)

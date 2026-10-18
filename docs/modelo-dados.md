@@ -13,6 +13,7 @@
 | Grupo | `grupos/<slug>.yaml` | membros e papéis (usado na fase 5) |
 | Blob | `originais/` + `blob` no documento | SHA-256, tamanho, extensão, mime; único por repositório |
 | Documento | `documentos/<uuid7>.yaml` | cópia lógica por utilizador: origens, `parent` (arquivo), `kind`, visibilidade, estado + histórico, classificação por campo, revisão, nome arrumado, notas, manifesto de projecto de código |
+| Marcas de leitura | `anotacoes/<login>/<id>.json` (quem entrou com um código: `anotacoes/convidados/<nome>-<sha8>/`) | por pessoa e por documento: traços (`highlight`, `underline`, `pen`), cor, espessura e pontos em unidades da página (largura 10000), página a página; nunca alteram o original; no material público ficam só no browser |
 | Extracção | `texto/<sha>/meta.json` | por conteúdo: extractor e versão, páginas (método, confiança OCR, `needs_ai_transcription`, rótulo), simhash |
 | Proposta de catálogo | `revisao/propostas/*.yaml` | tipo, estado, dados, evidências (documento, página, excerto) |
 | Proveniência | `nexus.domain.provenance` | `SourceRef {sha256, page, document}` + `Generated {by, at, model, sources}` |
@@ -31,6 +32,11 @@
   do utilizador e ficam arrumados como `<principal>/<nome original>`. "Separar" grava
   `bundle_dismissed: true` (formato 4). "Tornar principal" grava `bundle.lead_choice`, que
   manda sobre a escolha do motor (formato 5).
+
+**Nome dado pelo dono:** `classification.title` (`method: user`, lápis no título do
+documento). Nas listas substitui o título calculado e, fora das avaliações, entra no nome
+arrumado no lugar do nome original. O motor nunca o define. Um campo gravado como "sem
+valor" fica `{value: null, method: user}`: o motor não o volta a preencher.
 
 **Regras de partilha e visibilidade:**
 - O conteúdo derivado (texto, e mais tarde resumos e perguntas) é calculado por blob e

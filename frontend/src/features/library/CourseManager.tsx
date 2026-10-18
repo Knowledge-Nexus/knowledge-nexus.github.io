@@ -201,3 +201,89 @@ export function CourseRemover(props: {
     </div>
   );
 }
+
+/** Mudar o nome (e o grau) de um curso: as cadeiras do curso ficam como estão. */
+export function CourseRenamer(props: {
+  course: CourseRow;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const { meta, source, notifyCommit } = useApp();
+  const { course } = props;
+  const [name, setName] = useState(courseTitle(course.name));
+  const [degree, setDegree] = useState(course.degree ?? DEGREES[0]?.slug ?? "licenciatura");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const title = courseTitle(name.trim());
+  const changed = title !== courseTitle(course.name) || degree !== (course.degree ?? "");
+
+  async function save() {
+    const inst = meta?.institutions().find((i) => i.slug === course.institution);
+    setBusy(true);
+    setError(null);
+    try {
+      await source.catalogRequest(
+        {
+          format: "nexus-catalogo",
+          version: 1,
+          institutions: [
+            {
+              slug: course.institution,
+              name: inst?.name ?? course.institution,
+              // Sem `units`: o motor só muda o nome e o grau.
+              courses: [{ slug: course.slug, name: title, degree }],
+            },
+          ],
+        },
+        `catálogo: curso ${course.key}`,
+      );
+      notifyCommit();
+      props.onSaved();
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      aria-label={t("course_edit.title")}
+      className="space-y-3 border-b border-line bg-pen-soft/40 px-5 py-4 text-sm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <label>
+          {t("course_create.degree")}{" "}
+          <select className={input} value={degree} onChange={(e) => setDegree(e.target.value)}>
+            {DEGREES.map((d) => (
+              <option key={d.slug} value={d.slug}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("course_create.name")}{" "}
+          <input
+            className={`${input} w-80 max-w-full`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={busy || !title || !changed}>
+          {busy ? t("common.saving") : t("common.save")}
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={props.onCancel}>
+          {t("common.cancel")}
+        </Button>
+      </div>
+      {error ? <ErrorBox error={error} /> : null}
+    </form>
+  );
+}

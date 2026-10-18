@@ -11,8 +11,10 @@ import {
   parseAccesses,
   stringifyAccesses,
 } from "../lib/access";
+import { type AnnotationFile, parseAnnotations, stringifyAnnotations } from "../lib/annotations";
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
+import { slugify } from "../lib/normalize";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
@@ -117,6 +119,14 @@ export interface DataSource {
   indexFile(name: string, sha256: string): Promise<Uint8Array>;
   pageText(sha256: string, page: number): Promise<string>;
   binary(path: string): Promise<Uint8Array>;
+  /**
+   * Bytes [begin, end) de um ficheiro, se o armazenamento aceitar pedidos parciais (PDFs
+   * grandes abrem sem os descarregar inteiros); null se não aceitar.
+   */
+  binaryRange?(path: string, begin: number, end: number): Promise<Uint8Array | null>;
+  /** As marcas de leitura de quem tem a sessão aberta (só dessa pessoa). */
+  annotations(docId: string): Promise<AnnotationFile | null>;
+  saveAnnotations(file: AnnotationFile): Promise<void>;
   upload(
     entries: UploadEntry[],
     batch: string,
@@ -274,6 +284,68 @@ export class GitHubDataSource implements DataSource {
       }
     }
     return this.client.raw(this.repo.owner, this.repo.name, path, this.repo.branch);
+  }
+
+  async binaryRange(path: string, begin: number, end: number): Promise<Uint8Array | null> {
+    const sha = ORIGINAL_PATH.exec(path)?.[1];
+    if (!sha || !STORAGE_URL) return null;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.client.storedRange(
+          STORAGE_URL,
+          this.repo.owner,
+          this.repo.name,
+          sha,
+          begin,
+          end,
+        );
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      }
+    }
+    if (begin === 0) return null; // o primeiro pedido falhou: descarrega-se tudo
+    throw lastError;
+  }
+
+  /**
+   * Pasta das marcas de quem está na sessão. Quem entra com um código de acesso usa o token
+   * do dono, por isso fica numa pasta própria (nome + início do SHA-256 do token).
+   */
+  get annotationsDir(): string {
+    if (!this.guest) return `anotacoes/${this.login}`;
+    const fingerprint = this.guest.token_sha256?.slice(0, 8);
+    const name = slugify(this.guest.name, 30);
+    return `anotacoes/convidados/${fingerprint ? `${name}-${fingerprint}` : name}`;
+  }
+
+  async annotations(docId: string): Promise<AnnotationFile | null> {
+    try {
+      return parseAnnotations(
+        await this.client.rawText(
+          this.repo.owner,
+          this.repo.name,
+          `${this.annotationsDir}/${docId}.json`,
+          this.repo.branch,
+        ),
+      );
+    } catch (error) {
+      if (error instanceof GitHubError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async saveAnnotations(file: AnnotationFile): Promise<void> {
+    await this.commit(
+      [
+        {
+          path: `${this.annotationsDir}/${file.document}.json`,
+          content: stringifyAnnotations(file),
+        },
+      ],
+      `marcas de leitura: ${file.document}`,
+    );
   }
 
   async upload(

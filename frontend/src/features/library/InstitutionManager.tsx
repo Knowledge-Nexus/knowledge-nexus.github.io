@@ -11,12 +11,19 @@ import { findSuggestion, institutionSuggestions } from "../../lib/reference";
 
 const input = "rounded-lg border border-line-strong bg-sheet px-2 py-1 text-sm";
 
-export function InstitutionManager(props: { onDone: () => void }) {
+export function InstitutionManager(props: {
+  onDone: () => void;
+  /** Abre já a editar esta instituição (lápis numa estante). */
+  initial?: string | null;
+}) {
   const { t } = useTranslation();
   const { meta, source, notifyCommit } = useApp();
-  const [editing, setEditing] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [acronym, setAcronym] = useState("");
+  const first = props.initial
+    ? meta?.institutions().find((i) => i.slug === props.initial)
+    : undefined;
+  const [editing, setEditing] = useState<string | null>(first?.slug ?? null);
+  const [name, setName] = useState(first?.name ?? "");
+  const [acronym, setAcronym] = useState(first?.acronym ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [saved, setSaved] = useState(false);

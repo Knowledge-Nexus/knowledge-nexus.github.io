@@ -42,7 +42,8 @@ def filed_name(doc: Document, vocab: Vocabularies) -> str:
     else:
         type_slug = type_term.slug if type_term else "documento"
         parts.append(type_slug)
-        stem_parts = [p for p in slugify(original_stem(doc), 50).split("-")
+        stem = c.value("title") or original_stem(doc)
+        stem_parts = [p for p in slugify(str(stem), 50).split("-")
                       if p not in type_slug.split("-")]
         parts.append("-".join(stem_parts) or doc.blob.sha256[:8])
     description = "-".join(slugify(str(p), 60) for p in parts if p)
