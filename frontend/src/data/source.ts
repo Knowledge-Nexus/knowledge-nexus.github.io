@@ -3,11 +3,20 @@
 
 import { zipSync } from "fflate";
 import YAML from "yaml";
+import {
+  ACCESS_FILE,
+  type AccessEntry,
+  type AccessState,
+  accessState,
+  parseAccesses,
+  stringifyAccesses,
+} from "../lib/access";
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
+import type { GuestInfo } from "./session";
 import type { CatalogBundle, IndexManifest } from "./types";
 
 export const INDICES_BRANCH = "indices";
@@ -159,8 +168,51 @@ export class GitHubDataSource implements DataSource {
     readonly login: string,
     readonly info?: RepoInfo,
     /** Quem entrou com um código de acesso temporário (vai nas mensagens dos commits). */
-    readonly guest?: { name: string; until?: string },
+    readonly guest?: GuestInfo,
   ) {}
+
+  /** O registo dos acessos temporários (`acessos.yaml`); vazio se ainda não existir. */
+  async accesses(): Promise<AccessEntry[]> {
+    try {
+      return parseAccesses(
+        await this.client.rawText(this.repo.owner, this.repo.name, ACCESS_FILE, this.repo.branch),
+      );
+    } catch (error) {
+      if (error instanceof GitHubError && error.status === 404) return [];
+      throw error;
+    }
+  }
+
+  /** Altera o registo dos acessos num commit (sobre a versão mais recente). */
+  patchAccesses(update: (entries: AccessEntry[]) => AccessEntry[], message: string) {
+    return this.commit(
+      [
+        {
+          path: ACCESS_FILE,
+          update: (current) => stringifyAccesses(update(parseAccesses(current))),
+        },
+      ],
+      message,
+    );
+  }
+
+  /**
+   * Para quem entrou com um código: o estado do acesso no registo. Um código que não está no
+   * registo (feito antes da gestão de acessos) ou um registo que não se consegue ler contam
+   * como activos: o corte a sério é apagar o token no GitHub.
+   */
+  async guestAccess(): Promise<{ state: AccessState; entry?: AccessEntry }> {
+    const fingerprint = this.guest?.token_sha256;
+    if (!fingerprint) return { state: "active" };
+    let entries: AccessEntry[];
+    try {
+      entries = await this.accesses();
+    } catch {
+      return { state: "active" };
+    }
+    const entry = entries.find((e) => e.token_sha256 === fingerprint);
+    return entry ? { state: accessState(entry), entry } : { state: "active" };
+  }
 
   /** Um commit; com acesso temporário, a mensagem diz quem o fez. */
   private commit(

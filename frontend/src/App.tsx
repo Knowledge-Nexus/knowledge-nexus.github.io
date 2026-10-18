@@ -6,7 +6,7 @@ import { Layout } from "./components/Layout";
 import { buttonClass, Empty, ErrorBox, Spinner } from "./components/ui";
 import { DataProvider, useApp } from "./data/context";
 import { fetchPublicManifest, PublicDataSource } from "./data/public";
-import { clearSession, loadSession, saveSession } from "./data/session";
+import { clearSession, loadSession, saveSession, setFlash } from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
 import { HelpPage } from "./features/help/HelpPage";
 import { HomePage } from "./features/home/HomePage";
@@ -106,12 +106,20 @@ export function App() {
   const [connected, setConnected] = useState<Connected | null>(null);
   const [restoring, setRestoring] = useState(() => loadSession() !== null);
   const [restoreError, setRestoreError] = useState<unknown>(null);
+  const [toEntry, setToEntry] = useState(false);
 
   useEffect(() => {
     const stored = loadSession();
     if (!stored) return;
     connect(stored)
-      .then(setConnected, (error: unknown) => setRestoreError(error))
+      .then(setConnected, (error: unknown) => {
+        // Acesso temporário suspenso ou terminado pelo dono: a razão aparece na entrada.
+        if (error instanceof Error && error.message.startsWith("access_")) {
+          clearSession();
+          setFlash(error.message);
+          setToEntry(true);
+        } else setRestoreError(error);
+      })
       .finally(() => setRestoring(false));
   }, []);
 
@@ -164,7 +172,7 @@ export function App() {
               connected ? (
                 <Shell connected={connected} onLogout={logout} />
               ) : (
-                <Navigate to={restoreError ? "/entrar" : "/publico"} replace />
+                <Navigate to={restoreError || toEntry ? "/entrar" : "/publico"} replace />
               )
             }
           />

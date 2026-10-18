@@ -8,10 +8,37 @@ export interface StoredSession {
   token: string;
   remember: boolean;
   /** Entrada com um código de acesso temporário (ver `lib/invite.ts`). */
-  guest?: { name: string; until?: string };
+  guest?: GuestInfo;
+}
+
+export interface GuestInfo {
+  name: string;
+  until?: string;
+  /** SHA-256 do token: identifica o acesso no registo `acessos.yaml` (`lib/access.ts`). */
+  token_sha256?: string;
 }
 
 const KEY = "nexus.session";
+const FLASH = "nexus.aviso";
+
+/** Mensagem para o ecrã de entrada depois de uma saída forçada (ex.: acesso suspenso). */
+export function setFlash(code: string): void {
+  try {
+    sessionStorage.setItem(FLASH, code);
+  } catch {
+    // sem armazenamento: a pessoa volta só ao ecrã de entrada
+  }
+}
+
+export function takeFlash(): string | null {
+  try {
+    const code = sessionStorage.getItem(FLASH);
+    sessionStorage.removeItem(FLASH);
+    return code;
+  } catch {
+    return null;
+  }
+}
 
 function read(storage: Storage | undefined): StoredSession | null {
   try {

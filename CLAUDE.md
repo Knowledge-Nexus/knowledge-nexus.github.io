@@ -265,6 +265,15 @@ Dependências de sistema (Ubuntu/WSL2):
   Quem o recebe entra em «Recebeste um código de acesso?»; a sessão fica com `guest`, aparece
   uma faixa com o nome e o prazo, e cada commit leva `Feito por: <nome> (acesso temporário)`.
   Acaba quando o token expira ou o dono o apaga no GitHub.
+- **Gerir os acessos** (`lib/access.ts`, `features/setup/AccessManager.tsx`, só para o dono):
+  cada código fica no registo `acessos.yaml` do repositório de dados (id, nome, SHA-256 do
+  token, fim do token, prazo, `active|paused|revoked`; nunca o token) e o código em si só no
+  localStorage do dono. Ver o código, +1/+7 dias, mudar o prazo (nunca além do fim do token:
+  `clampUntil`), suspender, reactivar, renovar com um token novo, terminar, juntar códigos
+  antigos. Quem entra com um código é verificado ao entrar e de 2 em 2 minutos
+  (`GitHubDataSource.guestAccess`, `GuestBanner`); se estiver suspenso ou terminado, sai com
+  a razão no ecrã de entrada (`setFlash`). É um controlo da interface: o token continua a
+  valer no GitHub até expirar ou ser apagado (a API não deixa mudá-lo nem apagá-lo).
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
 - **Classificação (regras que evitam erros conhecidos):**

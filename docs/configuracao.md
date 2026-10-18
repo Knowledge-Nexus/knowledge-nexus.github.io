@@ -145,6 +145,23 @@ própria no GitHub:
   dados (com a conta dela): as alterações ficam com o nome dela e retiras o acesso quando
   quiseres.
 
+**Gerir os códigos** (Definições → «Acessos que deste», só para ti): para cada código vês o
+estado, o prazo e o fim do token, e podes:
+
+- **ver o código** outra vez (no browser onde o criaste);
+- **dar mais tempo** (+1 dia, +7 dias) ou **mudar o prazo**: nunca para lá do fim do token;
+  para ir além, **renova com um token novo** (gera um código novo para enviares);
+- **suspender** e **reactivar**: quem tem o código sai em até 2 minutos e não volta a entrar
+  enquanto estiver suspenso;
+- **terminar**: deixa de entrar pela interface. Para cortar o acesso de vez, apaga também o
+  token no GitHub (a interface leva-te à lista dos teus tokens);
+- **juntar à lista** um código que deste antes de esta secção existir.
+
+O registo fica em `acessos.yaml` no repositório de dados, sem os tokens (só uma impressão
+SHA-256). Estes controlos valem para quem usa a interface: o token em si continua a funcionar
+no GitHub até expirar ou ser apagado, porque o GitHub não deixa mudar o prazo de um token nem
+apagá-lo por programa.
+
 ## 5. Claude Code sobre o repositório de dados
 
 - Abre uma sessão do Claude Code (web ou WSL2) com o repositório de dados. O hook

@@ -645,3 +645,56 @@ test("acesso temporário: o dono cria um código e outra pessoa entra com ele", 
     .poll(() => fake.repos.get(REPO)!.commits.at(-1)?.message ?? "")
     .toContain("Feito por: Ana (acesso temporário)");
 });
+
+test("gerir os acessos: suspender, reactivar e terminar um código", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page.getByRole("link", { name: "Definições" }).first().click();
+  await page.getByLabel("Nome de quem vai ajudar").fill("Ana");
+  await page.getByLabel("Cola aqui o token criado").fill(fake.token);
+  await page.getByRole("button", { name: "Gerar o código" }).click();
+  const code = await page.getByLabel("Código de acesso").inputValue();
+
+  // Fica na lista, com o código guardado neste browser; o registo não leva o token.
+  const row = page.getByRole("listitem", { name: "Ana" });
+  await expect(row.getByText("activo")).toBeVisible();
+  await row.getByRole("button", { name: "Ver código" }).click();
+  await expect(row.getByLabel("Código de Ana")).toHaveValue(code);
+  const registry = () => fake.text(REPO, "acessos.yaml") ?? "";
+  expect(registry()).toContain("name: Ana");
+  expect(registry()).not.toContain(fake.token);
+
+  await row.getByRole("button", { name: "+7 dias" }).click();
+  await row.getByRole("button", { name: "Suspender" }).click();
+  await expect(row.getByText("suspenso")).toBeVisible();
+  expect(registry()).toContain("status: paused");
+
+  // Com o acesso suspenso, o código não entra.
+  await page.getByRole("button", { name: "Terminar sessão" }).first().click();
+  await page.goto("/#/entrar");
+  await page.getByLabel("Código de acesso").fill(code);
+  await page.getByRole("button", { name: "Entrar com o código" }).click();
+  await expect(page.getByText(/O teu acesso foi suspenso/)).toBeVisible();
+
+  // Reactivado, entra outra vez.
+  await login(page, fake);
+  await page.getByRole("link", { name: "Definições" }).first().click();
+  await page
+    .getByRole("listitem", { name: "Ana" })
+    .getByRole("button", { name: "Reactivar" })
+    .click();
+  await expect(page.getByRole("listitem", { name: "Ana" }).getByText("activo")).toBeVisible();
+  await page.getByRole("button", { name: "Terminar sessão" }).first().click();
+  await page.goto("/#/entrar");
+  await page.getByLabel("Código de acesso").fill(code);
+  await page.getByRole("button", { name: "Entrar com o código" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Acesso temporário de Ana" }),
+  ).toBeVisible();
+
+  // Terminado pelo dono, quem está dentro sai na verificação seguinte (aqui, ao recarregar).
+  const main = fake.repos.get(REPO)!.branches.main!;
+  main["acessos.yaml"] = Buffer.from(registry().replace("status: active", "status: revoked"));
+  await page.reload();
+  await expect(page.getByText(/O teu acesso terminou/)).toBeVisible();
+});

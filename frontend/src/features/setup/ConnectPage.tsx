@@ -4,8 +4,9 @@ import { BrandBanner } from "../../components/Brand";
 import { IconGlobe } from "../../components/icons";
 import { Button, Card, ErrorBox } from "../../components/ui";
 import { type FetchLike, GitHubClient, GitHubError } from "../../data/github/client";
-import { parseRepo, type StoredSession } from "../../data/session";
+import { parseRepo, type StoredSession, takeFlash } from "../../data/session";
 import { GitHubDataSource } from "../../data/source";
+import { tokenFingerprint } from "../../lib/access";
 import { decodeInvite } from "../../lib/invite";
 
 export interface Connected {
@@ -35,10 +36,16 @@ export async function connect(session: StoredSession, fetchImpl?: FetchLike): Pr
   if (info.permissions && info.permissions.push === false) throw new Error("no_push");
   const branch = info.default_branch || session.branch || "main";
   const repo = { owner: session.owner, name: session.name, branch };
-  return {
-    session: { ...session, branch },
-    source: new GitHubDataSource(client, repo, login, info, session.guest),
-  };
+  const guest = session.guest
+    ? { ...session.guest, token_sha256: await tokenFingerprint(session.token) }
+    : undefined;
+  const source = new GitHubDataSource(client, repo, login, info, guest);
+  if (guest) {
+    // O dono pode ter suspendido ou terminado este acesso (Definições → «Acessos que deste»).
+    const { state } = await source.guestAccess();
+    if (state !== "active") throw new Error(`access_${state}`);
+  }
+  return { session: { ...session, branch, ...(guest ? { guest } : {}) }, source };
 }
 
 export function ConnectPage(props: {
@@ -52,7 +59,11 @@ export function ConnectPage(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState<string | null>(null);
+  // Saída forçada (ex.: o dono suspendeu o acesso): a razão aparece aqui.
+  const [codeError, setCodeError] = useState<string | null>(() => {
+    const flash = takeFlash();
+    return flash ? t(`connect.errors.${flash}`) : null;
+  });
 
   async function submitCode(event: FormEvent) {
     event.preventDefault();
@@ -76,6 +87,10 @@ export function ConnectPage(props: {
         not_found: "code_expired",
         public: "public",
         no_push: "no_push",
+        access_paused: "access_paused",
+        access_revoked: "access_revoked",
+        access_ended: "access_ended",
+        access_token_expired: "code_expired",
       };
       setCodeError(known[reason] ? t(`connect.errors.${known[reason]}`) : String(reason || err));
     } finally {

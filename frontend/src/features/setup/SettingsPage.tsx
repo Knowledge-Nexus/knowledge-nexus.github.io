@@ -6,6 +6,7 @@ import { clearCache } from "../../data/cache";
 import { useApp } from "../../data/context";
 import { GitHubDataSource } from "../../data/source";
 import { academicYears, formatWhen, useLabels } from "../../lib/labels";
+import { AccessManager } from "./AccessManager";
 import { InviteCard } from "./InviteCard";
 
 export function SettingsPage() {
@@ -72,6 +73,7 @@ export function SettingsPage() {
         </div>
       </Card>
       {!guest && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
+      {!guest && source instanceof GitHubDataSource && <AccessManager source={source} />}
       <Card title={t("settings.sharing")}>
         <div className="space-y-2 text-sm">
           <p className="text-ink-soft">{t("settings.sharing_intro")}</p>

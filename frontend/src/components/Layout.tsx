@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type ReactNode, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router";
 import { useApp } from "../data/context";
+import { setFlash } from "../data/session";
 import { GitHubDataSource } from "../data/source";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { formatWhen } from "../lib/labels";
@@ -204,14 +206,30 @@ export function Layout(props: { children: ReactNode }) {
   );
 }
 
-/** Quem entrou com um código de acesso temporário vê de quem é o acesso e até quando. */
+/** Quem entrou com um código de acesso temporário vê de quem é o acesso e até quando. De
+ * 2 em 2 minutos confirma-se no registo dos acessos que o dono não o suspendeu nem terminou. */
 function GuestBanner() {
   const { t } = useTranslation();
-  const { source } = useApp();
+  const { source, logout } = useApp();
   const guest = source instanceof GitHubDataSource ? source.guest : undefined;
+  const access = useQuery({
+    queryKey: ["guest-access", guest?.token_sha256],
+    enabled: Boolean(guest) && source instanceof GitHubDataSource,
+    queryFn: () => (source as GitHubDataSource).guestAccess(),
+    refetchInterval: 120_000,
+  });
+  const state = access.data?.state;
+  useEffect(() => {
+    if (state && state !== "active") {
+      setFlash(`access_${state === "token_expired" ? "ended" : state}`);
+      logout();
+    }
+  }, [state, logout]);
   if (!guest) return null;
   const until =
-    (source instanceof GitHubDataSource && source.client.tokenExpiration) || guest.until;
+    access.data?.entry?.until ||
+    (source instanceof GitHubDataSource && source.client.tokenExpiration) ||
+    guest.until;
   return (
     <p
       role="status"

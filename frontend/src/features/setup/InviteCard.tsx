@@ -1,16 +1,23 @@
 // Definições → dar acesso temporário a outra pessoa (ver `lib/invite.ts`).
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Card, ErrorBox } from "../../components/ui";
+import { useApp } from "../../data/context";
 import { type FetchLike, GitHubClient } from "../../data/github/client";
+import { GitHubDataSource } from "../../data/source";
+import { clampUntil, newAccessId, tokenFingerprint } from "../../lib/access";
 import { encodeInvite, tokenPageUrl } from "../../lib/invite";
 import { formatWhen } from "../../lib/labels";
+import { registerAccess } from "./AccessManager";
 
 const DAYS = [1, 3, 7, 14, 30];
 
 export function InviteCard(props: { owner: string; name: string; fetchImpl?: FetchLike }) {
   const { t } = useTranslation();
+  const { source } = useApp();
+  const queryClient = useQueryClient();
   const [person, setPerson] = useState("");
   const [days, setDays] = useState(7);
   const [token, setToken] = useState("");
@@ -32,14 +39,32 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
       if (!info.private) throw new Error(t("connect.errors.public"));
       if (info.permissions && info.permissions.push === false)
         throw new Error(t("connect.errors.no_push"));
-      const until =
-        client.tokenExpiration ?? new Date(Date.now() + days * 86_400_000).toISOString();
+      const expires = client.tokenExpiration;
+      const { until } = clampUntil(new Date(Date.now() + days * 86_400_000), expires);
       const code = encodeInvite({
         repo: `${props.owner}/${props.name}`,
         token: token.trim(),
         name: person.trim(),
         until,
       });
+      // Fica no registo dos acessos, para o poderes gerir em «Acessos que deste».
+      if (source instanceof GitHubDataSource) {
+        await registerAccess(
+          source,
+          queryClient,
+          {
+            id: newAccessId(),
+            name: person.trim(),
+            token_sha256: await tokenFingerprint(token),
+            token_hint: token.trim().slice(-4),
+            token_expires: expires,
+            until,
+            status: "active",
+            created_at: new Date().toISOString(),
+          },
+          code,
+        );
+      }
       setResult({ code, until });
       setToken("");
     } catch (err) {
