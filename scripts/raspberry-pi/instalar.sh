@@ -84,7 +84,12 @@ verify() {
   case "$arch" in
     aarch64 | x86_64) ;;
     *) warn "é preciso um sistema de 64 bits; este é $arch (o leitor de PDF não existe para ele)."
-       warn "No DietPi, instala a imagem «ARMv8 64-bit»."
+       # Só os Pi 3, 4, 5, Zero 2 e Compute Module 3/4/5 têm processador de 64 bits.
+       if [[ "$model" =~ Pi\ (3|4|5|Zero\ 2)|Compute\ Module\ (3|4|5) ]]; then
+         warn "Este Pi aguenta 64 bits: instala a imagem «ARMv8 64-bit» do DietPi."
+       else
+         warn "O processador deste modelo só é de 32 bits: é preciso um Pi 3, 4 ou 5 (ou outro computador)."
+       fi
        VERIFY_OK=0 ;;
   esac
   if ! command -v systemctl >/dev/null; then warn "sem systemd: este instalador não serve."; VERIFY_OK=0; fi
@@ -132,7 +137,8 @@ verify() {
     fi
   fi
   info "o que mais usa o processador agora (% processador, % memória, programa):"
-  ps -eo pcpu,pmem,comm --sort=-pcpu | sed -n '2,6p' | sed 's/^/     /' || true
+  ps -eo pcpu,pmem,comm --sort=-pcpu |
+    awk 'NR > 1 && $3 !~ /^(ps|sed|awk|bash|sort|head|cut|grep|tr)$/' | head -5 | sed 's/^/     /' || true
   info "carga: $(cut -d' ' -f1-3 /proc/loadavg) (1, 5 e 15 minutos)"
 
   say "O que o Knowledge Nexus vai usar"

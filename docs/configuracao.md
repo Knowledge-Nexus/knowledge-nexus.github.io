@@ -177,7 +177,8 @@ apagá-lo por programa.
 ## 4.4 Processar num Raspberry Pi (sem o computador ligado)
 
 O Pi faz o mesmo que o `vigiar-deposito.bat`, mas arranca sozinho com ele e actualiza-se
-sozinho. Precisa de um sistema de **64 bits** (no DietPi, a imagem *ARMv8 64-bit*), de
+sozinho. Precisa de um **Pi 3, 4 ou 5** com sistema de **64 bits** (no DietPi, a imagem
+*ARMv8 64-bit*; os Pi 1, 2 e Zero originais são de 32 bits e não servem), de
 preferência **2 GB de memória ou mais** (com 1 GB de swap) e uns **10 GB livres** (o
 repositório de dados ocupa perto de 6 GB). O OCR é mais lento do que num computador: uma
 digitalização grande demora mais, mas acaba por ser processada.
