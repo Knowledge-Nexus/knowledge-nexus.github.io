@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)
 # `git pull` e volta a arrancar (antes, o processo continuava com o código antigo até alguém
 # o reiniciar à mão).
 UPDATE_EXIT = 75
+# De quanto em quanto tempo (segundos) se vê se a interface gravou algo (era 60; com o
+# `ls-remote` cada verificação é um pedido pequeno, por isso pode ser mais frequente).
+DEFAULT_INTERVAL = 30
 # De quanto em quanto tempo (segundos) se vê se a aplicação tem uma versão nova.
 UPDATE_EVERY = 600
 # Quem arruma na interface grava vários commits seguidos (ex.: arrastar cadeiras): espera-se
@@ -39,8 +42,14 @@ def only_personal(paths: list[str]) -> bool:
 
 
 def remote_has_news(git: Git, remote: str, branch: str) -> bool:
-    """Faz fetch e diz se o remoto tem commits que ainda não estão cá."""
-    git.run("fetch", "-q", remote, branch)
+    """Diz se o remoto tem commits que ainda não estão cá. Primeiro só pergunta qual é o
+    último commit do ramo (`ls-remote`, uma resposta de poucos bytes); o fetch só acontece
+    quando ele mudou. Assim, verificar de 30 em 30 segundos (ou menos) quase não custa nada."""
+    listed = git.run("ls-remote", remote, f"refs/heads/{branch}", check=False).split()
+    known = git.run("rev-parse", "-q", "--verify", f"refs/remotes/{remote}/{branch}",
+                    check=False).strip()
+    if not listed or listed[0] != known:
+        git.run("fetch", "-q", remote, branch)
     count = git.run("rev-list", "--count", f"HEAD..{remote}/{branch}", check=False)
     return count.strip().isdigit() and int(count) > 0
 
@@ -107,7 +116,7 @@ def app_has_update(checkout: Path) -> bool:
     return remote_has_news(git, "origin", branch)
 
 
-def serve(root: Path, interval: int = 60, once: bool = False,
+def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
           sleep: Callable[[float], None] = time.sleep,
           has_update: Callable[[], bool] | None = None) -> bool:
     """Corre até ser interrompido. Processa logo no arranque (apanha o que ficou por fazer).

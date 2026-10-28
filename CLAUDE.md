@@ -51,6 +51,17 @@ convenções ou comandos.
   recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
   Commits só com marcas de leitura (`anotacoes/`) ou `acessos.yaml` não são processados
   (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline).
+  Verifica de 30 em 30 s (`DEFAULT_INTERVAL`): `remote_has_news` pergunta primeiro o último
+  commit com `git ls-remote` e só faz fetch quando mudou.
+- **Raspberry Pi (ou outro Linux com systemd):** `scripts/raspberry-pi/instalar.sh`
+  (`--verificar` só diagnostica; `--desinstalar`) instala o `nexus servir` como serviço
+  `knowledge-nexus` à parte do resto da máquina: utilizador `nexus`, `/home/nexus/nexus` e
+  `/home/nexus/dados` (clone `--filter=blob:none`), chave de deploy com escrita só para o
+  repositório de dados, credenciais em `/etc/knowledge-nexus/ambiente` (600), `Nice=15`,
+  `IOSchedulingClass=idle`, `CPUWeight=20`, `MemoryHigh` 60 %, `TMPDIR` no disco e
+  `NEXUS_OCR_WORKERS` (1 ou 2) a limitar o OCR em paralelo (`ocr_workers` em
+  `extract/pdf.py`). Sai com 75 → o systemd volta a arrancá-lo e o `ExecStartPre` faz
+  `git pull` da aplicação. Precisa de 64 bits (o PyMuPDF não tem versão para armv7).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
@@ -125,7 +136,8 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Ferramentas de sistema | `uv run nexus verificar` |
 | Repositório de dados novo | `uv run nexus scaffold <pasta> --dono <login>` |
 | Pipeline local | `uv run nexus processar --repo <pasta> [--sem-push]` |
-| Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 60]` |
+| Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 30]` |
+| Processar num Raspberry Pi | `bash scripts/raspberry-pi/instalar.sh [--verificar]` (como root) |
 | Publicar índices (só se desactualizados) | `uv run nexus publicar-indices --repo <pasta> [--forcar]` |
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |
 | Exportar árvore | `uv run nexus exportar-arvore <destino> --repo <pasta>` |

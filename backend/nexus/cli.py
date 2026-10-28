@@ -162,7 +162,7 @@ def publicar_indices(
 @app.command("servir")
 def servir(
     repo: RepoOption = Path("."),
-    intervalo: Annotated[int, typer.Option(min=10, help="Segundos entre verificações.")] = 60,
+    intervalo: Annotated[int, typer.Option(min=10, help="Segundos entre verificações.")] = 30,
     uma_vez: Annotated[bool, typer.Option(help="Um só ciclo e sai.")] = False,
 ) -> None:
     """Vigia o repositório de dados e processa os depósitos novos (sem GitHub Actions)."""

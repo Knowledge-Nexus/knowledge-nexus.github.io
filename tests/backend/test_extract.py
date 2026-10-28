@@ -112,6 +112,23 @@ def test_write_extraction_layout(tmp_path: Path) -> None:
     assert meta.simhash and meta.words > 40
 
 
+def test_ocr_workers_respect_the_machine_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Numa máquina partilhada (ex.: Raspberry Pi), NEXUS_OCR_WORKERS deixa núcleos livres."""
+    from nexus.config import ExtractionSettings
+    from nexus.pipeline.extract.pdf import ocr_workers
+
+    monkeypatch.setattr("os.cpu_count", lambda: 4)
+    settings = ExtractionSettings(ocr_workers=4)
+    monkeypatch.delenv("NEXUS_OCR_WORKERS", raising=False)
+    assert ocr_workers(settings) == 4
+    monkeypatch.setenv("NEXUS_OCR_WORKERS", "2")
+    assert ocr_workers(settings) == 2
+    monkeypatch.setenv("NEXUS_OCR_WORKERS", "nada")
+    assert ocr_workers(settings) == 4
+    monkeypatch.setenv("NEXUS_OCR_WORKERS", "8")
+    assert ocr_workers(ExtractionSettings(ocr_workers=3)) == 3
+
+
 def test_pdf_ocr_parallel_keeps_page_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import pymupdf
 

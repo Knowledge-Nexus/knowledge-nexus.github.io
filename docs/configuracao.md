@@ -82,7 +82,10 @@ started because recent account payments have failed or your spending limit needs
 increased").
 
 - **No teu computador (recomendado para depósitos grandes):** `nexus servir` vigia o
-  repositório de dados e processa cada envio da interface (no Windows, `vigiar-deposito.bat`).
+  repositório de dados e processa cada envio da interface (no Windows, `vigiar-deposito.bat`;
+  num Raspberry Pi, como serviço: ver 4.4). Vê de 30 em 30 segundos se há novidades; cada
+  verificação é só uma pergunta pequena ao GitHub (o último commit do ramo), e só traz as
+  alterações quando há alguma.
   Os commits que ele envia levam `[skip ci]`, por isso não põem o Actions a repetir o trabalho.
   Quando há alterações da interface, espera que fiquem uns 20 segundos sem mudanças (arrastar
   várias cadeiras seguidas são vários commits) e processa-as de uma vez. Se mesmo assim o
@@ -170,6 +173,51 @@ O registo fica em `acessos.yaml` no repositório de dados, sem os tokens (só um
 SHA-256). Estes controlos valem para quem usa a interface: o token em si continua a funcionar
 no GitHub até expirar ou ser apagado, porque o GitHub não deixa mudar o prazo de um token nem
 apagá-lo por programa.
+
+## 4.4 Processar num Raspberry Pi (sem o computador ligado)
+
+O Pi faz o mesmo que o `vigiar-deposito.bat`, mas arranca sozinho com ele e actualiza-se
+sozinho. Precisa de um sistema de **64 bits** (no DietPi, a imagem *ARMv8 64-bit*), de
+preferência **2 GB de memória ou mais** (com 1 GB de swap) e uns **10 GB livres** (o
+repositório de dados ocupa perto de 6 GB). O OCR é mais lento do que num computador: uma
+digitalização grande demora mais, mas acaba por ser processada.
+
+Fica à parte do que mais corre no Pi: um utilizador próprio (`nexus`), as pastas dele
+(`/home/nexus/nexus` e `/home/nexus/dados`), o Python dele e um serviço com prioridade baixa
+no processador, no disco e na memória (os outros projectos passam sempre à frente). O OCR
+faz uma ou duas páginas de cada vez (`NEXUS_OCR_WORKERS`). Não abre portas nem mexe no Node,
+no npm, no cron ou noutras pastas; só acrescenta programas do sistema (OCR, Pandoc,
+LibreOffice).
+
+1. **Entrar no Pi:** no Windows, abre o *Terminal* (ou a *Linha de comandos*) e escreve
+   `ssh root@DietPi` (ou `ssh root@<IP do Pi>`); a palavra-passe é a do root do DietPi.
+2. **Ver se o Pi serve** (não instala nada):
+
+   ```bash
+   cd ~ && curl -fsSLO https://raw.githubusercontent.com/Knowledge-Nexus/knowledge-nexus.github.io/main/scripts/raspberry-pi/instalar.sh
+   bash instalar.sh --verificar
+   ```
+
+3. **Instalar:** `bash instalar.sh`. Pelo caminho:
+   - mostra uma chave **pública** e o endereço da página do GitHub onde a pões (*Settings →
+     Deploy keys → Add deploy key* do repositório de dados, com *Allow write access*). Essa
+     chave só abre o repositório de dados, não expira e retira-se nessa mesma página;
+   - traz o repositório de dados sem o histórico (mais rápido e menos espaço);
+   - pede as credenciais do R2 (se os originais forem para o R2). No computador, vês as tuas
+     no Ubuntu com `grep NEXUS_R2 ~/.bashrc`; ao colar a chave secreta não aparece nada no
+     ecrã. Ficam em `/etc/knowledge-nexus/ambiente`, que só o root lê.
+4. **Fecha o `vigiar-deposito.bat` no computador** (e tira-o do arranque do Windows, se o
+   lá puseste): basta um a processar. Se os dois correrem ao mesmo tempo nada se perde, mas
+   fazem o trabalho a dobrar.
+
+No dia-a-dia:
+
+- ver o que está a fazer: `journalctl -u knowledge-nexus -f` (Ctrl+C sai da vista, não pára
+  o serviço);
+- parar e voltar a arrancar: `systemctl stop knowledge-nexus` e `systemctl start knowledge-nexus`;
+- actualizar o instalador ou mudar o repositório: corre `bash instalar.sh` outra vez (as
+  versões novas da aplicação chegam sozinhas, a cada 10 minutos);
+- retirar: `bash instalar.sh --desinstalar` (os dados ficam em `/home/nexus`).
 
 ## 5. Claude Code sobre o repositório de dados
 

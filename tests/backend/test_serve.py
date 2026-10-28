@@ -40,6 +40,37 @@ def test_remote_has_news_after_other_clone_pushes(tmp_path: Path) -> None:
     assert remote_has_news(Git(b), "origin", "main")
 
 
+def test_quiet_remote_is_checked_without_fetching(tmp_path: Path, monkeypatch) -> None:
+    """Sem nada de novo, cada verificação é só um `ls-remote` (barato): o fetch só acontece
+    quando o último commit do remoto mudou."""
+    bare = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(bare)], check=True)
+    a, b = tmp_path / "a", tmp_path / "b"
+    subprocess.run(["git", "clone", "-q", str(bare), str(a)], check=True, capture_output=True)
+    (a / "x.txt").write_text("1")
+    _git(a, "add", "-A")
+    _git(a, "commit", "-q", "-m", "um")
+    _git(a, "push", "-q", "origin", "HEAD:main")
+    subprocess.run(["git", "clone", "-q", str(bare), str(b)], check=True, capture_output=True)
+    git = Git(b)
+    calls: list[str] = []
+    original = Git.run
+
+    def spy(self: Git, *args: str, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(args[0])
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Git, "run", spy)
+    assert not remote_has_news(git, "origin", "main")
+    assert "ls-remote" in calls and "fetch" not in calls
+    (a / "y.txt").write_text("2")
+    _git(a, "add", "-A")
+    _git(a, "commit", "-q", "-m", "dois")
+    _git(a, "push", "-q", "origin", "HEAD:main")
+    assert remote_has_news(git, "origin", "main")
+    assert "fetch" in calls
+
+
 def test_reading_marks_alone_are_not_processed(tmp_path: Path, monkeypatch) -> None:
     """As marcas de leitura (e o registo dos acessos) não passam pelo pipeline: só se traz."""
     import nexus.serve as serve_module

@@ -26,6 +26,17 @@ _META_KEYS = ("title", "author", "subject", "keywords", "creator", "producer", "
 log = logging.getLogger("nexus.extract.pdf")
 
 
+def ocr_workers(settings: ExtractionSettings) -> int:
+    """Páginas de OCR em paralelo: `extraction.ocr_workers` (no `nexus.yaml`), sem passar os
+    núcleos da máquina e, se existir, o limite `NEXUS_OCR_WORKERS` dessa máquina (ex.: um
+    Raspberry Pi partilhado com outros projectos deixa núcleos livres)."""
+    workers = min(os.cpu_count() or 1, settings.ocr_workers)
+    local = os.environ.get("NEXUS_OCR_WORKERS", "").strip()
+    if local.isdigit() and int(local) > 0:
+        workers = min(workers, int(local))
+    return max(1, workers)
+
+
 def pdf_pages(
     path: Path, settings: ExtractionSettings, workdir: Path, allow_ocr: bool = True
 ) -> tuple[list[PageText], dict[str, str]]:
@@ -37,8 +48,8 @@ def pdf_pages(
         raise ExtractionError("PDF protegido por palavra-passe")
     metadata = {k: str(v).strip() for k, v in (doc.metadata or {}).items()
                 if k in _META_KEYS and v and str(v).strip()}
-    # O Tesseract corre uma p?gina por processo (OMP_THREAD_LIMIT=1); v?rias p?ginas em paralelo.
-    workers = max(1, min(os.cpu_count() or 1, settings.ocr_workers))
+    # O Tesseract corre uma página por processo (OMP_THREAD_LIMIT=1); várias páginas em paralelo.
+    workers = ocr_workers(settings)
     pages: list[PageText | None] = []
     pending: dict[int, tuple[Future[OcrResult], Path]] = {}
 
@@ -67,7 +78,7 @@ def pdf_pages(
                 image = workdir / f"page-{index + 1:04d}.png"
                 page.get_pixmap(dpi=settings.ocr_dpi).save(image)
                 if index == 0 or (index + 1) % 10 == 0 or index + 1 == doc.page_count:
-                    log.info("OCR de %s: p?gina %d/%d", path.name, index + 1, doc.page_count)
+                    log.info("OCR de %s: página %d/%d", path.name, index + 1, doc.page_count)
                 pages.append(None)
                 pending[index] = (
                     pool.submit(
