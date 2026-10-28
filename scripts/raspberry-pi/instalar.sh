@@ -111,6 +111,26 @@ verify() {
   done
   jobs=$(printf '%s' "$jobs" | sed '/^$/d')
   if [ -n "$jobs" ]; then info "tarefas agendadas (cron):"; printf '%s\n' "$jobs" | sed 's/^/     /'; else info "tarefas agendadas (cron): nenhuma"; fi
+  local extra
+  extra=$(for f in /etc/cron.d/*; do
+    case "$(basename "$f")" in .placeholder | e2scrub_all | php | popularity-contest) continue ;; esac
+    [ -f "$f" ] && grep -vE '^\s*(#|$|SHELL=|PATH=|MAILTO=)' "$f" | sed "s|^|$(basename "$f"): |"
+  done 2>/dev/null || true)
+  [ -n "$extra" ] && { info "tarefas em /etc/cron.d:"; printf '%s\n' "$extra" | cut -c1-110 | sed 's/^/     /'; }
+  local timers
+  timers=$(systemctl list-units --type=timer --all --no-legend --plain 2>/dev/null | awk '{print $1}' |
+    grep -vE '^(apt-daily|apt-daily-upgrade|dpkg-db-backup|e2scrub_all|fstrim|logrotate|man-db|systemd-|phpsessionclean|motd-news)' || true)
+  [ -n "$timers" ] && info "temporizadores do systemd: $(printf '%s' "$timers" | paste -sd' ')"
+  if command -v node >/dev/null; then
+    info "Node $(node --version 2>/dev/null) (o Knowledge Nexus não o usa nem o actualiza)"
+    local projects
+    projects=$(find /root /home -maxdepth 4 -name package.json -not -path '*/node_modules/*' \
+      -not -path "$HOME_DIR/*" 2>/dev/null | head -5 || true)
+    [ -n "$projects" ] && { info "projectos Node:"; printf '%s\n' "$projects" | sed 's|/package.json$||; s/^/     /'; }
+    if command -v pm2 >/dev/null; then
+      info "pm2:"; pm2 list --no-color 2>/dev/null | sed -n '1,10p' | sed 's/^/     /' || true
+    fi
+  fi
   info "o que mais usa o processador agora (% processador, % memória, programa):"
   ps -eo pcpu,pmem,comm --sort=-pcpu | sed -n '2,6p' | sed 's/^/     /' || true
   info "carga: $(cut -d' ' -f1-3 /proc/loadavg) (1, 5 e 15 minutos)"
