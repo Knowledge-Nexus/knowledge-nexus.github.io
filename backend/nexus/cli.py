@@ -174,10 +174,17 @@ def servir(
     from nexus.datarepo.store import DataRepo
     from nexus.storage.r2 import missing_credentials
 
-    if DataRepo(repo).settings.storage.backend == "r2" and (missing := missing_credentials()):
+    settings = DataRepo(repo).settings
+    if settings.storage.backend == "r2" and (missing := missing_credentials()):
         typer.echo(
             f"aviso: os originais vão para o Cloudflare R2, mas faltam {', '.join(missing)}. "
             "Os ficheiros novos ficam no depósito até as definires (docs/configuracao.md, 4.2)."
+        )
+    if settings.publishing.public_repo and not os.environ.get("NEXUS_PUBLICO_TOKEN"):
+        typer.echo(
+            f"aviso: o material público vai para {settings.publishing.public_repo}, mas falta "
+            "NEXUS_PUBLICO_TOKEN; sem ele, só é publicado se o git desta máquina tiver acesso "
+            "a esse repositório (docs/configuracao.md, 3)."
         )
     try:
         updated = serve(repo, interval=intervalo, once=uma_vez)

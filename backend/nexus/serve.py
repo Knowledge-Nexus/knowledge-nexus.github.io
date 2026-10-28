@@ -6,12 +6,20 @@ alterações locais), corre o pipeline e publica os índices, como o workflow fa
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
+from nexus import FORMAT_VERSION
 from nexus.datarepo.git import Git, GitError, RemoteBusy
+from nexus.datarepo.store import DataRepo
+from nexus.formats import migrate
+from nexus.index.schema import SCHEMA_VERSION
+from nexus.public import PublishError, publish_public
 from nexus.publish import process_and_publish
 
 log = logging.getLogger(__name__)
@@ -33,6 +41,18 @@ QUIET_MAX_WAIT = 180
 # registo dos acessos temporários): commits só com isto não precisam de processamento.
 PERSONAL_PREFIXES = ("anotacoes/",)
 PERSONAL_FILES = ("acessos.yaml",)
+
+
+# Itens do depósito por commit, como no Actions: num depósito grande (horas de OCR), o que
+# já está tratado aparece na biblioteca sem esperar pelo resto.
+BATCH_ITEMS = 10
+# Material público (`publishing.public_repo`): publica-se como no Actions, mas só quando muda
+# alguma coisa que o pode mudar, e no máximo de 5 em 5 minutos (gera o site inteiro). Depois
+# de uma falha (ex.: sem NEXUS_PUBLICO_TOKEN), espera meia hora antes de tentar de novo.
+PUBLIC_EVERY = 300
+PUBLIC_RETRY = 1800
+PUBLIC_PATHS = ("documentos", "catalogo", "utilizadores", "texto", "nexus.yaml")
+PUBLIC_STATE = "nexus-publico"  # em .git/: a última versão publicada (nunca vai para o GitHub)
 
 
 def only_personal(paths: list[str]) -> bool:
@@ -87,13 +107,66 @@ def serve_once(root: Path, remote: str = "origin", branch: str = "main",
         if not force and only_personal(changed):
             log.debug("só marcas de leitura ou acessos: nada a processar")
             return False
-    # O resultado já vem processado: o push não deve pôr o Actions a fazê-lo outra vez.
-    result = process_and_publish(root, push=True, remote=remote, branch=branch, skip_ci=True,
-                                 max_attempts=5)
-    for line in result.report.summary():
-        log.info(line)
-    for note in result.notes:
-        log.info(note)
+    # Uma versão nova da aplicação pode trazer um formato novo dos ficheiros (o Actions corria
+    # `nexus migrar` antes de processar).
+    applied = migrate(root)
+    if applied:
+        log.info("formato dos ficheiros actualizado para a versão %d", FORMAT_VERSION)
+    while True:
+        # O resultado já vem processado: o push não deve pôr o Actions a fazê-lo outra vez.
+        result = process_and_publish(root, push=True, remote=remote, branch=branch,
+                                     skip_ci=True, max_attempts=5, max_items=BATCH_ITEMS)
+        for line in result.report.summary():
+            log.info(line)
+        for note in result.notes:
+            log.info(note)
+        if not result.report.remaining_items:
+            return True
+        log.info("a continuar com o resto do depósito")
+
+
+def public_key(git: Git) -> str:
+    """Muda quando muda alguma coisa de que o material público depende (documentos, catálogo,
+    escolhas de visibilidade, texto, definições) ou o formato dos índices."""
+    trees = git.run("rev-parse", *[f"HEAD:{p}" for p in PUBLIC_PATHS], check=False)
+    return hashlib.sha256(f"{SCHEMA_VERSION}/{FORMAT_VERSION}\n{trees}".encode()).hexdigest()
+
+
+@dataclass
+class PublicState:
+    next_try: float = 0.0
+    warned: str = ""
+
+
+def publish_public_if_due(root: Path, state: PublicState,
+                          now: Callable[[], float] = time.time) -> bool:
+    """Publica o material público se mudou e já passou o intervalo. Devolve True se tentou."""
+    try:
+        target = DataRepo(root).settings.publishing.public_repo
+    except Exception:  # definições ilegíveis: o ciclo de processamento já avisa
+        return False
+    if not target:
+        return False
+    git = Git(root)
+    stamp = Path(git.run("rev-parse", "--absolute-git-dir").strip()) / PUBLIC_STATE
+    key = public_key(git)
+    if stamp.exists() and stamp.read_text(encoding="utf-8").strip() == key:
+        return False
+    if now() < state.next_try:
+        return False
+    state.next_try = now() + PUBLIC_EVERY
+    try:
+        result = publish_public(root, token=os.environ.get("NEXUS_PUBLICO_TOKEN") or None)
+    except (PublishError, GitError) as exc:
+        state.next_try = now() + PUBLIC_RETRY
+        if state.warned != key:
+            state.warned = key
+            log.warning("o material público ficou por publicar em %s (tenta-se de novo daqui "
+                        "a meia hora): %s", target, exc)
+        return True
+    if result.published:
+        log.info("material público publicado em %s (%d documentos)", target, result.documents)
+    stamp.write_text(key, encoding="utf-8")
     return True
 
 
@@ -127,10 +200,12 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
     every = max(1, UPDATE_EVERY // max(interval, 1))
     force = True
     cycle = 0
+    public = PublicState()
     while True:
         try:
             serve_once(root, force=force, sleep=sleep)
             force = False
+            publish_public_if_due(root, public)
         except RemoteBusy as exc:
             log.info("%s", exc)
         except GitError as exc:

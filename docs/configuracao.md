@@ -39,8 +39,15 @@ Só é preciso se quiseres tornar algum material público. Por defeito tudo é p
 2. Nesse repositório, em **Settings → Pages**, escolhe **Deploy from a branch**, ramo
    `main`, pasta `/ (root)`. Fica em `https://<dono>.github.io/estudo-publico/`.
 3. Cria um **token fine-grained só para `estudo-publico`**, com Contents: leitura e escrita.
-4. No repositório de **dados**, em **Settings → Secrets and variables → Actions**, cria o
-   segredo `NEXUS_PUBLICO_TOKEN` com esse token.
+4. Guarda esse token onde corre o processamento, com o nome `NEXUS_PUBLICO_TOKEN`:
+   - no **Actions**: no repositório de **dados**, em **Settings → Secrets and variables →
+     Actions**, cria o segredo `NEXUS_PUBLICO_TOKEN`;
+   - no **teu computador** (`vigiar-deposito.bat`): no Ubuntu, acrescenta ao `~/.bashrc`
+     `export NEXUS_PUBLICO_TOKEN="<token>"` (como as credenciais do R2, em 4.2);
+   - no **Raspberry Pi**: o instalador pede-o (fica em `/etc/knowledge-nexus/ambiente`).
+
+   O GitHub não deixa ver um segredo depois de criado: se não guardaste o token, cria outro
+   igual.
 5. No `nexus.yaml` do repositório de dados:
    ```yaml
    publishing:
@@ -86,6 +93,10 @@ increased").
   num Raspberry Pi, como serviço: ver 4.4). Vê de 30 em 30 segundos se há novidades; cada
   verificação é só uma pergunta pequena ao GitHub (o último commit do ramo), e só traz as
   alterações quando há alguma.
+  Faz tudo o que o Actions fazia: actualiza o formato dos ficheiros quando a aplicação o
+  muda, trata os depósitos grandes aos bocados (de 10 em 10 itens, para o que já está feito
+  aparecer logo na biblioteca), publica os índices e o material público (com
+  `NEXUS_PUBLICO_TOKEN`, ver 3; no máximo de 5 em 5 minutos e só quando alguma coisa mudou).
   Os commits que ele envia levam `[skip ci]`, por isso não põem o Actions a repetir o trabalho.
   Quando há alterações da interface, espera que fiquem uns 20 segundos sem mudanças (arrastar
   várias cadeiras seguidas são vários commits) e processa-as de uma vez. Se mesmo assim o
@@ -204,6 +215,7 @@ LibreOffice).
      Deploy keys → Add deploy key* do repositório de dados, com *Allow write access*). Essa
      chave só abre o repositório de dados, não expira e retira-se nessa mesma página;
    - traz o repositório de dados sem o histórico (mais rápido e menos espaço);
+   - pede o `NEXUS_PUBLICO_TOKEN`, se tiveres página pública (ver 3);
    - pede as credenciais do R2 (se os originais forem para o R2). No computador, vês as tuas
      no Ubuntu com `grep NEXUS_R2 ~/.bashrc`; ao colar a chave secreta não aparece nada no
      ecrã. Ficam em `/etc/knowledge-nexus/ambiente`, que só o root lê.

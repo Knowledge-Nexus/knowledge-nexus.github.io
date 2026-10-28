@@ -228,8 +228,8 @@ install_all() {
       "# Credenciais do Cloudflare R2 (docs/configuracao.md, 4.2)." >"$ENV_FILE"
   fi
   [ -n "$(env_value NEXUS_OCR_WORKERS)" ] || set_env NEXUS_OCR_WORKERS "$OCR_WORKERS"
+  local value
   if uses_r2; then
-    local value
     for var in NEXUS_R2_ENDPOINT NEXUS_R2_ACCESS_KEY_ID NEXUS_R2_SECRET_ACCESS_KEY; do
       [ -n "$(env_value "$var")" ] && continue
       if [ "$var" = NEXUS_R2_ENDPOINT ]; then
@@ -243,6 +243,16 @@ install_all() {
     for var in NEXUS_R2_ENDPOINT NEXUS_R2_ACCESS_KEY_ID NEXUS_R2_SECRET_ACCESS_KEY; do
       [ -n "$(env_value "$var")" ] || warn "falta $var: os ficheiros novos esperam no depósito até a pores em $ENV_FILE"
     done
+  fi
+  # Material público (publishing.public_repo): o token só para o repositório público.
+  if grep -qE '^\s*public_repo:\s*\S' "$DATA_DIR/nexus.yaml" 2>/dev/null; then
+    if [ -z "$(env_value NEXUS_PUBLICO_TOKEN)" ]; then
+      read -rsp "   NEXUS_PUBLICO_TOKEN (token do repositório público; não aparece ao colar; Enter para deixar para depois): " value
+      echo
+      [ -n "$value" ] && set_env NEXUS_PUBLICO_TOKEN "$value"
+    fi
+    [ -n "$(env_value NEXUS_PUBLICO_TOKEN)" ] ||
+      warn "falta NEXUS_PUBLICO_TOKEN: a página pública não é actualizada até o pores em $ENV_FILE"
   fi
 
   say "Serviço «$SERVICE» (arranca com o Pi)"

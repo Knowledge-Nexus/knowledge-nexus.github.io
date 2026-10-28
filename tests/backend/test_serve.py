@@ -5,9 +5,13 @@ from pathlib import Path
 
 from nexus.datarepo.git import Git
 from nexus.serve import (
+    BATCH_ITEMS,
+    PUBLIC_EVERY,
     QUIET_SECONDS,
+    PublicState,
     app_has_update,
     only_personal,
+    publish_public_if_due,
     remote_has_news,
     serve,
     serve_once,
@@ -187,3 +191,78 @@ def test_busy_remote_is_not_an_error(tmp_path: Path, monkeypatch, caplog) -> Non
     with caplog.at_level(logging.INFO, logger="nexus.serve"):
         assert serve(tmp_path, interval=600, sleep=lambda s: None, has_update=lambda: True)
     assert [r.levelno for r in caplog.records if "continua a mudar" in r.message] == [logging.INFO]
+
+
+def test_serve_migrates_and_processes_in_batches(git_root: Path, monkeypatch) -> None:
+    """Sem o Actions, o servir faz o que ele fazia: migra o formato dos ficheiros e trata um
+    depósito grande aos bocados (o que já está feito aparece logo na biblioteca)."""
+    import nexus.serve as serve_module
+    from nexus.pipeline.run import RunReport
+    from nexus.publish import ProcessResult
+
+    calls: list[int | None] = []
+    remaining = [True, True, False]
+
+    def fake_process(root: Path, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(kwargs.get("max_items"))
+        return ProcessResult(report=RunReport(remaining_items=remaining.pop(0)))
+
+    migrated: list[Path] = []
+    monkeypatch.setattr(serve_module, "process_and_publish", fake_process)
+    monkeypatch.setattr(serve_module, "migrate", lambda root: migrated.append(root) or [])
+    assert serve_once(git_root, force=True)
+    assert migrated == [git_root]
+    assert calls == [BATCH_ITEMS] * 3
+
+
+def test_public_material_is_published_when_it_may_have_changed(git_root: Path,
+                                                               monkeypatch) -> None:
+    """O material público publica-se no servir (antes só o Actions o fazia): só quando muda
+    alguma coisa de que depende, no máximo de 5 em 5 minutos, e uma falha não pára nada."""
+    import nexus.serve as serve_module
+    from nexus.datarepo.layout import Layout
+    from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed
+    from nexus.public import PublicResult, PublishError
+
+    state = PublicState()
+    clock = [1000.0]
+    calls: list[str | None] = []
+
+    def fake_publish(root: Path, token: str | None = None):  # type: ignore[no-untyped-def]
+        calls.append(token)
+        return PublicResult(configured=True, target="aluna/estudo-publico", published=True)
+
+    monkeypatch.setattr(serve_module, "publish_public", fake_publish)
+    monkeypatch.setenv("NEXUS_PUBLICO_TOKEN", "segredo")
+    assert not publish_public_if_due(git_root, state, now=lambda: clock[0])  # não configurado
+
+    layout = Layout(git_root)
+    data = read_yaml(layout.settings_file)
+    data["publishing"] = {"public_repo": "aluna/estudo-publico"}
+    write_yaml_if_changed(layout.settings_file, data)
+    _git(git_root, "commit", "-qam", "publicar")
+    assert publish_public_if_due(git_root, state, now=lambda: clock[0])
+    assert calls == ["segredo"]
+    assert not publish_public_if_due(git_root, state, now=lambda: clock[0] + 10_000)  # igual
+
+    (git_root / "documentos").mkdir(exist_ok=True)
+    (git_root / "documentos" / "x.yaml").write_text("id: x\n")
+    _git(git_root, "add", "-A")
+    _git(git_root, "commit", "-qm", "outro documento")
+    clock[0] += 60
+    assert not publish_public_if_due(git_root, state, now=lambda: clock[0])  # cedo demais
+    clock[0] += PUBLIC_EVERY
+    assert publish_public_if_due(git_root, state, now=lambda: clock[0])
+    assert len(calls) == 2
+
+    def failing(root: Path, token: str | None = None):  # type: ignore[no-untyped-def]
+        raise PublishError("sem acesso")
+
+    monkeypatch.setattr(serve_module, "publish_public", failing)
+    (git_root / "documentos" / "y.yaml").write_text("id: y\n")
+    _git(git_root, "add", "-A")
+    _git(git_root, "commit", "-qm", "mais um")
+    clock[0] += PUBLIC_EVERY
+    assert publish_public_if_due(git_root, state, now=lambda: clock[0])
+    clock[0] += PUBLIC_EVERY  # depois de uma falha, espera meia hora
+    assert not publish_public_if_due(git_root, state, now=lambda: clock[0])

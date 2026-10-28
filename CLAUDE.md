@@ -53,6 +53,11 @@ convenções ou comandos.
   (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline).
   Verifica de 30 em 30 s (`DEFAULT_INTERVAL`): `remote_has_news` pergunta primeiro o último
   commit com `git ls-remote` e só faz fetch quando mudou.
+  Faz o mesmo que o Actions: `migrate()` antes de processar, depósitos aos bocados
+  (`BATCH_ITEMS` = 10 por commit) e o material público (`publish_public_if_due`: só quando
+  mudam `documentos`, `catalogo`, `utilizadores`, `texto` ou o `nexus.yaml` (`public_key`,
+  guardada em `.git/nexus-publico`), no máximo de 5 em 5 min, com `NEXUS_PUBLICO_TOKEN`; uma
+  falha espera 30 min e não pára o ciclo).
 - **Raspberry Pi (ou outro Linux com systemd):** `scripts/raspberry-pi/instalar.sh`
   (`--verificar` só diagnostica; `--desinstalar`) instala o `nexus servir` como serviço
   `knowledge-nexus` à parte do resto da máquina: utilizador `nexus`, `/home/nexus/nexus` e
