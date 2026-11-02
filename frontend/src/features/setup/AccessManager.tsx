@@ -12,6 +12,7 @@ import {
   type AccessEntry,
   type AccessState,
   accessState,
+  accessTerm,
   clampUntil,
   newAccessId,
   scopeOf,
@@ -209,6 +210,9 @@ function AccessRow(props: {
   const closed = state === "revoked";
   const label = entry.name;
   const scope = scopeOf(entry);
+  // dated: com prazo; permanent: sem prazo e token sem fim; until_token: sem prazo, mas o
+  // token acaba (só um token novo, sem prazo, o torna mesmo permanente).
+  const term = accessTerm(entry);
 
   async function setUntil(wanted: Date) {
     const next = clampUntil(wanted, entry.token_expires);
@@ -219,6 +223,13 @@ function AccessRow(props: {
       (e) => ({ ...e, until: next.until }),
       `acessos: prazo de ${label} até ${next.until.slice(0, 16).replace("T", " ")}`,
     );
+  }
+
+  /** Tira o prazo do acesso. Se o token tiver fim, o código acaba aí: renova-se sem prazo. */
+  async function makePermanent() {
+    await props.change((e) => ({ ...e, until: null }), `acessos: ${label} sem prazo`);
+    setCapped(false);
+    if (entry.token_expires) setPanel("renew");
   }
 
   function addDays(days: number) {
@@ -277,9 +288,12 @@ function AccessRow(props: {
         <span className="font-medium text-ink">{entry.name}</span>
         <Badge tone={TONE[state]}>{t(`access.state.${state}`)}</Badge>
         <Badge tone={scope === "read" ? "info" : "neutral"}>{t(`invite.scope.${scope}`)}</Badge>
+        {term === "permanent" && <Badge tone="ok">{t("access.permanent")}</Badge>}
         <span className="text-xs text-muted">
           {[
-            entry.until ? t("access.until", { when: formatWhen(entry.until) }) : null,
+            entry.until
+              ? t("access.until", { when: formatWhen(entry.until) })
+              : t("access.no_until"),
             entry.token_expires
               ? t("access.token_until", { when: formatWhen(entry.token_expires) })
               : t("access.token_no_expiry"),
@@ -298,18 +312,40 @@ function AccessRow(props: {
           >
             {t(panel === "code" ? "access.hide_code" : "access.show_code")}
           </button>
-          <button type="button" className={small} disabled={props.busy} onClick={() => addDays(1)}>
-            {t("access.add_day")}
-          </button>
-          <button type="button" className={small} disabled={props.busy} onClick={() => addDays(7)}>
-            {t("access.add_week")}
-          </button>
+          {term === "dated" && (
+            <>
+              <button
+                type="button"
+                className={small}
+                disabled={props.busy}
+                onClick={() => addDays(1)}
+              >
+                {t("access.add_day")}
+              </button>
+              <button
+                type="button"
+                className={small}
+                disabled={props.busy}
+                onClick={() => addDays(7)}
+              >
+                {t("access.add_week")}
+              </button>
+              <button
+                type="button"
+                className={small}
+                disabled={props.busy}
+                onClick={() => void makePermanent()}
+              >
+                {t("access.make_permanent")}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className={small}
             onClick={() => setPanel(panel === "until" ? null : "until")}
           >
-            {t("access.change_until")}
+            {t(term === "dated" ? "access.change_until" : "access.set_until")}
           </button>
           {entry.status === "paused" ? (
             <button
@@ -419,6 +455,11 @@ function AccessRow(props: {
           </Button>
         </div>
       )}
+      {!closed && term === "until_token" && entry.token_expires && (
+        <Notice>
+          {t("access.permanent_token_ends", { when: formatWhen(entry.token_expires) })}
+        </Notice>
+      )}
       {capped && (
         <Notice>
           {t("access.capped", {
@@ -434,7 +475,13 @@ function AccessRow(props: {
           </p>
           <a
             className="text-pen underline"
-            href={tokenPageUrl(props.repo.owner, props.repo.name, entry.name, 30, scope)}
+            href={tokenPageUrl(
+              props.repo.owner,
+              props.repo.name,
+              entry.name,
+              term === "dated" ? 30 : null,
+              scope,
+            )}
             target="_blank"
             rel="noreferrer"
           >

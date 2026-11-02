@@ -319,6 +319,11 @@ Dependências de sistema (Ubuntu/WSL2):
   «Depositar», «A rever», configuração nem estado do processamento; `commit()` recusa) e as
   marcas de leitura ficam no localStorage. `visitor` é só a página pública (`PublicLayout`).
   O GitHub simulado tem `readOnlyTokens` (escritas → 403).
+  Códigos permanentes: «Sem prazo (permanente)» na criação pede ao GitHub um token sem fim
+  (`tokenPageUrl(..., null)` → `expires_in=none`) e grava `until: null`; «Tornar permanente»
+  num código existente tira o prazo (`until: null`). `accessTerm`: `dated`, `permanent`
+  (sem prazo e token sem fim) ou `until_token` (sem prazo mas o token acaba: o GitHub não o
+  deixa prolongar, por isso abre «Renovar com um token novo», já sem prazo).
 - **Gerir os acessos** (`lib/access.ts`, `features/setup/AccessManager.tsx`, só para o dono):
   cada código fica no registo `acessos.yaml` do repositório de dados (id, nome, SHA-256 do
   token, fim do token, prazo, `active|paused|revoked`; nunca o token) e o código em si só no

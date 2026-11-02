@@ -843,6 +843,15 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
   await login(page, fake);
   await page.getByRole("link", { name: "Definições" }).first().click();
   await page.getByLabel("Nome de quem recebe o acesso").fill("Ana");
+  // Um código novo também pode ser permanente: o token pedido ao GitHub não tem prazo.
+  await page
+    .getByRole("combobox", { name: "Durante" })
+    .selectOption({ label: "Sem prazo (permanente)" });
+  await expect(page.getByRole("link", { name: /Criar o token no GitHub/ })).toHaveAttribute(
+    "href",
+    /expires_in=none/,
+  );
+  await page.getByRole("combobox", { name: "Durante" }).selectOption({ label: "7 dias" });
   await page.getByLabel("Cola aqui o token criado").fill(fake.token);
   await page.getByRole("button", { name: "Gerar o código" }).click();
   const code = await page.getByLabel("Código de acesso").inputValue();
@@ -857,6 +866,11 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
   expect(registry()).not.toContain(fake.token);
 
   await row.getByRole("button", { name: "+7 dias" }).click();
+  // Sem prazo: o token (simulado) também não tem fim, por isso fica permanente.
+  await row.getByRole("button", { name: "Tornar permanente" }).click();
+  await expect(row.getByText("permanente", { exact: true })).toBeVisible();
+  await expect(row.getByRole("button", { name: "+7 dias" })).toHaveCount(0);
+  expect(YAML.parse(registry()).accesses[0].until).toBeNull();
   await row.getByRole("button", { name: "Suspender" }).click();
   await expect(row.getByText("suspenso")).toBeVisible();
   expect(registry()).toContain("status: paused");

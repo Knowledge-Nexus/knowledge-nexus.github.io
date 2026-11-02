@@ -557,7 +557,7 @@
   },
   "access": {
     "title": "Acessos que deste",
-    "intro": "Os códigos de acesso temporário que criaste: podes ver cada código, mudar ou alargar o prazo, suspender, reactivar, renovar com um token novo e terminar. Só tu vês esta parte.",
+    "intro": "Os códigos de acesso que criaste: podes ver cada código, mudar ou alargar o prazo, torná-lo permanente, suspender, reactivar, renovar com um token novo e terminar. Só tu vês esta parte.",
     "empty": "Ainda não deste nenhum código (ou foram dados antes desta lista existir: junta-os abaixo).",
     "state": {
       "active": "activo",
@@ -595,11 +595,16 @@
     "import_save": "Juntar à lista",
     "import_other_repo": "Esse código é de outro repositório de dados.",
     "import_known": "Esse código já está na lista.",
-    "soft_note": "Suspender, mudar o prazo e terminar valem para quem entra pela interface. O token continua a funcionar no GitHub até expirar: para cortar o acesso de vez, apaga-o em"
+    "soft_note": "Suspender, mudar o prazo e terminar valem para quem entra pela interface. O token continua a funcionar no GitHub até expirar: para cortar o acesso de vez, apaga-o em",
+    "permanent": "permanente",
+    "no_until": "sem prazo",
+    "make_permanent": "Tornar permanente",
+    "set_until": "Pôr prazo",
+    "permanent_token_ends": "Fica sem prazo, mas o token deste código acaba a {{when}} e o GitHub não deixa prolongá-lo. Para ser mesmo permanente, renova-o com um token sem prazo (o link abaixo já vem assim) e envia o código novo."
   },
   "invite": {
-    "title": "Dar acesso temporário a outra pessoa",
-    "intro": "Cria um código para outra pessoa entrar sem conta própria durante uns dias: para te ajudar a organizar o material ou só para o ver e descarregar. O acesso acaba sozinho no fim do prazo.",
+    "title": "Dar acesso a outra pessoa",
+    "intro": "Cria um código para outra pessoa entrar sem conta própria: para te ajudar a organizar o material ou só para o ver e descarregar, durante uns dias ou sem prazo. Podes suspendê-lo ou terminá-lo quando quiseres, em «Acessos que deste».",
     "person": "Nome de quem recebe o acesso",
     "person_placeholder": "ex.: Ana",
     "days": "Durante",
@@ -639,7 +644,11 @@
     },
     "ready_read": "Código «só ver e descarregar» para {{name}}",
     "warn_scope_read": "Pode ver e descarregar tudo neste repositório, incluindo o que é privado, mas não consegue mudar nada (o GitHub recusa-o). As marcas de leitura dela ficam só no browser dela.",
-    "banner_read": "Acesso só para ver e descarregar de {{name}}, dado pelo dono deste material"
+    "banner_read": "Acesso só para ver e descarregar de {{name}}, dado pelo dono deste material",
+    "days_permanent": "Sem prazo (permanente)",
+    "permanent": "(sem prazo)",
+    "warn_permanent": "Não tem prazo: só acaba quando o terminares em «Acessos que deste» e apagares o token no GitHub. Dá-o só a quem confias.",
+    "permanent_token_ends": "Atenção: este token acaba a {{when}} (tem um prazo no GitHub, talvez imposto pela organização), por isso o código também. Para ser mesmo permanente, cria o token com «No expiration» e gera o código de novo."
   },
   "edit": {
     "title": "Mudar o nome",

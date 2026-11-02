@@ -13,7 +13,8 @@ import { type AccessScope, encodeInvite, tokenPageUrl } from "../../lib/invite";
 import { formatWhen } from "../../lib/labels";
 import { checkToken, registerAccess, tokenErrorText } from "./AccessManager";
 
-const DAYS = [1, 3, 7, 14, 30];
+// 0: sem prazo (código permanente; o token é criado sem fim).
+const DAYS = [1, 3, 7, 14, 30, 0];
 
 export function InviteCard(props: { owner: string; name: string; fetchImpl?: FetchLike }) {
   const { t } = useTranslation();
@@ -28,6 +29,8 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
   const [result, setResult] = useState<{
     code: string;
     until: string | null;
+    /** Fim do token (num código sem prazo, é aí que acaba). */
+    expires: string | null;
     scope: AccessScope;
   } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -49,12 +52,15 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
       ).catch((err: unknown) => {
         throw new Error(tokenErrorText(t, err instanceof Error ? err.message : String(err)));
       });
-      const { until } = clampUntil(new Date(Date.now() + days * 86_400_000), expires);
+      const permanent = days === 0;
+      const until = permanent
+        ? null
+        : clampUntil(new Date(Date.now() + days * 86_400_000), expires).until;
       const code = encodeInvite({
         repo: `${props.owner}/${props.name}`,
         token: token.trim(),
         name: person.trim(),
-        until,
+        ...(until ? { until } : {}),
         ...(scope === "read" ? { scope } : {}),
       });
       // Fica no registo dos acessos, para o poderes gerir em «Acessos que deste».
@@ -76,7 +82,7 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
           code,
         );
       }
-      setResult({ code, until, scope });
+      setResult({ code, until, expires, scope });
       setToken("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -141,7 +147,7 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
                 >
                   {DAYS.map((d) => (
                     <option key={d} value={d}>
-                      {t("invite.days_option", { count: d })}
+                      {d === 0 ? t("invite.days_permanent") : t("invite.days_option", { count: d })}
                     </option>
                   ))}
                 </select>
@@ -151,7 +157,13 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
           <li className="space-y-1">
             <a
               className={`inline-block ${person.trim() ? "" : "pointer-events-none opacity-50"} text-pen underline`}
-              href={tokenPageUrl(props.owner, props.name, person.trim() || "?", days, scope)}
+              href={tokenPageUrl(
+                props.owner,
+                props.name,
+                person.trim() || "?",
+                days === 0 ? null : days,
+                scope,
+              )}
               target="_blank"
               rel="noreferrer"
               aria-disabled={!person.trim()}
@@ -189,8 +201,15 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
               {t(result.scope === "read" ? "invite.ready_read" : "invite.ready", {
                 name: person.trim(),
               })}
-              {result.until ? ` ${t("invite.until", { when: formatWhen(result.until) })}` : ""}
+              {result.until
+                ? ` ${t("invite.until", { when: formatWhen(result.until) })}`
+                : ` ${t("invite.permanent")}`}
             </p>
+            {!result.until && result.expires && (
+              <p className="rounded-lg bg-marker-soft px-3 py-2 text-xs text-ink">
+                {t("invite.permanent_token_ends", { when: formatWhen(result.expires) })}
+              </p>
+            )}
             <textarea
               readOnly
               aria-label={t("invite.code_label")}
@@ -211,6 +230,7 @@ export function InviteCard(props: { owner: string; name: string; fetchImpl?: Fet
             <ul className="list-disc space-y-1 pl-5 text-xs text-ink-soft">
               <li>{t("invite.warn_secret")}</li>
               <li>{t(result.scope === "read" ? "invite.warn_scope_read" : "invite.warn_scope")}</li>
+              {!result.until && <li>{t("invite.warn_permanent")}</li>}
               <li>
                 {t("invite.warn_revoke")}{" "}
                 <a

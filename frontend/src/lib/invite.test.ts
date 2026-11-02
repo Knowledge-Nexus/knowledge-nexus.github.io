@@ -42,6 +42,9 @@ describe("códigos de acesso temporário", () => {
     const url = new URL(tokenPageUrl("Knowledge-Nexus", "estudo-dados", "Rui", 7, "read"));
     expect(url.searchParams.get("contents")).toBe("read");
     expect(url.searchParams.get("actions")).toBeNull();
+    // Código permanente: o token não tem prazo.
+    const permanent = new URL(tokenPageUrl("Knowledge-Nexus", "estudo-dados", "Rui", null));
+    expect(permanent.searchParams.get("expires_in")).toBe("none");
     expect(url.searchParams.get("name")!.length).toBeLessThanOrEqual(40);
   });
 });

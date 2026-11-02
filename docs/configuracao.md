@@ -174,6 +174,12 @@ estado, o prazo e o fim do token, e podes:
 - **ver o código** outra vez (no browser onde o criaste);
 - **dar mais tempo** (+1 dia, +7 dias) ou **mudar o prazo**: nunca para lá do fim do token;
   para ir além, **renova com um token novo** (gera um código novo para enviares);
+- **tornar permanente**: o acesso deixa de ter prazo. Se o token desse código tiver fim (o
+  GitHub não deixa prolongá-lo), o código acaba nessa data na mesma: renova-o com um token
+  sem prazo (o link já vem assim) e envia o código novo. Na criação, «Sem prazo
+  (permanente)» faz isto logo de início. Se a organização impuser um prazo máximo aos
+  tokens (*Settings → Personal access tokens* da organização), o GitHub não deixa criar um
+  token sem prazo;
 - **suspender** e **reactivar**: quem tem o código sai em até 2 minutos e não volta a entrar
   enquanto estiver suspenso;
 - **terminar**: deixa de entrar pela interface. Para cortar o acesso de vez, apaga também o

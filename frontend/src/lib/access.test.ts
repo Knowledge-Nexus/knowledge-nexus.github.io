@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AccessEntry,
   accessState,
+  accessTerm,
   clampUntil,
   parseAccesses,
   stringifyAccesses,
@@ -53,5 +54,14 @@ describe("acessos temporários", () => {
     expect(text).not.toContain("segredo");
     expect(parseAccesses(text)).toEqual([entry({ token_sha256: fingerprint })]);
     expect(parseAccesses(null)).toEqual([]);
+  });
+
+  it("sem prazo: permanente só se o token também não acabar", () => {
+    expect(accessTerm(entry())).toBe("dated");
+    expect(accessTerm(entry({ until: null }))).toBe("until_token");
+    expect(accessTerm(entry({ until: null, token_expires: null }))).toBe("permanent");
+    // Sem prazo continua activo; o fim do token ainda manda.
+    expect(accessState(entry({ until: null }), Date.parse("2026-10-20"))).toBe("active");
+    expect(accessState(entry({ until: null }), Date.parse("2026-12-01"))).toBe("token_expired");
   });
 });

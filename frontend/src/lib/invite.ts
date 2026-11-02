@@ -73,7 +73,8 @@ export function tokenPageUrl(
   owner: string,
   repoName: string,
   person: string,
-  days: number,
+  /** Dias até o token acabar; null: sem prazo (código permanente). */
+  days: number | null,
   scope: AccessScope = "full",
 ) {
   const read = scope === "read";
@@ -84,7 +85,8 @@ export function tokenPageUrl(
       ? `Acesso só para ver e descarregar, de ${person}, a ${owner}/${repoName} (Knowledge Nexus).`
       : `Acesso temporário de ${person} a ${owner}/${repoName} (Knowledge Nexus).`,
     target_name: owner,
-    expires_in: String(days),
+    // "none": o GitHub cria o token sem prazo (se a organização não impuser um máximo).
+    expires_in: days === null ? "none" : String(days),
     ...(read ? { contents: "read" } : { contents: "write", actions: "read" }),
   });
   return `https://github.com/settings/personal-access-tokens/new?${params}`;

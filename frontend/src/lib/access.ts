@@ -39,6 +39,17 @@ export function scopeOf(entry: { scope?: AccessScope }): AccessScope {
   return entry.scope === "read" ? "read" : "full";
 }
 
+/**
+ * Prazo do acesso: com data; sem prazo e com um token sem fim (permanente); ou sem prazo mas
+ * com um token que acaba (o GitHub não deixa prolongá-lo: só um token novo resolve).
+ */
+export type AccessTerm = "dated" | "permanent" | "until_token";
+
+export function accessTerm(entry: Pick<AccessEntry, "until" | "token_expires">): AccessTerm {
+  if (entry.until) return "dated";
+  return entry.token_expires ? "until_token" : "permanent";
+}
+
 export function accessState(entry: AccessEntry, now = Date.now()): AccessState {
   if (entry.status === "revoked") return "revoked";
   if (entry.token_expires && Date.parse(entry.token_expires) <= now) return "token_expired";
