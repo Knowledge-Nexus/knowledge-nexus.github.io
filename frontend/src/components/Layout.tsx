@@ -3,7 +3,7 @@ import { type ReactNode, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router";
 import { useApp } from "../data/context";
-import { setFlash } from "../data/session";
+import { guestName, setFlash } from "../data/session";
 import { GitHubDataSource } from "../data/source";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { formatWhen } from "../lib/labels";
@@ -246,7 +246,9 @@ function GuestBanner() {
       role="status"
       className="mb-6 rounded-xl border border-gold/50 bg-marker-soft px-4 py-2 text-sm text-ink"
     >
-      {t(guest.scope === "read" ? "invite.banner_read" : "invite.banner", { name: guest.name })}
+      {t(guest.scope === "read" ? "invite.banner_read" : "invite.banner", {
+        name: access.data?.entry?.name ?? guestName(guest),
+      })}
       {until ? ` ${t("invite.until", { when: formatWhen(until) })}` : ""}.
     </p>
   );

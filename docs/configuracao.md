@@ -172,6 +172,8 @@ Para alguém entrar sem conta própria no GitHub. Há dois tipos de código:
 estado, o prazo e o fim do token, e podes:
 
 - **ver o código** outra vez (no browser onde o criaste);
+- **mudar o nome** (o lápis ao lado): o código que a pessoa já tem continua a servir, e ela
+  passa a ver o nome novo, que também fica nas alterações que fizer;
 - **dar mais tempo** (+1 dia, +7 dias) ou **mudar o prazo**: nunca para lá do fim do token;
   para ir além, **renova com um token novo** (gera um código novo para enviares);
 - **tornar permanente**: o acesso deixa de ter prazo. Se o token desse código tiver fim (o

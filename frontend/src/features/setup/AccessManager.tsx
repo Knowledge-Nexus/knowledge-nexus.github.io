@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Card, ErrorBox, Notice } from "../../components/ui";
+import { Badge, Button, Card, EditButton, ErrorBox, Notice } from "../../components/ui";
 import { type FetchLike, GitHubClient } from "../../data/github/client";
 import type { GitHubDataSource } from "../../data/source";
 import {
@@ -207,6 +207,8 @@ function AccessRow(props: {
   const [token, setToken] = useState("");
   const [renewError, setRenewError] = useState<string | null>(null);
   const [revoked, setRevoked] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState(entry.name);
   const closed = state === "revoked";
   const label = entry.name;
   const scope = scopeOf(entry);
@@ -223,6 +225,23 @@ function AccessRow(props: {
       (e) => ({ ...e, until: next.until }),
       `acessos: prazo de ${label} até ${next.until.slice(0, 16).replace("T", " ")}`,
     );
+  }
+
+  /**
+   * Muda o nome no registo e no código guardado aqui (o mesmo token, por isso o código que a
+   * pessoa já tem continua a servir). Quem entra com ele passa a ver o nome novo, que também
+   * vai nos commits que fizer.
+   */
+  async function rename() {
+    const name = nameInput.trim();
+    if (!name || name === entry.name) {
+      setRenaming(false);
+      return;
+    }
+    await props.change((e) => ({ ...e, name }), `acessos: ${label} passa a chamar-se ${name}`);
+    const invite = props.code ? decodeInvite(props.code) : null;
+    if (invite) props.remember(encodeInvite({ ...invite, name }));
+    setRenaming(false);
   }
 
   /** Tira o prazo do acesso. Se o token tiver fim, o código acaba aí: renova-se sem prazo. */
@@ -285,7 +304,46 @@ function AccessRow(props: {
   return (
     <li className="space-y-2 py-3" aria-label={entry.name}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium text-ink">{entry.name}</span>
+        {renaming ? (
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void rename();
+            }}
+          >
+            <input
+              className={input}
+              aria-label={t("access.rename_label")}
+              value={nameInput}
+              maxLength={60}
+              onChange={(e) => setNameInput(e.target.value)}
+            />
+            <Button type="submit" disabled={props.busy || !nameInput.trim()}>
+              {t("common.save")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setNameInput(entry.name);
+                setRenaming(false);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+          </form>
+        ) : (
+          <span className="flex items-center gap-0.5">
+            <span className="font-medium text-ink">{entry.name}</span>
+            <EditButton
+              label={t("access.rename", { name: entry.name })}
+              onClick={() => {
+                setNameInput(entry.name);
+                setRenaming(true);
+              }}
+            />
+          </span>
+        )}
         <Badge tone={TONE[state]}>{t(`access.state.${state}`)}</Badge>
         <Badge tone={scope === "read" ? "info" : "neutral"}>{t(`invite.scope.${scope}`)}</Badge>
         {term === "permanent" && <Badge tone="ok">{t("access.permanent")}</Badge>}

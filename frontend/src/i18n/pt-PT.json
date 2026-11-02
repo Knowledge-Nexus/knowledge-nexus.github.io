@@ -557,7 +557,7 @@
   },
   "access": {
     "title": "Acessos que deste",
-    "intro": "Os códigos de acesso que criaste: podes ver cada código, mudar ou alargar o prazo, torná-lo permanente, suspender, reactivar, renovar com um token novo e terminar. Só tu vês esta parte.",
+    "intro": "Os códigos de acesso que criaste: podes ver cada código, mudar o nome ou o prazo, torná-lo permanente, suspender, reactivar, renovar com um token novo e terminar. Só tu vês esta parte.",
     "empty": "Ainda não deste nenhum código (ou foram dados antes desta lista existir: junta-os abaixo).",
     "state": {
       "active": "activo",
@@ -600,7 +600,9 @@
     "no_until": "sem prazo",
     "make_permanent": "Tornar permanente",
     "set_until": "Pôr prazo",
-    "permanent_token_ends": "Fica sem prazo, mas o token deste código acaba a {{when}} e o GitHub não deixa prolongá-lo. Para ser mesmo permanente, renova-o com um token sem prazo (o link abaixo já vem assim) e envia o código novo."
+    "permanent_token_ends": "Fica sem prazo, mas o token deste código acaba a {{when}} e o GitHub não deixa prolongá-lo. Para ser mesmo permanente, renova-o com um token sem prazo (o link abaixo já vem assim) e envia o código novo.",
+    "rename": "Mudar o nome de «{{name}}»",
+    "rename_label": "Nome de quem recebeu o código"
   },
   "invite": {
     "title": "Dar acesso a outra pessoa",

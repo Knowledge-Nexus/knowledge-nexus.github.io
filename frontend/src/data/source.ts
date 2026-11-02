@@ -24,7 +24,7 @@ import { slugify } from "../lib/normalize";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
-import type { GuestInfo } from "./session";
+import { type GuestInfo, guestName } from "./session";
 import type { CatalogBundle, IndexManifest } from "./types";
 
 export const INDICES_BRANCH = "indices";
@@ -235,6 +235,8 @@ export class GitHubDataSource implements DataSource {
       return { state: "active" };
     }
     const entry = entries.find((e) => e.token_sha256 === fingerprint);
+    // O dono pode ter mudado o nome: passa a valer nos commits e na faixa.
+    if (entry?.name && this.guest) this.guest.label = entry.name;
     return entry ? { state: accessState(entry), entry } : { state: "active" };
   }
 
@@ -246,7 +248,7 @@ export class GitHubDataSource implements DataSource {
     onProgress?: (done: number, total: number) => void,
   ): Promise<string> {
     if (this.viewOnly) return Promise.reject(new Error("acesso só para ver e descarregar"));
-    const signed = this.guest ? `${message}\n\n${guestTrailer(this.guest.name)}` : message;
+    const signed = this.guest ? `${message}\n\n${guestTrailer(guestName(this.guest))}` : message;
     return commitChanges(this.client, this.repo, changes, signed, maxAttempts, onProgress);
   }
 

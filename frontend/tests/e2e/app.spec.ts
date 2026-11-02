@@ -865,6 +865,15 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
   expect(registry()).toContain("name: Ana");
   expect(registry()).not.toContain(fake.token);
 
+  // Mudar o nome: no registo e no código guardado (o mesmo token, o código antigo serve).
+  await row.getByRole("button", { name: "Mudar o nome de «Ana»" }).click();
+  await row.getByLabel("Nome de quem recebeu o código").fill("Ana Sofia");
+  await row.getByRole("button", { name: "Guardar" }).click();
+  await expect(row.getByText("Ana Sofia", { exact: true })).toBeVisible();
+  expect(YAML.parse(registry()).accesses[0].name).toBe("Ana Sofia");
+  const renamed = await row.getByLabel("Código de Ana Sofia").inputValue();
+  expect(renamed).not.toBe(code);
+
   await row.getByRole("button", { name: "+7 dias" }).click();
   // Sem prazo: o token (simulado) também não tem fim, por isso fica permanente.
   await row.getByRole("button", { name: "Tornar permanente" }).click();
@@ -894,8 +903,9 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
   await page.goto("/#/entrar");
   await page.getByLabel("Código de acesso").fill(code);
   await page.getByRole("button", { name: "Entrar com o código" }).click();
+  // Entrou com o código antigo, mas vê o nome novo.
   await expect(
-    page.getByRole("status").filter({ hasText: "Acesso temporário de Ana" }),
+    page.getByRole("status").filter({ hasText: "Acesso temporário de Ana Sofia" }),
   ).toBeVisible();
 
   // Terminado pelo dono, quem está dentro sai na verificação seguinte (aqui, ao recarregar).

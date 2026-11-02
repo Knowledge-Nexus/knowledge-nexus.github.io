@@ -20,6 +20,16 @@ export interface GuestInfo {
   token_sha256?: string;
   /** «Só ver e descarregar» (`read`) ou acesso total (sem campo). */
   scope?: AccessScope;
+  /**
+   * O nome actual no registo dos acessos (o dono pode mudá-lo depois de dar o código). O
+   * `name` fica o do código: é ele que dá a pasta das marcas de leitura desta pessoa.
+   */
+  label?: string;
+}
+
+/** O nome a mostrar e a pôr nos commits de quem entrou com um código. */
+export function guestName(guest: GuestInfo): string {
+  return guest.label?.trim() || guest.name;
 }
 
 const KEY = "nexus.session";
