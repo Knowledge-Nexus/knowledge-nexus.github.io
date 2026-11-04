@@ -7,6 +7,7 @@ import { guestName, setFlash } from "../data/session";
 import { GitHubDataSource } from "../data/source";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { formatWhen } from "../lib/labels";
+import { useRemovals } from "../lib/removal";
 import { Brand } from "./Brand";
 import {
   IconBooks,
@@ -123,8 +124,14 @@ function PublicLayout(props: { children: ReactNode }) {
 export function Layout(props: { children: ReactNode }) {
   const { t } = useTranslation();
   const { meta, login, source, readOnly, visitor } = useApp();
+  const removals = useRemovals();
   if (visitor) return <PublicLayout>{props.children}</PublicLayout>;
-  const review = meta?.counts(login).review ?? 0;
+  // Os que acabaste de remover já não contam, mesmo antes de o índice ser actualizado.
+  const justRemoved = [...removals.hidden].filter((id) => {
+    const doc = meta?.document(id);
+    return doc?.needs_review && doc.owner === login && doc.kind !== "archive" && !doc.duplicate_of;
+  }).length;
+  const review = Math.max(0, (meta?.counts(login).review ?? 0) - justRemoved);
   const items = (dark: boolean) => (
     <>
       <NavItem

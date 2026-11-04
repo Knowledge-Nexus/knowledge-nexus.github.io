@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { BundleEditor } from "../../components/BundleEditor";
@@ -17,7 +17,9 @@ import { useApp } from "../../data/context";
 import type { CatalogBundle, DocumentRow, ProposalRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
+import { settleRemovals, useRemovals } from "../../lib/removal";
 import { BulkReview } from "./BulkReview";
+import { type Removal, RemoveButton, RemovedList, RemovedNotice } from "./RemoveDocuments";
 import { ReviewForm } from "./ReviewForm";
 
 interface InstitutionChoice {
@@ -346,11 +348,17 @@ export function ReviewPage() {
   const labels = useLabels(meta);
   const [params, setParams] = useSearchParams();
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [lastRemoval, setLastRemoval] = useState<Removal | null>(null);
+  const removals = useRemovals();
+  useEffect(() => {
+    if (meta) settleRemovals(meta);
+  }, [meta]);
   if (indexError) return <ErrorBox error={indexError} />;
   if (indexLoading) return <Spinner />;
   if (!meta) return <Empty>{t("pipeline.no_indices")}</Empty>;
 
-  const fullQueue = meta.reviewQueue(login);
+  // O que acabaste de remover já não aparece, mesmo antes de o índice ser actualizado.
+  const fullQueue = meta.reviewQueue(login).filter((d) => !removals.hidden.has(d.id));
   const inQueue = new Set(fullQueue.map((d) => d.id));
   // Os outros ficheiros de um conjunto seguem o principal: aparecem por baixo dele e são
   // arrumados com ele quando o confirmares.
@@ -390,12 +398,33 @@ export function ReviewPage() {
     });
   const proposals = meta.proposals("open");
   const choices = institutionChoices(meta.institutions(), proposals);
-  const selectedId = params.get("doc") ?? queue[0]?.id;
+  const wanted = params.get("doc");
+  const selectedId = wanted && !removals.hidden.has(wanted) ? wanted : queue[0]?.id;
   const selected = selectedId ? meta.document(selectedId) : undefined;
+  const removedDocs = meta
+    .removed(login)
+    .filter((d) => !removals.restored.has(d.id) && !removals.hidden.has(d.id));
+  const ordered = groups.flatMap((g) => g.docs);
+
+  /** Depois de remover, segue para o próximo da lista (ou o anterior, se era o último). */
+  function afterRemoval(removal: Removal) {
+    setLastRemoval(removal);
+    setChecked(new Set());
+    const gone = new Set(removal.ids);
+    const at = ordered.findIndex((d) => d.id === selected?.id);
+    const next =
+      ordered.slice(at + 1).find((d) => !gone.has(d.id)) ??
+      ordered
+        .slice(0, Math.max(0, at))
+        .reverse()
+        .find((d) => !gone.has(d.id));
+    setParams(next ? { doc: next.id } : {});
+  }
 
   return (
     <div className="space-y-4">
       <PageHeader title={t("review.title")} subtitle={t("review.intro")} />
+      {lastRemoval && <RemovedNotice removal={lastRemoval} onClose={() => setLastRemoval(null)} />}
       {proposals.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
@@ -469,6 +498,15 @@ export function ReviewPage() {
               key={[...checked].sort().join(",")}
               docs={queue.filter((d) => checked.has(d.id))}
               labels={labels}
+              actions={
+                <RemoveButton
+                  docs={queue.filter((d) => checked.has(d.id))}
+                  followers={queue
+                    .filter((d) => checked.has(d.id))
+                    .flatMap((d) => followers.get(d.id) ?? [])}
+                  onRemoved={afterRemoval}
+                />
+              }
             />
           ) : null}
           {checked.size < 2 && selected && (
@@ -478,6 +516,16 @@ export function ReviewPage() {
                 <Link className="underline" to={`/documento/${selected.id}`}>
                   {selected.source_path ?? selected.display_name}
                 </Link>
+              }
+              actions={
+                selected.status !== "removed" && (
+                  <RemoveButton
+                    key={selected.id}
+                    docs={[selected]}
+                    followers={followers.get(selected.id)}
+                    onRemoved={afterRemoval}
+                  />
+                )
               }
             >
               <div className="space-y-4">
@@ -511,6 +559,7 @@ export function ReviewPage() {
           )}
         </div>
       )}
+      <RemovedList docs={removedDocs} />
     </div>
   );
 }

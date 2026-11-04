@@ -66,7 +66,8 @@
     "classified": "Classificado",
     "filed": "Arrumado",
     "enriched": "Enriquecido",
-    "reviewed": "Revisto"
+    "reviewed": "Revisto",
+    "removed": "Removido"
   },
   "connect": {
     "title": "Ligar ao teu repositório de dados",
@@ -263,7 +264,8 @@
     "no_marks": "Ainda sem marcas. No modo de leitura podes marcar, sublinhar e escrever por cima.",
     "marks_private": "Só tu as vês: os outros (e «Ver o original») mostram o documento sem elas.",
     "marks_open": "Ver as marcas",
-    "marks_start": "Começar a marcar"
+    "marks_start": "Começar a marcar",
+    "removed": "Removeste este ficheiro: não aparece na biblioteca, em «A rever» nem na pesquisa. O original continua guardado."
   },
   "review": {
     "title": "A rever",
@@ -305,7 +307,22 @@
     "bulk_no_suggestion": "sem sugestão",
     "bulk_not_applicable": "não se aplica",
     "bulk_chosen": "Escolhido para todos",
-    "bulk_suggested": "Sugestões:"
+    "bulk_suggested": "Sugestões:",
+    "remove": "Remover",
+    "remove_one": "Remover este ficheiro",
+    "remove_many": "Remover os {{count}}",
+    "remove_title": "Remover da biblioteca",
+    "remove_confirm_one": "Remover «{{name}}»?",
+    "remove_confirm_many": "Remover estes {{count}} documentos?",
+    "remove_safe": "Sai de «A rever», da biblioteca e da pesquisa. O original continua guardado e podes repô-lo em «Removidos», no fim desta página.",
+    "remove_also": "Saem também {{count}} ficheiro(s) que vão com ele (do mesmo conjunto ou cópias com o mesmo conteúdo).",
+    "removed_notice": "Removeste {{name}}. A biblioteca é actualizada dentro de 1–3 minutos.",
+    "undo": "Desfazer",
+    "dismiss": "Fechar",
+    "removed_title": "Removidos ({{count}})",
+    "removed_text": "Não aparecem na biblioteca, em «A rever» nem na pesquisa. Os originais continuam guardados; «Repor» trá-los de volta (depositar o mesmo ficheiro outra vez também).",
+    "restore": "Repor",
+    "restored": "Reposto."
   },
   "search": {
     "title": "Pesquisa",

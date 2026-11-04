@@ -22,6 +22,7 @@ import { formatBytes } from "../../lib/files";
 import { formatWhen, useLabels } from "../../lib/labels";
 import { lastPage } from "../../lib/reader";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { RestoreButton } from "../review/RemoveDocuments";
 import { ClassificationFields, TitleEditor } from "./DocumentFields";
 import { Reader } from "./Reader";
 import { useSavedMarks } from "./useMarks";
@@ -170,7 +171,9 @@ export function DocumentPage() {
               {t("document.original_name", { name: originalName(doc) })}
             </p>
             <div className="flex flex-wrap gap-1">
-              <Badge>{t(`status.${doc.status}`)}</Badge>
+              <Badge tone={doc.status === "removed" ? "warn" : "neutral"}>
+                {t(`status.${doc.status}`)}
+              </Badge>
               {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
               {isOwner && <PublicBadge value={doc.visibility} />}
               {doc.pages_needing_transcription > 0 && (
@@ -204,6 +207,12 @@ export function DocumentPage() {
         </div>
       </header>
       {error ? <ErrorBox error={error} /> : null}
+      {doc.status === "removed" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-clay/30 bg-clay-soft/50 px-4 py-3 text-sm">
+          <p className="flex-1">{t("document.removed")}</p>
+          {isOwner && <RestoreButton doc={doc} />}
+        </div>
+      )}
       {copyOf && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-marker/60 bg-marker-soft px-4 py-3 text-sm">
           <p className="flex-1">{t("document.copy_of", { name: copyOf.display_name })}</p>

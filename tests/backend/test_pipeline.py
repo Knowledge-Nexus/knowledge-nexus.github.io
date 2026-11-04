@@ -851,3 +851,42 @@ def test_missing_r2_credentials_keep_files_waiting(catalog_root: Path, monkeypat
     report = run(catalog_root).report
     assert not src.exists() and not back.exists()
     assert len(docs(catalog_root)) == 2 and len(fake.objects) == 2
+
+
+def test_removed_document_leaves_library_review_and_search(catalog_root: Path,
+                                                           tmp_path: Path) -> None:
+    """O caixote do lixo da interface (campo `removed`): o documento sai das listas, de
+    "A rever", da pesquisa e da página pública, o original fica, e repõe-se tirando o campo
+    ou depositando o ficheiro de novo."""
+    import sqlite3
+
+    from nexus.datarepo.yamlio import write_yaml_if_changed
+    from nexus.public import public_documents
+
+    gerar.pdf_nativo(deposit(catalog_root, "scan_0001.pdf"), "texto sem pistas úteis " * 5)
+    run(catalog_root)
+    [doc] = docs(catalog_root)
+    assert doc["review"]["status"] == "open"
+    path = catalog_root / "documentos" / f"{doc['id']}.yaml"
+    doc["removed"] = {"at": "2026-11-04T10:00:00Z", "by": OWNER}
+    write_yaml_if_changed(path, doc)
+    before = read_yaml(path)
+    run(catalog_root)
+    assert read_yaml(path) == before  # o motor não lhe mexe
+    original = catalog_root / "originais" / doc["blob"]["sha256"][:2]
+    assert any(original.iterdir())  # o original fica
+
+    build_indices(DataRepo(catalog_root), tmp_path / "idx")
+    con = sqlite3.connect(tmp_path / "idx" / "meta.db")
+    status, review = con.execute(
+        "SELECT status, needs_review FROM documents WHERE id = ?", [doc["id"]]).fetchone()
+    assert (status, review) == ("removed", 0)
+    assert public_documents(DataRepo(catalog_root)) == []
+
+    # Depositar o mesmo ficheiro outra vez trá-lo de volta.
+    again_path = deposit(catalog_root, "scan_0001 (1).pdf", batch="20251002T100000Z-efgh")
+    again_path.write_bytes(next(original.iterdir()).read_bytes())
+    run(catalog_root)
+    [again] = docs(catalog_root)
+    assert again["id"] == doc["id"] and "removed" not in again
+    assert again["review"]["status"] == "open"

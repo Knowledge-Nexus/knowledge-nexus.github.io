@@ -28,6 +28,7 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
         owner: string;
         documents: string[];
         review: string[];
+        removed: string[];
         search: Record<string, [string, number][]>;
         search_other_viewer: [string, number][];
       })
@@ -61,6 +62,9 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
     expect(Array.isArray(doc.sources)).toBe(true);
     expect(meta.vocab("document_types").length).toBeGreaterThanOrEqual(12);
     expect(meta.units().find((u) => u.key === "ufe/am1")?.name).toBe("Análise Matemática I");
+    // O que foi para o caixote do lixo só aparece em «Removidos» (e na sua própria página).
+    expect(meta.removed(expected!.owner).map((d) => d.id)).toEqual(expected!.removed);
+    expect(meta.document(expected!.removed[0]!)?.status).toBe("removed");
     // Consultas da página Início.
     const owned = meta.documents({ owner: expected!.owner });
     const recent = meta.recent(expected!.owner, 100);
@@ -69,6 +73,9 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
     const withUnit = owned.filter((d) => d.unit);
     expect([...stats.values()].reduce((n, s) => n + s.total, 0)).toBe(withUnit.length);
     for (const s of stats.values()) expect(s.filed).toBeLessThanOrEqual(s.total);
+    const counts = meta.counts(expected!.owner);
+    expect(counts.review).toBe(expected!.review.length);
+    expect(counts.total).toBe(owned.filter((d) => d.kind !== "archive").length);
   });
 
   it("pesquisa como o Python", async () => {

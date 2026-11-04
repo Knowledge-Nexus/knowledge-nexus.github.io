@@ -23,7 +23,7 @@ from amostras import gerar  # noqa: E402
 from nexus import clock  # noqa: E402
 from nexus.datarepo.catalog_io import import_bundle  # noqa: E402
 from nexus.datarepo.store import DataRepo  # noqa: E402
-from nexus.datarepo.yamlio import read_yaml  # noqa: E402
+from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed  # noqa: E402
 from nexus.index.builder import build_indices  # noqa: E402
 from nexus.pipeline.run import Pipeline  # noqa: E402
 from nexus.public import build_public_site  # noqa: E402
@@ -48,6 +48,15 @@ def build(out: Path) -> None:
         import_bundle(DataRepo(root).layout,
                       read_yaml(ROOT / "config" / "catalogo" / "exemplo.yaml"))
         gerar.pasta_exemplo(root / "deposito" / OWNER)
+        gerar.pdf_nativo(root / "deposito" / OWNER / "rascunho_velho.pdf",
+                         "Rascunho antigo sem interesse. Notas soltas que já não servem.")
+        Pipeline(DataRepo(root)).run()
+        # Um ficheiro que a aluna pôs no caixote do lixo («Removidos» em «A rever»).
+        [old] = [d for d in DataRepo(root).documents.values()
+                 if any(s.path.endswith("rascunho_velho.pdf") for s in d.sources)]
+        record = read_yaml(root / "documentos" / f"{old.id}.yaml")
+        record["removed"] = {"at": "2025-10-01T12:00:00Z", "by": OWNER}
+        write_yaml_if_changed(root / "documentos" / f"{old.id}.yaml", record)
         Pipeline(DataRepo(root)).run()
         set_unit_visibility(DataRepo(root), OWNER, "ufe/am1", "public")
         indices = Path(tmp) / "indices"

@@ -74,7 +74,8 @@ class PublicResult:
 def public_documents(repo: DataRepo) -> list[Document]:
     users = repo.users
     return sorted((d for d in repo.documents.values()
-                   if d.kind is not DocumentKind.ARCHIVE and is_public(d, users)),
+                   if d.kind is not DocumentKind.ARCHIVE and d.removed is None
+                   and is_public(d, users)),
                   key=lambda d: d.id)
 
 

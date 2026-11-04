@@ -33,6 +33,14 @@
   `bundle_dismissed: true` (formato 4). "Tornar principal" grava `bundle.lead_choice`, que
   manda sobre a escolha do motor (formato 5).
 
+**Removidos** (caixote do lixo em «A rever», formato 6): `removed: {at, by}` no registo do
+documento. O motor deixa-o como está (não o classifica nem arruma, não entra em conjuntos)
+e o índice mostra-o com o estado `removed`, fora da biblioteca, de "A rever", da pesquisa,
+da exportação e do material público. A interface remove também as cópias exactas e os
+outros ficheiros do conjunto que se viam com ele. O original nunca se apaga: «Repor»
+(«Removidos», no fim de "A rever", ou na página do documento) tira o campo, e depositar o
+mesmo ficheiro outra vez também o traz de volta.
+
 **Nome dado pelo dono:** `classification.title` (`method: user`, lápis no título do
 documento). Nas listas substitui o título calculado e, fora das avaliações, entra no nome
 arrumado no lugar do nome original. O motor nunca o define. Um campo gravado como "sem

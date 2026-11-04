@@ -58,6 +58,7 @@ review: null                   # ou {status: open, reasons: [...], opened_at: �
 filed_name: 2023-2024_exame-recurso-enunciado.pdf
 notes: ""
 near_duplicates_dismissed: []
+removed: null                  # caixote do lixo: {at: 2026-11-04T10:00:00Z, by: aluna}
 ```
 
 `deposito/<login>/<lote>/<nome>.ref.yaml` (conteúdo já existente):

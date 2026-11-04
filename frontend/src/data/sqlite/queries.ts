@@ -131,7 +131,7 @@ export class MetaIndex {
   bundleMembers(bundleId: string): DocumentRow[] {
     return this.db
       .all<Record<string, unknown>>(
-        `SELECT * FROM documents WHERE bundle_id = ? AND duplicate_of IS NULL
+        `SELECT * FROM documents WHERE bundle_id = ? AND duplicate_of IS NULL AND status <> 'removed'
          ORDER BY (id = bundle_lead) DESC, id`,
         [bundleId],
       )
@@ -139,12 +139,20 @@ export class MetaIndex {
   }
 
   /** Cópias de um documento: outros ficheiros com exactamente o mesmo texto. */
-  copiesOf(id: string): DocumentRow[] {
+  copiesOf(id: string, includeRemoved = false): DocumentRow[] {
     return this.db
-      .all<Record<string, unknown>>("SELECT * FROM documents WHERE duplicate_of = ? ORDER BY id", [
-        id,
-      ])
+      .all<Record<string, unknown>>(
+        `SELECT * FROM documents WHERE duplicate_of = ? ${includeRemoved ? "" : "AND status <> 'removed'"} ORDER BY id`,
+        [id],
+      )
       .map(toDocument);
+  }
+
+  /** Os que o dono removeu (caixote do lixo), os mais recentes primeiro. */
+  removed(owner?: string): DocumentRow[] {
+    const sql = `SELECT * FROM documents WHERE status = 'removed' AND kind <> 'archive'
+      AND duplicate_of IS NULL ${owner ? "AND owner = ?" : ""} ORDER BY created_at DESC, id DESC`;
+    return this.db.all<Record<string, unknown>>(sql, owner ? [owner] : []).map(toDocument);
   }
 
   /** Escolhas por tipo dentro de uma cadeira ({"<cadeira>::<tipo>": visibilidade}). */
@@ -171,6 +179,7 @@ export class MetaIndex {
     add("document_type = :type", ":type", filter.documentType);
     add("academic_year = :year", ":year", filter.academicYear);
     if (filter.filedOnly) where.push("status IN ('filed', 'enriched', 'reviewed')");
+    else where.push("status <> 'removed'");
     if (!filter.includeArchives) where.push("kind <> 'archive'");
     if (!filter.includeDuplicates) where.push("duplicate_of IS NULL");
     const sql = `SELECT * FROM documents ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -186,7 +195,7 @@ export class MetaIndex {
   children(id: string): DocumentRow[] {
     return this.db
       .all<Record<string, unknown>>(
-        "SELECT * FROM documents WHERE parent = ? ORDER BY source_path",
+        "SELECT * FROM documents WHERE parent = ? AND status <> 'removed' ORDER BY source_path",
         [id],
       )
       .map(toDocument);
@@ -230,7 +239,8 @@ export class MetaIndex {
   /** O documento deste dono com exactamente este conteúdo (para avisar de cópias). */
   ownedSha(owner: string, sha256: string): DocumentRow | undefined {
     const row = this.db.get<Record<string, unknown>>(
-      "SELECT * FROM documents WHERE sha256 = ? AND owner = ? ORDER BY duplicate_of IS NOT NULL, id LIMIT 1",
+      `SELECT * FROM documents WHERE sha256 = ? AND owner = ? AND status <> 'removed'
+       ORDER BY duplicate_of IS NOT NULL, id LIMIT 1`,
       [sha256, owner],
     );
     return row ? toDocument(row) : undefined;
@@ -244,7 +254,7 @@ export class MetaIndex {
     return this.db
       .all<Record<string, unknown>>(
         `SELECT * FROM documents WHERE owner = ? AND kind <> 'archive' AND duplicate_of IS NULL
-         ORDER BY created_at DESC, id DESC LIMIT ?`,
+         AND status <> 'removed' ORDER BY created_at DESC, id DESC LIMIT ?`,
         [owner, limit],
       )
       .map(toDocument);
@@ -254,7 +264,8 @@ export class MetaIndex {
   unitStats(owner: string): Map<string, { filed: number; total: number }> {
     const rows = this.db.all<{ unit: string; filed: number; total: number }>(
       `SELECT unit, sum(status IN ('filed', 'enriched', 'reviewed')) AS filed, count(*) AS total
-       FROM documents WHERE owner = ? AND kind <> 'archive' AND duplicate_of IS NULL AND unit IS NOT NULL GROUP BY unit`,
+       FROM documents WHERE owner = ? AND kind <> 'archive' AND duplicate_of IS NULL AND unit IS NOT NULL
+       AND status <> 'removed' GROUP BY unit`,
       [owner],
     );
     return new Map(rows.map((r) => [r.unit, { filed: r.filed, total: r.total }]));
@@ -272,7 +283,8 @@ export class MetaIndex {
     const row = this.db.get<{ total: number; review: number; filed: number }>(
       `SELECT count(*) AS total, sum(needs_review) AS review,
         sum(status IN ('filed', 'enriched', 'reviewed')) AS filed
-       FROM documents WHERE kind <> 'archive' AND duplicate_of IS NULL ${owner ? "AND owner = ?" : ""}`,
+       FROM documents WHERE kind <> 'archive' AND duplicate_of IS NULL AND status <> 'removed'
+       ${owner ? "AND owner = ?" : ""}`,
       owner ? [owner] : [],
     );
     return { total: row?.total ?? 0, review: row?.review ?? 0, filed: row?.filed ?? 0 };

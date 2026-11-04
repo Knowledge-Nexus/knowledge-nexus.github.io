@@ -37,7 +37,8 @@ def export_tree(repo: DataRepo, dest: Path, owner: str | None = None,
     for doc in sorted(repo.documents.values(), key=lambda d: (d.filed_name or "", d.id)):
         if owner and doc.owner != owner:
             continue
-        if doc.kind is DocumentKind.ARCHIVE or not doc.reached(Status.FILED) or not doc.filed_name:
+        if (doc.kind is DocumentKind.ARCHIVE or not doc.reached(Status.FILED)
+                or not doc.filed_name or doc.removed is not None):
             report.skipped.append(doc.id)
             continue
         unit_key = doc.classification.value("unit")

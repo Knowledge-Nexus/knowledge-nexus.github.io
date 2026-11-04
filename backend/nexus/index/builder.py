@@ -64,12 +64,17 @@ def _required_confidence(doc: Document, repo: DataRepo) -> float | None:
     return min(confidences) if confidences else None
 
 
+# Estado dos documentos removidos pelo dono, só no índice (no registo é o campo `removed`).
+REMOVED_STATUS = "removed"
+
+
 def near_duplicate_pairs(repo: DataRepo, only: set[str] | None = None
                          ) -> list[tuple[str, str, int, float]]:
     settings = repo.settings.dedup
     hashes: list[tuple[str, str, str]] = []
     for doc in sorted(repo.documents.values(), key=lambda d: d.id):
-        if doc.kind is DocumentKind.ARCHIVE or (only is not None and doc.id not in only):
+        if doc.kind is DocumentKind.ARCHIVE or doc.removed is not None or (
+                only is not None and doc.id not in only):
             continue
         meta = repo.extraction_meta(doc.blob.sha256)
         if meta and meta.simhash and meta.words >= settings.min_words:
@@ -113,7 +118,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
     documents = sorted(repo.documents.values(), key=lambda d: d.id)
     if public:
         documents = [d for d in documents
-                     if d.kind is not DocumentKind.ARCHIVE and visibility[d.id].value == "public"]
+                     if d.kind is not DocumentKind.ARCHIVE and d.removed is None
+                     and visibility[d.id].value == "public"]
     included = {d.id for d in documents}
     units = dict(catalog.units)
     courses = dict(catalog.courses)
@@ -178,7 +184,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
             "bundle_lead": doc.bundle.lead if doc.bundle and doc.bundle.lead in included
             else None,
             "visibility": shown.value, "visibility_inherited": shown.inherited,
-            "status": doc.status.value,
+            # Removido pelo dono: fica no índice (para se poder repor), fora das listas.
+            "status": REMOVED_STATUS if doc.removed is not None else doc.status.value,
             "display_name": doc.display_name,
             "source_path": first.path if first and not public else None,
             "batch": first.batch if first and not public else None,
@@ -191,9 +198,9 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
             "assessment_number": c.value("assessment_number"),
             "role": c.value("role"), "solution_origin": c.value("solution_origin"),
             "confidence": _required_confidence(doc, repo),
-            "needs_review": doc.needs_review and not public,
+            "needs_review": doc.needs_review and not public and doc.removed is None,
             "review_reasons": _dump(doc.review.reasons)
-            if doc.needs_review and doc.review and not public else [],
+            if doc.needs_review and doc.review and not public and doc.removed is None else [],
             "classification": _strip_reasons(_dump(c)) if public else _dump(c),
             "sources": [] if public else _dump(doc.sources),
             "history": [] if public else _dump(doc.history),
@@ -215,7 +222,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                 "pages": [p.model_dump(mode="json", exclude_none=True) for p in extraction.pages],
                 "metadata": extraction.metadata, "warnings": extraction.warnings,
             })
-        if extraction is not None and not (doc.duplicate_of and doc.duplicate_of in included):
+        if extraction is not None and doc.removed is None and not (
+                doc.duplicate_of and doc.duplicate_of in included):
             # As cópias (mesmo texto) não entram na pesquisa: o original já lá está.
             for number, text in enumerate(repo.page_texts(doc.blob.sha256), start=1):
                 if not text.strip():

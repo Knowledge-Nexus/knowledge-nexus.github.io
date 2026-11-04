@@ -25,7 +25,7 @@ class ReviewError(ValueError):
 
 
 def pending(repo: DataRepo) -> list[Document]:
-    docs = [d for d in repo.documents.values() if d.needs_review]
+    docs = [d for d in repo.documents.values() if d.needs_review and d.removed is None]
     return sorted(docs, key=lambda d: d.id, reverse=True)
 
 

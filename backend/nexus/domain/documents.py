@@ -172,6 +172,14 @@ class BundleRef(Record):
     lead_choice: str | None = None
 
 
+class Removal(Record):
+    """Removido pelo dono (caixote do lixo): sai da biblioteca, de "A rever" e da pesquisa.
+    O original nunca se apaga; repor é tirar este campo (ou depositar o ficheiro de novo)."""
+
+    at: dt.datetime
+    by: str | None = None
+
+
 class Document(Record):
     id: str
     owner: str
@@ -198,6 +206,7 @@ class Document(Record):
     bundle_dismissed: bool = False
     manifest: Manifest | None = None
     created_at: dt.datetime | None = None
+    removed: Removal | None = None
 
     @field_validator("visibility")
     @classmethod

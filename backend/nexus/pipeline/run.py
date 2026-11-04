@@ -455,6 +455,8 @@ class Pipeline:
         if all((s.via, s.path, s.batch) != key for s in doc.sources):
             doc.sources = [*doc.sources, source]
             staging.resent_ids.append(doc.id)
+            # Depositar de novo um ficheiro que tinhas removido trá-lo de volta.
+            doc.removed = None
         staging.docs[doc.id] = doc
 
     def _register(self, staging: _Staging, owner: str, sha: str, ext: str, size: int,
@@ -666,7 +668,9 @@ class Pipeline:
         self._content_seen = {}
         self._assign_bundles()
         for doc_id in sorted(self.repo.documents):
-            self._reconcile_one(doc_id, classifier)
+            # Removidos pelo dono: ficam como estão (não se classificam nem se arrumam).
+            if self.repo.documents[doc_id].removed is None:
+                self._reconcile_one(doc_id, classifier)
         # Os conjuntos vêem-se com tudo já classificado: os membros (não principais) são
         # reconciliados outra vez, agora com o principal desta execução.
         for doc_id in sorted(self._assign_bundles()):
@@ -695,6 +699,8 @@ class Pipeline:
                                    material_folder(self.repo.vocabularies))
         wanted: dict[str, BundleRef | None] = {}
         for doc in docs.values():
+            if doc.removed is not None:
+                continue  # removido: não entra em conjuntos (nem como principal)
             if doc.bundle is not None and doc.bundle.method != METHOD_HEURISTIC:
                 wanted[doc.id] = doc.bundle
             else:
@@ -741,7 +747,8 @@ class Pipeline:
         if doc.bundle is None or not doc.bundle.lead or doc.bundle.lead == doc.id:
             return None
         lead = self.repo.documents.get(doc.bundle.lead)
-        if lead is None or not lead.filed_name or lead.needs_review or lead.duplicate_of:
+        if (lead is None or not lead.filed_name or lead.needs_review or lead.duplicate_of
+                or lead.removed is not None):
             return None
         return lead
 

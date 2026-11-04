@@ -1,6 +1,14 @@
 // Tipos das linhas do índice meta.db (ver backend/nexus/index/schema.py) e dos registos YAML.
 
-export type Status = "received" | "extracted" | "classified" | "filed" | "enriched" | "reviewed";
+export type Status =
+  | "received"
+  | "extracted"
+  | "classified"
+  | "filed"
+  | "enriched"
+  | "reviewed"
+  // Só no índice: removido pelo dono (caixote do lixo em «A rever»; o registo tem `removed`).
+  | "removed";
 export type DocumentKind = "file" | "archive" | "code_project";
 
 export const CLASSIFICATION_FIELDS = [

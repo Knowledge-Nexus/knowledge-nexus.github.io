@@ -22,7 +22,7 @@ from amostras import gerar  # noqa: E402
 from nexus import clock  # noqa: E402
 from nexus.datarepo.catalog_io import import_bundle  # noqa: E402
 from nexus.datarepo.store import DataRepo  # noqa: E402
-from nexus.datarepo.yamlio import read_yaml  # noqa: E402
+from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed  # noqa: E402
 from nexus.index.builder import SEARCH_DB, build_indices  # noqa: E402
 from nexus.index.search import SqliteFtsSearch  # noqa: E402
 from nexus.pipeline.run import Pipeline  # noqa: E402
@@ -43,13 +43,23 @@ def build(out: Path) -> None:
         gerar.pdf_nativo(root / "deposito" / OWNER / "exemplo" / "AM1" / "slides_limites.pdf",
                          gerar.SLIDES_ALGA)
         Pipeline(DataRepo(root)).run()
+        # Um dos que estavam em "A rever" vai para o caixote do lixo (campo `removed`): tem de
+        # sair das consultas da interface e da pesquisa.
+        removed = sorted(d.id for d in DataRepo(root).documents.values() if d.needs_review)[0]
+        path = root / "documentos" / f"{removed}.yaml"
+        record = read_yaml(path)
+        record["removed"] = {"at": "2025-10-01T12:00:00Z", "by": OWNER}
+        write_yaml_if_changed(path, record)
+        Pipeline(DataRepo(root)).run()
         repo = DataRepo(root)
         build_indices(repo, out, built_from="contrato")
+        kept = [d for d in repo.documents.values() if d.removed is None]
         search = SqliteFtsSearch(out / SEARCH_DB)
         expected = {
             "owner": OWNER,
-            "documents": sorted(d.id for d in repo.documents.values()),
-            "review": sorted(d.id for d in repo.documents.values() if d.needs_review),
+            "documents": sorted(d.id for d in kept),
+            "review": sorted(d.id for d in kept if d.needs_review),
+            "removed": [removed],
             "search": {q: [[h.doc_id, h.page] for h in search.search(q, OWNER)]
                        for q in QUERIES},
             "search_other_viewer": [[h.doc_id, h.page] for h in search.search("sucessao", "x")],

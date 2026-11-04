@@ -40,12 +40,18 @@ def _v4_bundle_lead_choice(root: Path) -> None:
     """4 → 5: novo campo opcional `bundle.lead_choice` (principal escolhido por ti)."""
 
 
+def _v5_removed(root: Path) -> None:
+    """5 → 6: novo campo opcional `removed` nos documentos (caixote do lixo da interface).
+    Um motor antigo não o conheceria e voltaria a arrumar o que foi removido."""
+
+
 # {versão de origem: função que migra para a versão seguinte}
 MIGRATIONS: dict[int, Migration] = {
     1: _v1_visibility_inherits,
     2: _v2_duplicate_of,
     3: _v3_bundles,
     4: _v4_bundle_lead_choice,
+    5: _v5_removed,
 }
 
 

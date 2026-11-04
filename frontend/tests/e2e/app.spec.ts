@@ -310,6 +310,60 @@ test("confirmar vários documentos de uma vez em «A rever»", async ({ page }) 
   }
 });
 
+test("caixote do lixo em «A rever»: remover, desfazer e repor", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page
+    .getByRole("link", { name: /A rever/ })
+    .first()
+    .click();
+  const items = page.locator("ul input[type=checkbox]");
+  await expect(items).toHaveCount(3);
+  await page.getByRole("button", { name: "grafos_ficha2.pdf" }).click();
+  await page.getByRole("button", { name: "Remover este ficheiro" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Remover da biblioteca" });
+  await expect(dialog).toContainText("Remover «grafos_ficha2.pdf»?");
+  await expect(dialog).toContainText("O original continua guardado");
+  await dialog.getByRole("button", { name: "Remover" }).click();
+  // Sai logo da lista (antes de o índice ser reconstruído) e passa ao seguinte.
+  await expect(page.getByText(/Removeste grafos_ficha2\.pdf/)).toBeVisible();
+  await expect(items).toHaveCount(2);
+  // O número no menu também desconta logo.
+  const badge = page.getByRole("navigation", { name: "principal" }).getByRole("link", {
+    name: /A rever/,
+  });
+  await expect(badge).toContainText("3");
+  const removal = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(removal.paths).toHaveLength(1);
+  const path = removal.paths[0]!;
+  expect(path).toMatch(/^documentos\//);
+  expect(YAML.parse(fake.text(REPO, path)!).removed).toMatchObject({ by: "aluna" });
+
+  // Desfazer: o campo sai e o ficheiro volta à lista.
+  await page.getByRole("button", { name: "Desfazer" }).click();
+  await expect(items).toHaveCount(3);
+  expect(YAML.parse(fake.text(REPO, path)!)).not.toHaveProperty("removed");
+
+  // Um conjunto sai inteiro: o enunciado e o código que o segue.
+  await page.getByRole("button", { name: /Trabalho_pratico_1/ }).click();
+  await page.getByRole("button", { name: "Remover este ficheiro" }).click();
+  await expect(dialog).toContainText("Saem também 1 ficheiro(s)");
+  await dialog.getByRole("button", { name: "Remover" }).click();
+  await expect(items).toHaveCount(2);
+  expect(fake.repos.get(REPO)!.commits.at(-1)!.paths).toHaveLength(2);
+
+  // «Removidos»: o que já tinha ido para o lixo; repõe-se na página do documento.
+  await page.getByText("Removidos (1)").click();
+  await page.getByRole("link", { name: "rascunho_velho.pdf" }).click();
+  await expect(page.getByText(/Removeste este ficheiro/)).toBeVisible();
+  await expect(page.getByText("Removido", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Repor" }).click();
+  await expect(page.getByText(/Reposto\./)).toBeVisible();
+  const restore = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(restore.message).toMatch(/^repor: rascunho_velho\.pdf/);
+  expect(YAML.parse(fake.text(REPO, restore.paths[0]!)!)).not.toHaveProperty("removed");
+});
+
 test("tipo de material público, selecção e descarga em zip", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
@@ -495,8 +549,17 @@ test("depositar: as cópias são detectadas logo e não são enviadas", async ({
     .getByRole("navigation", { name: "principal" })
     .getByRole("link", { name: "Depositar" })
     .click();
-  // Um ficheiro que já está na biblioteca (o mesmo conteúdo, com outro nome).
-  const original = Object.keys(snapshot.main).find((p) => p.startsWith("originais/"))!;
+  // Um ficheiro que já está na biblioteca (o mesmo conteúdo, com outro nome). Um que foi para
+  // o caixote do lixo não conta: enviá-lo outra vez é a maneira de o repor.
+  const removed = Object.entries(snapshot.main)
+    .filter(([p]) => p.startsWith("documentos/"))
+    .map(([, b64]) => YAML.parse(Buffer.from(b64, "base64").toString("utf-8")))
+    .filter((record) => record.removed)
+    .map((record) => String(record.blob.sha256));
+  expect(removed).toHaveLength(1);
+  const original = Object.keys(snapshot.main).find(
+    (p) => p.startsWith("originais/") && !removed.some((sha) => p.includes(sha)),
+  )!;
   const existing = Buffer.from(snapshot.main[original]!, "base64");
   const texto = Buffer.from("Física Geral: energia cinética e potencial");
   await page.getByTestId("pick-files").setInputFiles([

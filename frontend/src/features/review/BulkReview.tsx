@@ -1,7 +1,7 @@
 // Confirmar vários documentos de uma vez: cada campo "mantém a sugestão de cada um" ou
 // aplica o mesmo valor a todos. Grava tudo num só commit (método "user", como um a um).
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconStack } from "../../components/icons";
 import { Button, Card, ConfidenceBadge, ErrorBox } from "../../components/ui";
@@ -76,7 +76,13 @@ export function suggestionSummary(
     .sort((a, b) => b.count - a.count);
 }
 
-export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?: () => void }) {
+export function BulkReview(props: {
+  docs: DocumentRow[];
+  labels: Labels;
+  onDone?: () => void;
+  /** Outros botões, ao lado de «Confirmar» (ex.: remover). */
+  actions?: ReactNode;
+}) {
   const { t } = useTranslation();
   const { source, login, notifyCommit } = useApp();
   const { docs, labels } = props;
@@ -269,13 +275,14 @@ export function BulkReview(props: { docs: DocumentRow[]; labels: Labels; onDone?
         </p>
       )}
       {error ? <ErrorBox error={error} /> : null}
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap gap-2">
         <Button onClick={() => void confirm()} disabled={busy || missing > 0}>
           {t("review.bulk_confirm", { count: docs.length })}
         </Button>
         <Button variant="secondary" onClick={() => void join()} disabled={busy}>
           <IconStack size={15} /> {t("bundle.join")}
         </Button>
+        {props.actions}
       </div>
     </Card>
   );
