@@ -762,10 +762,10 @@
     "semantic_hash": "69d9f1d998a0f10eaea566b254314521"
   },
   "frontend/src/features/home/HomePage.tsx": {
-    "mtime": 1793653940.7480245,
-    "seen": 1793819413.8466911,
-    "ast_hash": "ed0891264031fe44fae01e4304ede6f8",
-    "semantic_hash": "ed0891264031fe44fae01e4304ede6f8"
+    "mtime": 1793821764.4156964,
+    "seen": 1793821883.3991778,
+    "ast_hash": "8b1af89164b6ce583671709c4ba5a1ff",
+    "semantic_hash": ""
   },
   "frontend/src/features/library/CourseManager.tsx": {
     "mtime": 1793653940.7480245,
@@ -780,16 +780,16 @@
     "semantic_hash": "ed9808c4e1541fc703c298b117807ca4"
   },
   "frontend/src/features/library/LibraryPage.tsx": {
-    "mtime": 1793814719.4773798,
-    "seen": 1793819413.8466945,
-    "ast_hash": "bd3dfbadb72ddad0cf1ecac0ff678ff3",
-    "semantic_hash": "bd3dfbadb72ddad0cf1ecac0ff678ff3"
+    "mtime": 1793821766.3322089,
+    "seen": 1793821883.399183,
+    "ast_hash": "d1dec1cf89d55794abb1aba7f8a765b1",
+    "semantic_hash": ""
   },
   "frontend/src/features/library/Shelves.tsx": {
-    "mtime": 1793653940.7480245,
-    "seen": 1793819413.8466957,
-    "ast_hash": "808eabdc30e8ea8620f576500c7ac942",
-    "semantic_hash": "808eabdc30e8ea8620f576500c7ac942"
+    "mtime": 1793821764.4153771,
+    "seen": 1793821883.3991845,
+    "ast_hash": "32a9f047195362f49bda489715435fc6",
+    "semantic_hash": ""
   },
   "frontend/src/features/library/UnitCourses.tsx": {
     "mtime": 1793653940.7480245,
@@ -1296,10 +1296,10 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1793818598.4579775,
-    "seen": 1793819413.8467903,
-    "ast_hash": "4d4a6f401a59e2cbefe817d4f8d8d4a9",
-    "semantic_hash": "4d4a6f401a59e2cbefe817d4f8d8d4a9"
+    "mtime": 1793819457.296554,
+    "seen": 1793821883.3992963,
+    "ast_hash": "d6621b8da37fdddafdb5684fbf647e52",
+    "semantic_hash": ""
   },
   "README.md": {
     "mtime": 1793653744.8092175,
@@ -1344,10 +1344,10 @@
     "semantic_hash": "dd39ea00ed63e7d3be7102af3e0a4cb2"
   },
   "docs/arquitectura.md": {
-    "mtime": 1793795156.875426,
-    "seen": 1793819413.846798,
-    "ast_hash": "24120ed9405c3661a4bb4a83c0fbbc97",
-    "semantic_hash": "24120ed9405c3661a4bb4a83c0fbbc97"
+    "mtime": 1793819441.7146828,
+    "seen": 1793821883.3993068,
+    "ast_hash": "a36c832a58479861749b8c548d8d4efe",
+    "semantic_hash": ""
   },
   "docs/configuracao.md": {
     "mtime": 1793818138.1044757,
@@ -1384,5 +1384,17 @@
     "seen": 1793819413.8468037,
     "ast_hash": "9e4d51f5256326190775a0cf26f61311",
     "semantic_hash": "9e4d51f5256326190775a0cf26f61311"
+  },
+  "frontend/src/features/library/UnitBook.tsx": {
+    "mtime": 1793821764.4150512,
+    "seen": 1793821883.3991864,
+    "ast_hash": "89fdaf2e28064a1e96a6c1200441c888",
+    "semantic_hash": ""
+  },
+  "frontend/pnpm-lock.yaml": {
+    "mtime": 1793653744.8172832,
+    "seen": 1793821883.399315,
+    "ast_hash": "79c14848137b7fa0d7c9ad1a5fa26538",
+    "semantic_hash": ""
   }
 }

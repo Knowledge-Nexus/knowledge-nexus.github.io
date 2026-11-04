@@ -73,3 +73,4 @@ graphify-out/cache/ast/
 graphify-out/cache/stat-index.json
 graphify-out/cache/hook_sessions/
 graphify-out/cache/last_query_stamp
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/

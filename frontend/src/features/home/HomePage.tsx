@@ -4,7 +4,8 @@ import { IconArrowRight, IconCheckList, IconInbox } from "../../components/icons
 import { buttonClass, Card, Empty, ErrorBox, PageHeader, Spinner } from "../../components/ui";
 import { useApp } from "../../data/context";
 import { useLabels } from "../../lib/labels";
-import { DocumentLink, UnitBook } from "../library/LibraryPage";
+import { DocumentLink } from "../library/LibraryPage";
+import { UnitBook } from "../library/UnitBook";
 
 function greeting(): "morning" | "afternoon" | "evening" {
   const hour = new Date().getHours();

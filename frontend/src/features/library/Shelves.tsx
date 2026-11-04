@@ -14,7 +14,7 @@ import { unitRef } from "../../lib/courseLinks";
 import { normalize, slugify } from "../../lib/normalize";
 import { courseTitle, degreeOf } from "../../lib/reference";
 import { CourseRemover, CourseRenamer } from "./CourseManager";
-import { UnitBook } from "./LibraryPage";
+import { UnitBook } from "./UnitBook";
 
 const DRAG_TYPE = "application/x-nexus-unit";
 
