@@ -69,6 +69,10 @@ class Layout:
     def generated_root(self) -> Path:
         return self.root / "gerado"
 
+    def questions_path(self, sha256: str) -> Path:
+        """Banco de perguntas de um enunciado (`domain/questions.py`)."""
+        return self.generated_root / sha256 / "perguntas.yaml"
+
     def deposit_dir(self, login: str) -> Path:
         return self.deposit_root / login
 

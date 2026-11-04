@@ -179,6 +179,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Visibilidade | `uv run nexus visibilidade cadeira <inst>/<cadeira> publico\|privado --repo <pasta>` |
 | Visibilidade de um tipo | `uv run nexus visibilidade tipo <inst>/<cadeira> <tipo> publico\|privado\|cadeira --repo <pasta>` |
 | Publicar o material público | `NEXUS_PUBLICO_TOKEN=… uv run nexus publicar --repo <pasta>` |
+| Banco de perguntas | `uv run nexus perguntas pendentes\|propor\|mostrar\|verificar --repo <pasta>` |
 
 Dependências de sistema (Ubuntu/WSL2):
 - `tesseract-ocr tesseract-ocr-por tesseract-ocr-eng`
@@ -382,6 +383,18 @@ Dependências de sistema (Ubuntu/WSL2):
   «Removidos», com «Repor» (tira o campo; também na página do documento). Até o índice
   chegar, o que removeste esconde-se logo (`hideRemoved`/`settleRemovals`) e há «Desfazer».
   Depositar o mesmo ficheiro outra vez repõe-no (`_add_source`). O original nunca se apaga.
+- **Banco de perguntas, fase A** (`nexus/questions.py`, `domain/questions.py`, skill
+  `/extrair-perguntas` no template): só perguntas tal e qual dos enunciados de avaliação
+  (tipo com `is_assessment` e papel `statement`, arrumado, sem revisão aberta). A IA propõe os
+  blocos (`context` e `question`, com o número); o motor procura cada um no texto das páginas
+  `native` (só os espaços contam como iguais), pela ordem, com pouco texto entre blocos
+  (`GAP_MAX`) e depois do último (`TAIL_MAX`), sem nada que comece como uma pergunta nesses
+  intervalos, numeração completa (1, 2… ou I.1, II.1…) e cada pergunta a começar pelo seu
+  número; falhando alguma, não grava nada. Grava o texto do ficheiro, não o da proposta.
+  Figuras, tabelas, anexos, matemática e texto estragado ficam guardados com `excluded` e não
+  se mostram (uma pergunta cujo caso está excluído também não). Publica-se logo; quem
+  verifica (dono, Editor, Gestor) confirma ou rejeita depois (`review`, mantida enquanto o
+  `text_sha256` for o mesmo). `still_in_file` volta a confirmar o texto a cada índice.
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
 - **Classificação (regras que evitam erros conhecidos):**
@@ -445,10 +458,11 @@ Dependências de sistema (Ubuntu/WSL2):
 
 - **Aqui:** `.claude/settings.json` com permissões para os comandos do projecto.
 - **No repositório de dados** (template em `backend/nexus/scaffold/template/.claude/`):
-  - skills `/processar-deposito`, `/rever-classificacoes` e `/inferir-catalogo`;
+  - skills `/processar-deposito`, `/rever-classificacoes`, `/inferir-catalogo` e
+    `/extrair-perguntas`;
   - hook SessionStart que instala o `nexus` e as ferramentas;
   - para as actualizar: `nexus scaffold <repo> --dono <login> --actualizar`.
-- **Fase 2:** `/enriquecer`, `/extrair-perguntas` e `/transcrever`.
+- **Fase 2:** `/enriquecer` e `/transcrever` (`/extrair-perguntas` já existe, fase A).
 
 ## Estado das fases
 

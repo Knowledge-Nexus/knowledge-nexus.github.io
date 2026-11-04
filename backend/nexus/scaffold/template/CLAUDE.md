@@ -5,7 +5,7 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
 
 ## Regras (obrigatórias)
 - **Nunca** alterar, mover ou apagar nada em `originais/` (imutável, endereçado por SHA-256).
-- **Nunca** editar à mão `documentos/`, `texto/` ou `revisao/`: usa a CLI `nexus`
+- **Nunca** editar à mão `documentos/`, `texto/`, `gerado/` ou `revisao/`: usa a CLI `nexus`
   (`nexus --help`). Tudo o que é derivado pode ser regenerado com `nexus processar`.
 - **Nunca** tornar este repositório público, activar o Pages ou copiar material para fora.
   A única excepção é o material que o dono marcou como "Público" (por cadeira ou por
@@ -22,6 +22,8 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
 - `originais/<aa>/<sha256>.<ext>` originais
 - `documentos/<id>.yaml` cópia lógica por utilizador (classificação, estado, notas)
 - `texto/<sha256>/` texto extraído (páginas em Markdown + LaTeX, meta.json)
+- `gerado/<sha256>/perguntas.yaml` banco de perguntas de um enunciado (só com
+  `nexus perguntas propor`, que confirma o texto no ficheiro)
 - `catalogo/` instituições, cursos, cadeiras, vocabulários
 - `revisao/propostas/` propostas de catálogo
 - ramo `indices`: meta.db e pesquisa.db.gz (derivados)
@@ -30,3 +32,4 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
 - `/processar-deposito`: corre o pipeline localmente e publica
 - `/rever-classificacoes`: propõe classificações para a fila "A rever"
 - `/inferir-catalogo`: propõe instituição/curso/cadeiras a partir do material
+- `/extrair-perguntas`: divide os enunciados nas suas perguntas, tal e qual

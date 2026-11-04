@@ -23,6 +23,8 @@ revisao/propostas/<id>.yaml          cadeira/curso/instituição propostos, com 
 acessos.yaml                         acessos temporários dados pelo dono (sem os tokens); o motor ignora-o
 anotacoes/<login>/<id>.json          marcas de leitura de cada pessoa (convidados: anotacoes/convidados/…);
                                      o motor ignora-as e o `nexus servir` não processa por causa delas
+gerado/<sha256>/perguntas.yaml       banco de perguntas de um enunciado (tal e qual; só com
+                                     `nexus perguntas propor`)
 gerado/<sha256>/…                    (fase 2) material gerado, sempre com proveniência
 ramo indices                         manifest.json, meta.db, pesquisa.db.gz (derivados)
 ```

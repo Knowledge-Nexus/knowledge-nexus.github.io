@@ -68,9 +68,14 @@ valor" fica `{value: null, method: user}`: o motor não o volta a preencher.
 Todos os registos gerados têm `generated` (proveniência) e ligam a `SourceRef`.
 
 **Conteúdo por blob (partilhável):**
-- **Pergunta:** `gerado/<sha>/perguntas/*.yaml`, com número, enunciado em
-  Markdown+LaTeX, página, cotação, tópicos (cadeira) e ligação à resolução (sha + página)
-  quando existir. É a base do banco de perguntas e da análise de frequência por tópico.
+- **Pergunta (fase A, feito):** `gerado/<sha>/perguntas.yaml` (`domain/questions.py`), um
+  ficheiro por enunciado: `contexts` (o caso prático comum a várias perguntas) e `questions`
+  (número, ordem, páginas, o texto do ficheiro tal e qual, `text_sha256`, `context`,
+  `excluded`: `figure`, `math` ou `garbled`, e `review`: `confirmed`/`rejected`, por quem e
+  quando). `text_origin: original` e `generated` (quem dividiu, a IA, e as páginas). O motor
+  (`nexus/questions.py`) só grava se cada bloco estiver no texto das páginas nativas tal e
+  qual, pela ordem, com a numeração completa e sem perguntas de fora. Mais tarde: cotação,
+  tópicos e ligação à resolução (sha + página), para a análise de frequência por tópico.
 - **Resumo, glossário, conceitos, fichas de revisão e formulários:**
   `gerado/<sha>/…` (Markdown com citações).
 

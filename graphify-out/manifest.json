@@ -24,10 +24,10 @@
     "semantic_hash": "39b9549f97fc3fb68653523f6b71d5a0"
   },
   "backend/nexus/cli.py": {
-    "mtime": 1793816265.8449504,
-    "seen": 1793819413.8465614,
-    "ast_hash": "1df39d8617605dadcf2d1c9dce2502c9",
-    "semantic_hash": "1df39d8617605dadcf2d1c9dce2502c9"
+    "mtime": 1793823301.2463715,
+    "seen": 1793823565.546666,
+    "ast_hash": "b2afe06c76703ac102b827a1cda56877",
+    "semantic_hash": ""
   },
   "backend/nexus/clock.py": {
     "mtime": 1793653744.8099227,
@@ -60,10 +60,10 @@
     "semantic_hash": "c9d72e58979c9c07cbbafbc7d216db21"
   },
   "backend/nexus/datarepo/layout.py": {
-    "mtime": 1793653744.810265,
-    "seen": 1793819413.846572,
-    "ast_hash": "cab1411c7c333ea15be74bcc3de8c93b",
-    "semantic_hash": "cab1411c7c333ea15be74bcc3de8c93b"
+    "mtime": 1793823188.9236646,
+    "seen": 1793823565.5466826,
+    "ast_hash": "db1234fa5d85f5b4e824b5f1ecf96683",
+    "semantic_hash": ""
   },
   "backend/nexus/datarepo/store.py": {
     "mtime": 1793653744.810265,
@@ -1296,9 +1296,9 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1793822923.865906,
-    "seen": 1793822941.6146429,
-    "ast_hash": "2a7bf30f6eed5dbab08d1acff3404322",
+    "mtime": 1793823551.933335,
+    "seen": 1793823565.5470161,
+    "ast_hash": "aafe27a677edf530aecc71c795a0eecf",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1326,10 +1326,10 @@
     "semantic_hash": "56c930d3116fa237177e2953cb6a932a"
   },
   "backend/nexus/scaffold/template/CLAUDE.md": {
-    "mtime": 1793653940.7334292,
-    "seen": 1793819413.8467953,
-    "ast_hash": "9773c9becae52ef1084917af84979db7",
-    "semantic_hash": "9773c9becae52ef1084917af84979db7"
+    "mtime": 1793823468.5962875,
+    "seen": 1793823565.5470319,
+    "ast_hash": "e7a248d276f8a76b56493854ade62514",
+    "semantic_hash": ""
   },
   "backend/nexus/scaffold/template/README.md": {
     "mtime": 1793653744.815496,
@@ -1362,16 +1362,16 @@
     "semantic_hash": "5f1d58cc0d19a9872e89f8f9b7bafa01"
   },
   "docs/modelo-dados.md": {
-    "mtime": 1793793311.822541,
-    "seen": 1793819413.8468006,
-    "ast_hash": "5583b919e31d0e8425affd49367652b5",
-    "semantic_hash": "5583b919e31d0e8425affd49367652b5"
+    "mtime": 1793823551.9322326,
+    "seen": 1793823565.547044,
+    "ast_hash": "f3195fd9d77f97bbe80cf2eba0f373a3",
+    "semantic_hash": ""
   },
   "docs/repo-dados.md": {
-    "mtime": 1793793311.8231473,
-    "seen": 1793819413.8468018,
-    "ast_hash": "dcf84668e50cdd1ea545abaae59a1369",
-    "semantic_hash": "dcf84668e50cdd1ea545abaae59a1369"
+    "mtime": 1793823551.931593,
+    "seen": 1793823565.5470462,
+    "ast_hash": "7e8465d45dfba3a30b29da9af56f0dca",
+    "semantic_hash": ""
   },
   "frontend/index.html": {
     "mtime": 1793653940.7374294,
@@ -1389,6 +1389,30 @@
     "mtime": 1793821764.4150512,
     "seen": 1793821883.3991864,
     "ast_hash": "89fdaf2e28064a1e96a6c1200441c888",
+    "semantic_hash": ""
+  },
+  "backend/nexus/domain/questions.py": {
+    "mtime": 1793823188.9231362,
+    "seen": 1793823565.546707,
+    "ast_hash": "0c1c2f6b005a297448916f524fccaee1",
+    "semantic_hash": ""
+  },
+  "backend/nexus/questions.py": {
+    "mtime": 1793823366.612906,
+    "seen": 1793823565.5468156,
+    "ast_hash": "61278ae1e49a28872d5f9bb8d0fd5984",
+    "semantic_hash": ""
+  },
+  "tests/backend/test_questions.py": {
+    "mtime": 1793823436.349467,
+    "seen": 1793823565.5469623,
+    "ast_hash": "37c84f428b37d09cd3c084932a2ab9fc",
+    "semantic_hash": ""
+  },
+  "backend/nexus/scaffold/template/.claude/skills/extrair-perguntas/SKILL.md": {
+    "mtime": 1793823468.5703173,
+    "seen": 1793823565.547022,
+    "ast_hash": "5637ad789e32d2b90696b7a49d4965dc",
     "semantic_hash": ""
   },
   "frontend/pnpm-lock.yaml": {

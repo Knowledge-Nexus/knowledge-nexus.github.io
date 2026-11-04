@@ -26,7 +26,10 @@ sharing_app = typer.Typer(help="Visibilidade: privado ou público, por cadeira o
 app.add_typer(catalog_app, name="catalogo")
 app.add_typer(review_app, name="revisao")
 app.add_typer(document_app, name="documento")
+questions_app = typer.Typer(help="Banco de perguntas: as perguntas dos enunciados, tal e qual.",
+                            no_args_is_help=True)
 app.add_typer(sharing_app, name="visibilidade")
+app.add_typer(questions_app, name="perguntas")
 
 RepoOption = Annotated[Path, typer.Option(
     "--repo", "-r", help="Raiz do repositório de dados.", envvar="NEXUS_REPO")]
@@ -550,6 +553,93 @@ if __name__ == "__main__":
 
 VisibilityArg = Annotated[str, typer.Argument(
     help="publico, privado ou cadeira (seguir a escolha da cadeira).")]
+
+
+# --- banco de perguntas ---------------------------------------------------------------
+
+
+@questions_app.command("pendentes")
+def perguntas_pendentes(repo: RepoOption = Path("."), as_json: JsonOption = False) -> None:
+    """Enunciados de avaliação arrumados, com texto do próprio ficheiro, ainda sem perguntas."""
+    from nexus.questions import describe, pending
+
+    data = _repo(repo)
+    docs = pending(data)
+    if as_json:
+        _print_json([describe(data, d) for d in docs])
+        return
+    for doc in docs:
+        typer.echo(f"{doc.id[:8]}  {doc.display_name}")
+    typer.echo(f"{len(docs)} enunciado(s) sem perguntas")
+
+
+@questions_app.command("propor")
+def perguntas_propor(
+    documento: Annotated[str, typer.Argument()],
+    ficheiro: Annotated[str, typer.Option(help="JSON com {blocks: [...]} ou - (stdin).")],
+    repo: RepoOption = Path("."),
+    metodo: Annotated[str, typer.Option(help="Identificação do agente.")] = "ai:claude-code",
+) -> None:
+    """Grava as perguntas de um enunciado, se o motor confirmar que estão no ficheiro tal e
+    qual (senão, não grava nada e diz porquê)."""
+    from nexus.questions import QuestionError, propose
+
+    raw = sys.stdin.read() if ficheiro == "-" else Path(ficheiro).read_text(encoding="utf-8")
+    try:
+        qset = propose(_repo(repo), documento, json.loads(raw), metodo)
+    except json.JSONDecodeError as exc:
+        _fail(f"JSON inválido: {exc}")
+        return
+    except QuestionError as exc:
+        _fail(f"recusado ({exc.code}): {exc}")
+        return
+    shown = sum(1 for q in qset.questions if q.visible)
+    hidden = len(qset.questions) - shown
+    typer.echo(f"{len(qset.questions)} pergunta(s) gravadas ({shown} visíveis, {hidden} com "
+               "figuras, matemática ou texto estragado ficam de fora); corre `nexus processar`")
+
+
+@questions_app.command("mostrar")
+def perguntas_mostrar(documento: Annotated[str, typer.Argument()],
+                      repo: RepoOption = Path(".")) -> None:
+    """O banco de perguntas de um enunciado (JSON)."""
+    from nexus.questions import QuestionError, _document, load
+
+    data = _repo(repo)
+    try:
+        qset = load(data, _document(data, documento).blob.sha256)
+    except QuestionError as exc:
+        _fail(str(exc))
+        return
+    if qset is None:
+        _fail("este enunciado ainda não tem perguntas")
+        return
+    _print_json(qset.model_dump(mode="json", exclude_none=True))
+
+
+@questions_app.command("verificar")
+def perguntas_verificar(
+    documento: Annotated[str, typer.Argument()],
+    pergunta: Annotated[str, typer.Argument(help="O número da pergunta (ex.: 3 ou II.1).")],
+    estado: Annotated[str, typer.Option(help="confirmada ou rejeitada.")],
+    repo: RepoOption = Path("."),
+    login: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Confirma ou rejeita uma pergunta (como na interface)."""
+    from nexus.questions import QuestionError, review
+
+    states = {"confirmada": "confirmed", "rejeitada": "rejected"}
+    if estado not in states:
+        _fail("o estado é confirmada ou rejeitada")
+        return
+    data = _repo(repo)
+    try:
+        review(data, documento, pergunta, states[estado],
+               login or str(data.raw_settings.get("owner")))
+    except QuestionError as exc:
+        _fail(str(exc))
+        return
+    typer.echo(f"pergunta {pergunta}: {estado}")
 
 
 @sharing_app.command("documento")
