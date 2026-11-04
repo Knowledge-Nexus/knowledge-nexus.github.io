@@ -266,3 +266,39 @@ def test_public_material_is_published_when_it_may_have_changed(git_root: Path,
     assert publish_public_if_due(git_root, state, now=lambda: clock[0])
     clock[0] += PUBLIC_EVERY  # depois de uma falha, espera meia hora
     assert not publish_public_if_due(git_root, state, now=lambda: clock[0])
+
+
+def test_servir_starts_on_an_older_format_and_migrates_it(git_root: Path) -> None:
+    """Uma versão nova da aplicação com um formato novo: o `nexus servir` arranca na mesma,
+    actualiza o formato antes de processar e envia-o (antes recusava logo ao arrancar)."""
+    import re
+
+    from typer.testing import CliRunner
+
+    from nexus import FORMAT_VERSION
+    from nexus.cli import app
+
+    settings = git_root / "nexus.yaml"
+    old = FORMAT_VERSION - 1
+    settings.write_text(
+        re.sub(r"format_version: \d+", f"format_version: {old}", settings.read_text()),
+        encoding="utf-8",
+    )
+    _git(git_root, "commit", "-qam", "formato antigo")
+    _git(git_root, "push", "-q", "origin", "main")
+
+    result = CliRunner().invoke(app, ["servir", "--repo", str(git_root), "--uma-vez"])
+    assert result.exit_code == 0, result.output
+    pushed = subprocess.run(["git", "show", "origin/main:nexus.yaml"], cwd=git_root, check=True,
+                            capture_output=True, text=True).stdout
+    assert f"format_version: {FORMAT_VERSION}" in pushed
+
+    # Um formato mais novo do que o motor conhece continua a ser recusado.
+    settings.write_text(
+        re.sub(r"format_version: \d+", f"format_version: {FORMAT_VERSION + 1}",
+               settings.read_text()),
+        encoding="utf-8",
+    )
+    refused = CliRunner().invoke(app, ["servir", "--repo", str(git_root), "--uma-vez"])
+    assert refused.exit_code == 1
+    assert "Actualiza o nexus" in refused.output

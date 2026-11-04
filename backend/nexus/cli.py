@@ -33,14 +33,19 @@ RepoOption = Annotated[Path, typer.Option(
 JsonOption = Annotated[bool, typer.Option("--json", help="Saída em JSON.")]
 
 
-def _repo(path: Path):  # type: ignore[no-untyped-def]
+def _repo(path: Path, migrates: bool = False):  # type: ignore[no-untyped-def]
+    """O repositório de dados, no formato deste motor. Com `migrates`, aceita também um
+    formato mais antigo, que o comando actualiza ele próprio antes de processar."""
+    from nexus import FORMAT_VERSION
     from nexus.datarepo.store import DataRepo, DataRepoError
 
     repo = DataRepo(path)
     try:
         repo.check_format()
     except DataRepoError as exc:
-        _fail(str(exc))
+        older = repo.is_initialized() and repo.format_version < FORMAT_VERSION
+        if not (migrates and older):
+            _fail(str(exc))
     return repo
 
 
@@ -168,7 +173,9 @@ def servir(
     """Vigia o repositório de dados e processa os depósitos novos (sem GitHub Actions)."""
     from nexus.serve import UPDATE_EXIT, serve
 
-    _repo(repo)
+    # Uma versão nova da aplicação pode trazer um formato novo: o servir actualiza-o antes de
+    # processar (como o Actions corria `nexus migrar`), por isso não o recusa aqui.
+    _repo(repo, migrates=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     typer.echo(f"a vigiar {repo} a cada {intervalo} s (Ctrl+C para parar)")
     from nexus.datarepo.store import DataRepo
