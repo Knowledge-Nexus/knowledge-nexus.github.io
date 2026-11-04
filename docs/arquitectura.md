@@ -124,7 +124,8 @@ como público.
 ## Segurança e privacidade
 
 - **Site público, mas só com código.** Tem `robots noindex`, e a CSP limita
-  `connect-src` a `api.github.com`, sem scripts de terceiros.
+  `connect-src` à própria origem, a `api.github.com` e ao Worker (R2, contas e proxy), sem
+  scripts de terceiros.
 - **Token:** fine-grained e limitado ao repositório de dados. Fica em `sessionStorage`,
   ou em `localStorage` se o utilizador pedir "lembrar".
 - **Recusa de repositórios públicos:** a interface, o `nexus vigiar` e o workflow.

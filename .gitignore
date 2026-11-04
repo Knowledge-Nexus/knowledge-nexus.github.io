@@ -71,3 +71,4 @@ graphify-out/.graphify_*
 !graphify-out/.graphify_labels.json
 graphify-out/cache/ast/
 graphify-out/cache/stat-index.json
+graphify-out/cache/hook_sessions/

@@ -301,7 +301,8 @@ Dependências de sistema (Ubuntu/WSL2):
 - **TypeScript:**
   - React 19, TanStack Query, react-router (HashRouter) e Biome.
   - Nenhum HTML cru: Markdown sem HTML e excertos da pesquisa em pedaços.
-  - A CSP em `index.html` só permite `connect-src` para `api.github.com`.
+  - A CSP em `index.html` só permite `connect-src` para a própria origem, `api.github.com`
+    e o Worker (`nexus-ficheiros.nightmareftw.workers.dev`: R2, contas e proxy).
 - **Mudar o esquema do índice:**
   - subir `SCHEMA_VERSION` (`index/schema.py`);
   - actualizar `frontend/src/data/sqlite/queries.ts` e `SUPPORTED_SCHEMA_VERSION`;
@@ -468,7 +469,9 @@ os módulos centrais, as comunidades e as relações entre ficheiros (código e 
   `graphify query "<pergunta>"`, antes da primeira pesquisa ou leitura de ficheiros, e põe esta
   regra em cada prompt de subagente que explore o código. Lê os ficheiros só nas linhas que o
   grafo (ou uma leitura anterior) já localizou. `graphify path "<A>" "<B>"` mostra a ligação
-  entre duas coisas e `graphify explain "<conceito>"` explica uma só.
+  entre duas coisas e `graphify explain "<conceito>"` explica uma só. Pergunta com os nomes
+  do código (`checkCommit proxy`, `Pipeline _remove_unit`), que estão em inglês: frases em
+  português encontram pouco.
 - `graphify-out/GRAPH_REPORT.md` só para uma revisão geral da arquitectura, ou quando
   query/path/explain não chegam. `graphify-out/graph.html` é o grafo interactivo (abre no browser).
 - Depois de mudar código, `graphify update .` actualiza o grafo (só a estrutura do código, sem
