@@ -167,8 +167,32 @@ export class FakeGitHub {
     if (commitGet && method === "GET") {
       const commit = this.commitTrees.get(commitGet[1]!);
       return commit
-        ? json(200, { tree: { sha: commit.tree } })
+        ? json(200, {
+            tree: { sha: commit.tree },
+            parents: commit.parent ? [{ sha: commit.parent }] : [],
+          })
         : json(404, { message: "Not Found" });
+    }
+    // Comparação de um commit com o pai (o Worker das contas verifica cada commit assim).
+    const compare = /^\/compare\/([0-9a-z]+)\.\.\.([0-9a-z]+)$/.exec(rest);
+    if (compare && method === "GET") {
+      const base = this.commitTrees.get(compare[1]!)?.snapshot;
+      const head = this.commitTrees.get(compare[2]!);
+      if (!base || !head || head.parent !== compare[1]) return json(404, { message: "Not Found" });
+      const files = this.flatten(head.tree).map((entry) => {
+        const before = base[entry.path];
+        const after = entry.sha ? this.blobs.get(entry.sha) : undefined;
+        const lines = (bytes?: Uint8Array) => (bytes ? decoder.decode(bytes).split("\n") : []);
+        const old = new Set(lines(before));
+        const next = new Set(lines(after));
+        const patch = [
+          ...[...old].filter((l) => !next.has(l)).map((l) => `-${l}`),
+          ...[...next].filter((l) => !old.has(l)).map((l) => `+${l}`),
+        ].join("\n");
+        const status = !after ? "removed" : before ? "modified" : "added";
+        return { filename: entry.path, status, patch: `@@ -1 +1 @@\n${patch}` };
+      });
+      return json(200, { files });
     }
     if (rest === "/git/blobs" && method === "POST") {
       const sha = this.sha("b");

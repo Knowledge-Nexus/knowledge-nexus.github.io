@@ -1,11 +1,11 @@
 // Contas do Knowledge Nexus (D1): registo e entrada (email e palavra-passe, ou Google),
 // sessões, papéis, convites e as marcas de leitura de cada pessoa.
 //
-// Papéis: `none` (conta criada, à espera: só vê o material público), `reader` (ver e
-// descarregar tudo) e `editor` (o mesmo que o dono pode fazer na interface). O dono gere as
-// contas com o token dele do GitHub (o mesmo com que entra como administrador).
+// Níveis de acesso: ver `ranks.js` (de `none`, à espera, até `editor`). Só o dono vê e gere
+// as contas, com o token dele do GitHub (o mesmo com que entra como administrador).
 
 import { adminLogin, dataRepo, githubConfigured, ownerLogin } from "./github.js";
+import { atLeast, isRank } from "./ranks.js";
 import {
   bearer,
   checkPassword,
@@ -26,7 +26,6 @@ const DAY = 24 * 60 * 60 * 1000;
 const SESSION_DAYS = 30;
 const INVITE_DAYS = 30;
 const RESET_DAYS = 7;
-const ROLES = new Set(["none", "reader", "editor"]);
 const MARKS_LIMIT = 512 * 1024;
 
 export const SESSION_PREFIX = "nxs_";
@@ -69,7 +68,7 @@ function cleanUntil(value) {
 
 function cleanRole(value, allowNone = true) {
   const role = String(value ?? "");
-  if (!ROLES.has(role) || (!allowNone && role === "none")) throw new HttpError(400, "papel_invalido");
+  if (!isRank(role) || (!allowNone && role === "none")) throw new HttpError(400, "papel_invalido");
   return role;
 }
 
@@ -79,11 +78,12 @@ function cleanRole(value, allowNone = true) {
 export function effectiveRole(user, now = Date.now()) {
   if (!user || user.status !== "active") return "none";
   if (user.until && Date.parse(user.until) < now) return "none";
-  return ROLES.has(user.role) ? user.role : "none";
+  return isRank(user.role) ? user.role : "none";
 }
 
-export const canRead = (user) => effectiveRole(user) !== "none";
-export const canWrite = (user) => effectiveRole(user) === "editor";
+export const canRead = (user) => atLeast(effectiveRole(user), "viewer");
+/** Grava alguma coisa no repositório (depositar, no mínimo); o resto decide-o `checkCommit`. */
+export const canWrite = (user) => atLeast(effectiveRole(user), "contributor");
 
 function publicUser(user) {
   return {

@@ -8,7 +8,7 @@ CREATE TABLE users (
   -- pbkdf2$<iterações>$<sal>$<resumo>; NULL para quem só entra com o Google
   password TEXT,
   google_sub TEXT UNIQUE,
-  -- none (à espera) | reader (ver e descarregar) | editor (como o dono)
+  -- none (à espera) | viewer | reader | contributor | organizer | editor (worker/src/ranks.js)
   role TEXT NOT NULL DEFAULT 'none',
   -- active | paused
   status TEXT NOT NULL DEFAULT 'active',

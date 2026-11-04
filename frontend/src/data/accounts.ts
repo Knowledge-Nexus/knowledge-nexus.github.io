@@ -2,13 +2,14 @@
 // convites e, para o dono, a gestão das contas. Quem entra com conta usa a API do GitHub
 // através do Worker (`/gh`), com a sessão em vez de um token do GitHub.
 
+import type { AccountRole } from "../lib/ranks";
 import { STORAGE_URL } from "./source";
+
+export type { AccountRole } from "../lib/ranks";
 
 /** Worker das contas: o mesmo dos originais no R2 (vazio desliga as contas). */
 export const ACCOUNTS_URL: string =
   (import.meta.env.VITE_ACCOUNTS_URL as string | undefined) ?? STORAGE_URL;
-
-export type AccountRole = "none" | "reader" | "editor";
 
 export interface AccountUser {
   id: string;

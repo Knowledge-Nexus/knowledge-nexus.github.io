@@ -31,7 +31,7 @@ export function DocumentPage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
-  const { meta, source, login, notifyCommit, indexLoading, readOnly, to } = useApp();
+  const { meta, source, login, notifyCommit, indexLoading, readOnly, can, to } = useApp();
   const labels = useLabels(meta);
   const doc = id ? meta?.document(id) : undefined;
   const page = Number(params.get("pagina") ?? 1) || 1;
@@ -175,7 +175,7 @@ export function DocumentPage() {
                 {t(`status.${doc.status}`)}
               </Badge>
               {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
-              {isOwner && <PublicBadge value={doc.visibility} />}
+              {isOwner && can.visibility && <PublicBadge value={doc.visibility} />}
               {doc.pages_needing_transcription > 0 && (
                 <Badge tone="info">
                   {t("document.needs_transcription", { count: doc.pages_needing_transcription })}
@@ -192,12 +192,14 @@ export function DocumentPage() {
                 </span>
               </Button>
             )}
-            <Button variant="secondary" onClick={() => void downloadOriginal()}>
-              <span className="inline-flex items-center gap-2">
-                <IconDownload />
-                {t("document.download")}
-              </span>
-            </Button>
+            {can.download && (
+              <Button variant="secondary" onClick={() => void downloadOriginal()}>
+                <span className="inline-flex items-center gap-2">
+                  <IconDownload />
+                  {t("document.download")}
+                </span>
+              </Button>
+            )}
             {isOwner && doc.needs_review && (
               <Link to={to(`/rever?doc=${doc.id}`)} className={buttonClass("secondary")}>
                 {t("document.correct")}
@@ -322,7 +324,7 @@ export function DocumentPage() {
               </div>
             </Card>
           )}
-          {isOwner && (
+          {isOwner && can.visibility && (
             <Card title={t("visibility.document_label")}>
               <DocumentVisibility key={doc.id} doc={doc} />
             </Card>

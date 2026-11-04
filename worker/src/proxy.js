@@ -1,11 +1,14 @@
 // Proxy da API do GitHub para quem entra com conta: a interface usa o mesmo cliente que com o
 // token, mas com o endereço `/gh` do Worker e a sessão da conta. O Worker só deixa passar os
 // pedidos de que a interface precisa, só para o repositório de dados, e conforme o papel:
-// `reader` só lê; `editor` também escreve (commits com o nome de quem os fez).
+// do Observador ao Leitor só lêem; do Colaborador para cima também gravam, mas cada commit é
+// verificado antes de o ramo avançar (`checkCommit`: só o que o nível permite) e leva o nome
+// de quem o fez.
 
-import { canRead, canWrite, sessionUser } from "./accounts.js";
+import { canRead, canWrite, effectiveRole, sessionUser } from "./accounts.js";
 import { dataRepo, github, ownerLogin } from "./github.js";
-import { bearer, cors, reply } from "./util.js";
+import { checkCommit, pathAllowed } from "./ranks.js";
+import { bearer, cors, HttpError, reply } from "./util.js";
 
 // Os identificadores dos objectos (SHA-1 ou SHA-256 do git); só um segmento do caminho.
 const SHA = "[0-9A-Za-z_-]+";
@@ -36,6 +39,44 @@ const PASS_HEADERS = [
 export const accountTrailer = (user) => `Feito por: ${user.name} (conta ${user.email})`;
 
 export async function handleProxy(request, env, fetchImpl, path) {
+  try {
+    return await proxy(request, env, fetchImpl, path);
+  } catch (error) {
+    if (!(error instanceof HttpError)) throw error;
+    return reply(request, env, error.status, {
+      message: error.code,
+      error: error.code,
+      ...error.extra,
+    });
+  }
+}
+
+const json = async (response) => (response.ok ? response.json() : {});
+
+/** Antes de o ramo avançar: o commit tem de caber no nível de quem o fez. */
+async function verifyRefUpdate(env, fetchImpl, prefix, user, rest, data) {
+  if (data.force) throw new HttpError(403, "pedido_nao_permitido");
+  const branch = decodeURIComponent(rest.slice("/git/refs/heads/".length));
+  if (branch !== (env.DATA_BRANCH || "main")) throw new HttpError(403, "pedido_nao_permitido");
+  const sha = String(data.sha ?? "");
+  if (!/^[0-9A-Za-z_-]+$/.test(sha)) throw new HttpError(400, "pedido_invalido");
+  const [ref, commit] = await Promise.all([
+    github(env, fetchImpl, `${prefix}/git/ref/heads/${encodeURIComponent(branch)}`).then(json),
+    github(env, fetchImpl, `${prefix}/git/commits/${sha}`).then(json),
+  ]);
+  const head = ref.object?.sha;
+  if (!head) throw new HttpError(403, "commit_invalido");
+  const compare = await github(env, fetchImpl, `${prefix}/compare/${head}...${sha}`).then(json);
+  await checkCommit({
+    role: effectiveRole(user),
+    owner: await ownerLogin(env, fetchImpl),
+    head,
+    commit,
+    compare,
+  });
+}
+
+async function proxy(request, env, fetchImpl, path) {
   const fail = (status, error) => reply(request, env, status, { message: error, error });
   const user = await sessionUser(env, bearer(request));
   if (!user) return fail(401, "sessao_invalida");
@@ -55,10 +96,20 @@ export async function handleProxy(request, env, fetchImpl, path) {
   const writing = WRITE.some(([m, re]) => m === method && re.test(rest));
   if (!reading && !writing) return fail(403, "pedido_nao_permitido");
   if (writing && !canWrite(user)) return fail(403, "so_leitura");
+  if (method === "PUT") {
+    const file = decodeURIComponent(rest.slice("/contents/".length));
+    if (!pathAllowed(effectiveRole(user), file, await ownerLogin(env, fetchImpl)))
+      return fail(403, "fora_do_teu_nivel");
+  }
 
   let body;
   if (method !== "GET" && method !== "HEAD") {
     body = await request.text();
+    if (method === "PATCH") {
+      const data = JSON.parse(body || "{}");
+      await verifyRefUpdate(env, fetchImpl, prefix, user, rest, data);
+      body = JSON.stringify({ sha: data.sha });
+    }
     // Os dois pedidos que criam commits levam o nome de quem os fez.
     if ((method === "POST" && rest === "/git/commits") || method === "PUT") {
       const commit = JSON.parse(body || "{}");

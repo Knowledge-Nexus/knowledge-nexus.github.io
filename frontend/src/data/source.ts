@@ -21,6 +21,7 @@ import {
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
 import { slugify } from "../lib/normalize";
+import { type Capabilities, FULL, READ_AND_DOWNLOAD, rankCapabilities, writes } from "../lib/ranks";
 import type { AccountSession } from "./accounts";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
@@ -190,12 +191,19 @@ export class GitHubDataSource implements DataSource {
     readonly account?: AccountSession,
   ) {}
 
+  /** O que esta sessão pode fazer: o nível da conta, o código de acesso ou tudo (o dono). */
+  get capabilities(): Capabilities {
+    if (this.account) return rankCapabilities(this.account.user.access);
+    if (this.guest?.scope === "read") return READ_AND_DOWNLOAD;
+    return FULL;
+  }
+
   /**
-   * Entrou com um código «só ver e descarregar» (o token só tem leitura) ou com uma conta de
-   * leitor (o Worker recusa as escritas): a interface não mostra nada que mude o repositório.
+   * Não grava nada: código «só ver e descarregar» (o token só tem leitura) ou conta de
+   * Observador ou Leitor (o Worker recusa as escritas).
    */
   get viewOnly(): boolean {
-    return this.guest?.scope === "read" || this.account?.user.access === "reader";
+    return !writes(this.capabilities);
   }
 
   /** O dono, com o token dele do GitHub (nem código de acesso nem conta). */

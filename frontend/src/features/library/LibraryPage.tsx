@@ -54,7 +54,7 @@ export function DocumentLink(props: {
   onSelect?: (on: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const { meta, to, readOnly } = useApp();
+  const { meta, to, readOnly, can } = useApp();
   const labels = useLabels(meta);
   const { doc } = props;
   const title = documentTitle(doc, labels, !props.groupedByType);
@@ -88,7 +88,7 @@ export function DocumentLink(props: {
           )}
         </span>
         <span className="flex shrink-0 gap-1">
-          {!readOnly && <PublicBadge value={doc.visibility} />}
+          {can.visibility && <PublicBadge value={doc.visibility} />}
           {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
           {!readOnly && !doc.needs_review && typeToConfirm(doc) && (
             <span title={t("library.type_to_confirm_hint")}>
@@ -110,10 +110,10 @@ export function UnitBook(props: {
   compact?: boolean;
 }) {
   const { t } = useTranslation();
-  const { meta, login, to, readOnly } = useApp();
+  const { meta, login, to, can } = useApp();
   const { unit, compact } = props;
   const color = unitColor(unit.key);
-  const shared = !readOnly && isPublic(meta?.unitVisibility(login)[unit.key]);
+  const shared = can.visibility && isPublic(meta?.unitVisibility(login)[unit.key]);
   return (
     <Link
       to={to(`/biblioteca?uc=${encodeURIComponent(unit.key)}`)}
@@ -215,9 +215,11 @@ export function BundleMembers(props: { lead: DocumentRow; members: DocumentRow[]
 /** Ordem dentro de um tipo: mais recentes primeiro (ano, data da prova), depois o título. */
 function UnitDetail(props: { unitKey: string }) {
   const { t } = useTranslation();
-  const { meta, login, to, source, readOnly, notifyCommit } = useApp();
+  const { meta, login, to, source, readOnly, can, notifyCommit } = useApp();
   const labels = useLabels(meta);
   const [params, setParams] = useSearchParams();
+  // Escolher documentos serve para descarregar ou arrumar; o Observador não faz nenhum dos dois.
+  const selectable = can.download || !readOnly;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -454,7 +456,7 @@ function UnitDetail(props: { unitKey: string }) {
                   {t("unit_edit.open")}
                 </Button>
               )}
-              {docs.length > 0 && (
+              {docs.length > 0 && can.download && (
                 <Button
                   variant="secondary"
                   disabled={busy !== null}
@@ -575,13 +577,15 @@ function UnitDetail(props: { unitKey: string }) {
                   <Card
                     title={
                       <span className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-[var(--color-pen)]"
-                          checked={all}
-                          onChange={() => select(ids, !all)}
-                          aria-label={t("library.select_type", { type: label })}
-                        />
+                        {selectable && (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-[var(--color-pen)]"
+                            checked={all}
+                            onChange={() => select(ids, !all)}
+                            aria-label={t("library.select_type", { type: label })}
+                          />
+                        )}
                         {label}
                         <span className="font-sans text-xs font-normal text-muted">
                           {list.length}
@@ -590,22 +594,24 @@ function UnitDetail(props: { unitKey: string }) {
                     }
                     actions={
                       <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted">
-                        {!readOnly && (
+                        {can.visibility && (
                           <>
                             <span className="hidden sm:inline">{t("visibility.type_row")}</span>
                             <TypeVisibility unitKey={props.unitKey} documentType={type} />
                           </>
                         )}
-                        <button
-                          type="button"
-                          className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
-                          title={t("library.download_type", { type: label })}
-                          aria-label={t("library.download_type", { type: label })}
-                          disabled={busy !== null}
-                          onClick={() => void download(sorted, `${unitName} - ${label}`)}
-                        >
-                          <IconDownload size={16} />
-                        </button>
+                        {can.download && (
+                          <button
+                            type="button"
+                            className="rounded-full p-1.5 text-muted hover:bg-paper hover:text-pen"
+                            title={t("library.download_type", { type: label })}
+                            aria-label={t("library.download_type", { type: label })}
+                            disabled={busy !== null}
+                            onClick={() => void download(sorted, `${unitName} - ${label}`)}
+                          >
+                            <IconDownload size={16} />
+                          </button>
+                        )}
                       </div>
                     }
                   >
@@ -640,7 +646,7 @@ function UnitDetail(props: { unitKey: string }) {
                                     doc={doc}
                                     groupedByType
                                     selected={ids.every((id) => selected.has(id))}
-                                    onSelect={(on) => select(ids, on)}
+                                    onSelect={selectable ? (on) => select(ids, on) : undefined}
                                   />
                                   <BundleMembers lead={doc} members={members} />
                                 </div>
@@ -665,18 +671,20 @@ function UnitDetail(props: { unitKey: string }) {
             </span>
             {chosen.length > 0 && !busy && (
               <>
-                <Button onClick={() => void download(chosen, `${unitName} - selecção`)}>
-                  <IconDownload size={16} /> {t("library.download_selected")}
-                </Button>
-                {!readOnly && (
+                {can.download && (
+                  <Button onClick={() => void download(chosen, `${unitName} - selecção`)}>
+                    <IconDownload size={16} /> {t("library.download_selected")}
+                  </Button>
+                )}
+                {!readOnly && chosen.some(typeToConfirm) && (
+                  <Button variant="secondary" onClick={() => void confirmTypes(chosen)}>
+                    {t("library.confirm_types", {
+                      count: chosen.filter(typeToConfirm).length,
+                    })}
+                  </Button>
+                )}
+                {can.visibility && (
                   <>
-                    {chosen.some(typeToConfirm) && (
-                      <Button variant="secondary" onClick={() => void confirmTypes(chosen)}>
-                        {t("library.confirm_types", {
-                          count: chosen.filter(typeToConfirm).length,
-                        })}
-                      </Button>
-                    )}
                     <Button
                       variant="secondary"
                       onClick={() => void setVisibility(chosen, "public")}

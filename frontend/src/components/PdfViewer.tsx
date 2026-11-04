@@ -7,6 +7,7 @@ import type { PageMarks } from "../lib/annotations";
 import { MarksLayer, pageUnitsHeight } from "./MarksLayer";
 import { type PdfDocument, pageSize, renderPage } from "./pdf";
 import { Button, ErrorBox } from "./ui";
+import { useNoSaveMenu, Watermark } from "./Watermark";
 
 const BORDER = 2;
 
@@ -17,6 +18,7 @@ export function PdfViewer(props: {
   marks?: PageMarks;
 }) {
   const { t } = useTranslation();
+  const noSaveMenu = useNoSaveMenu();
   const { pdf } = props;
   const canvas = useRef<HTMLCanvasElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
@@ -134,11 +136,12 @@ export function PdfViewer(props: {
         ref={viewport}
         className="flex h-[min(70dvh,52rem)] min-h-64 overflow-auto rounded-lg bg-paper p-2"
       >
-        <div className="relative m-auto shrink-0">
+        <div className="relative m-auto shrink-0" {...noSaveMenu}>
           <canvas ref={canvas} className="block rounded border border-line bg-white shadow-sm" />
           {size && strokes.length > 0 && (
             <MarksLayer strokes={strokes} height={pageUnitsHeight(size)} rotation={rotation} />
           )}
+          <Watermark />
         </div>
       </div>
     </div>

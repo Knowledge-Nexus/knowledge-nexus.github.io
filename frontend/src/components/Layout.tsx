@@ -7,6 +7,7 @@ import { guestName, setFlash } from "../data/session";
 import { GitHubDataSource } from "../data/source";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { formatWhen } from "../lib/labels";
+import { writes } from "../lib/ranks";
 import { useRemovals } from "../lib/removal";
 import { Brand } from "./Brand";
 import {
@@ -120,7 +121,7 @@ function PublicLayout(props: { children: ReactNode }) {
 
 export function Layout(props: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { meta, login, source, readOnly, visitor } = useApp();
+  const { meta, login, source, can, visitor } = useApp();
   const removals = useRemovals();
   const account = source instanceof GitHubDataSource ? source.account : undefined;
   if (visitor) return <PublicLayout>{props.children}</PublicLayout>;
@@ -139,7 +140,7 @@ export function Layout(props: { children: ReactNode }) {
         label={t("nav.home")}
         hint={t("nav.home_hint")}
       />
-      {!readOnly && (
+      {can.upload && (
         <NavItem
           dark={dark}
           to="/depositar"
@@ -155,7 +156,7 @@ export function Layout(props: { children: ReactNode }) {
         label={t("nav.library")}
         hint={t("nav.library_hint")}
       />
-      {!readOnly && (
+      {can.organize && (
         <NavItem
           dark={dark}
           to="/rever"
@@ -187,12 +188,13 @@ export function Layout(props: { children: ReactNode }) {
           <NavItem to="/ajuda" icon={<IconHelp />} label={t("nav.help")} />
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
           <div className="rounded-xl border border-gold/30 bg-white/5 px-3 py-2.5 text-white/80 [&_p]:text-white/80">
-            {readOnly ? (
-              <p className="flex items-center gap-1.5 text-xs font-medium !text-gold-light">
-                <IconEye size={14} /> {t("nav.view_only")}
-              </p>
-            ) : (
+            {writes(can) ? (
               <PipelineStatus />
+            ) : (
+              <p className="flex items-center gap-1.5 text-xs font-medium !text-gold-light">
+                <IconEye size={14} />{" "}
+                {account ? t(`accounts.roles.${account.user.access}`) : t("nav.view_only")}
+              </p>
             )}
             <p
               className="mt-1 truncate text-xs !text-white/50"
@@ -206,7 +208,7 @@ export function Layout(props: { children: ReactNode }) {
       <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 [&_p]:text-white/80">
           <Brand size={30} dark />
-          {!readOnly && <PipelineStatus compact />}
+          {writes(can) && <PipelineStatus compact />}
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
           {items(true)}

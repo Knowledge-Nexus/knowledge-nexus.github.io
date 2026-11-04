@@ -51,6 +51,7 @@ import {
   usePdf,
 } from "../../components/pdf";
 import { ErrorBox, Spinner } from "../../components/ui";
+import { useNoSaveMenu, Watermark } from "../../components/Watermark";
 import { useApp } from "../../data/context";
 import type { DocumentRow } from "../../data/types";
 import {
@@ -168,6 +169,7 @@ function ReaderPage(props: {
   gutter?: "left" | "right";
 }) {
   const { t } = useTranslation();
+  const noSaveMenu = useNoSaveMenu();
   const canvas = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<unknown>(null);
   const [draft, setDraft] = useState<Stroke | null>(null);
@@ -285,6 +287,7 @@ function ReaderPage(props: {
       className={`reader-sheet relative shrink-0 ${gutter}`}
       style={{ width: cssWidth, height: cssHeight }}
       data-page={number}
+      {...noSaveMenu}
     >
       <canvas
         ref={canvas}
@@ -292,6 +295,7 @@ function ReaderPage(props: {
         style={{ filter: TONE_FILTER[props.tone] }}
         aria-label={t("reader.page_label", { page: number })}
       />
+      <Watermark />
       {props.showMarks && (
         <MarksLayer
           strokes={visible}

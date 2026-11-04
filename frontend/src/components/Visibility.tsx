@@ -78,7 +78,7 @@ function ConfirmPublic(props: { onConfirm: () => void; onCancel: () => void; bus
 /** Visibilidade de todo o material de uma cadeira (só para o dono). */
 export function UnitVisibility(props: { unitKey: string }) {
   const { t } = useTranslation();
-  const { meta, login, source, notifyCommit, readOnly } = useApp();
+  const { meta, login, source, notifyCommit, can } = useApp();
   const current: Choice = isPublic(meta?.unitVisibility(login)[props.unitKey])
     ? "public"
     : "private";
@@ -87,7 +87,8 @@ export function UnitVisibility(props: { unitKey: string }) {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  if (readOnly) return null;
+  // Só quem pode escolher o que é público (o dono, um código de acesso total, o Editor).
+  if (!can.visibility) return null;
 
   async function save(next: Choice) {
     setBusy(true);
@@ -167,7 +168,7 @@ function inheritedValue(
 /** Visibilidade de um tipo de material dentro de uma cadeira (ex.: só as fichas). */
 export function TypeVisibility(props: { unitKey: string; documentType: string }) {
   const { t } = useTranslation();
-  const { meta, login, source, notifyCommit, readOnly } = useApp();
+  const { meta, login, source, notifyCommit, can } = useApp();
   const key = typeKey(props.unitKey, props.documentType);
   const stored = meta?.typeVisibility(login)[key];
   const [value, setValue] = useState<DocChoice>(
@@ -175,7 +176,8 @@ export function TypeVisibility(props: { unitKey: string; documentType: string })
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  if (readOnly) return null;
+  // Só quem pode escolher o que é público (o dono, um código de acesso total, o Editor).
+  if (!can.visibility) return null;
   const unitValue: Choice = isPublic(meta?.unitVisibility(login)[props.unitKey])
     ? "public"
     : "private";
@@ -236,7 +238,7 @@ export function TypeVisibility(props: { unitKey: string; documentType: string })
 /** Visibilidade de um documento: segue a cadeira ou é uma excepção. */
 export function DocumentVisibility(props: { doc: DocumentRow }) {
   const { t } = useTranslation();
-  const { meta, login, source, notifyCommit, readOnly } = useApp();
+  const { meta, login, source, notifyCommit, can } = useApp();
   const { doc } = props;
   const unitValue = inheritedValue(meta, login, doc.unit, doc.document_type);
   const initial: DocChoice = doc.visibility_inherited
@@ -249,7 +251,8 @@ export function DocumentVisibility(props: { doc: DocumentRow }) {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  if (readOnly) return null;
+  // Só quem pode escolher o que é público (o dono, um código de acesso total, o Editor).
+  if (!can.visibility) return null;
 
   const effective = value === "inherit" ? unitValue : value;
 

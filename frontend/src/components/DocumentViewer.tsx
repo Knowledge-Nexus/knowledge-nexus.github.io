@@ -12,6 +12,7 @@ import { Markdown } from "./Markdown";
 import { PdfViewer } from "./PdfViewer";
 import { usePdf } from "./pdf";
 import { Button, Empty, ErrorBox, Spinner } from "./ui";
+import { useNoSaveMenu, Watermark } from "./Watermark";
 
 export const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp"]);
 
@@ -71,6 +72,7 @@ export function OriginalPane(props: {
   marks?: PageMarks;
 }) {
   const { t } = useTranslation();
+  const noSaveMenu = useNoSaveMenu();
   const { doc } = props;
   const isImage = IMAGE_EXTS.has(doc.ext);
   const pdf = usePdf(isImage ? undefined : doc);
@@ -97,7 +99,12 @@ export function OriginalPane(props: {
     );
   if (error) return <ErrorBox error={error} />;
   if (isImage && url)
-    return <img src={url} alt={doc.display_name} className="max-w-full rounded border" />;
+    return (
+      <div className="relative inline-block max-w-full" {...noSaveMenu}>
+        <img src={url} alt={doc.display_name} className="max-w-full rounded border" />
+        <Watermark />
+      </div>
+    );
   if (pdf.data)
     return (
       <PdfViewer

@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { gunzipSync } from "fflate";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { type Capabilities, FULL, READ_AND_DOWNLOAD, writes } from "../lib/ranks";
 import type { WorkflowRun } from "./github/client";
 import type { DataSource } from "./source";
 import { ReadonlyDb } from "./sqlite/db";
@@ -13,8 +14,12 @@ import type { IndexManifest } from "./types";
 interface AppData {
   source: DataSource;
   login: string;
-  /** Nada se edita: visitante do material público ou código «só ver e descarregar». */
+  /** Nada se arruma nem corrige (só ver; ou, no máximo, depositar). */
   readOnly: boolean;
+  /** O que esta sessão pode fazer (descarregar, depositar, arrumar, publicar, configurar). */
+  can: Capabilities;
+  /** Nome de quem vê por cima das páginas (contas que não descarregam), ou null. */
+  watermark: string | null;
   /** Visitante da página pública (sem sessão): só o material público. */
   visitor: boolean;
   /** Prefixo das rotas ("" ou "/publico"); usar `to()` nos links internos. */
@@ -46,13 +51,17 @@ export function DataProvider(props: {
   source: DataSource;
   onLogout: () => void;
   readOnly?: boolean;
+  can?: Capabilities;
+  watermark?: string | null;
   visitor?: boolean;
   base?: string;
   children: ReactNode;
 }) {
   const { source } = props;
   const visitor = props.visitor ?? false;
-  const readOnly = (props.readOnly ?? false) || visitor;
+  const can = props.can ?? (visitor || props.readOnly ? READ_AND_DOWNLOAD : FULL);
+  const readOnly = visitor || !can.organize;
+  const watermark = props.watermark ?? null;
   const base = props.base ?? "";
   const queryClient = useQueryClient();
   const [pendingSince, setPendingSince] = useState<number | null>(null);
@@ -60,7 +69,7 @@ export function DataProvider(props: {
   const runsQuery = useQuery({
     queryKey: ["runs", source.repo],
     queryFn: () => source.runs(),
-    enabled: !readOnly,
+    enabled: !visitor && writes(can),
     refetchInterval: (query) => {
       const runs = query.state.data ?? [];
       return runs.some((r) => ACTIVE.has(r.status)) || pendingSince ? 8000 : 60000;
@@ -114,6 +123,8 @@ export function DataProvider(props: {
       source,
       login: source.login,
       readOnly,
+      can,
+      watermark,
       visitor,
       base,
       to: (path: string) => `${base}${path}`,
@@ -131,6 +142,8 @@ export function DataProvider(props: {
     [
       source,
       readOnly,
+      can,
+      watermark,
       visitor,
       base,
       manifest,

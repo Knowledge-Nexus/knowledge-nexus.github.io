@@ -251,9 +251,21 @@ tu continuas a entrar como **Administrador** (repositório + token).
   de dados do Cloudflare (D1) e é ele que fala com o GitHub, com uma GitHub App instalada só
   no repositório de dados. O browser de quem entra só recebe uma sessão; a credencial do
   GitHub nunca sai do Worker. As palavras-passe e as sessões ficam só como resumos.
-- **Acessos:** «Ver e descarregar» (vê tudo, também o privado, e não muda nada: o Worker
-  recusa as escritas) e «Acesso total» (o mesmo que tu na interface; cada commit leva
-  `Feito por: <nome> (conta <email>)`). Mudar, suspender ou pôr um prazo vale logo.
+- **Níveis de acesso** (escolhes o de cada pessoa em Definições → Contas, e mudas quando
+  quiseres; cada um pode tudo o que o anterior pode):
+  - **À espera:** criou conta e ainda não tem acesso (só o material público).
+  - **Observador:** vê e lê tudo, também o privado, sem descarregar (sem botões de descarga
+    e com o nome da pessoa por cima das páginas). Para mostrar um ficheiro o browser tem de
+    o receber, por isso quem souber usar as ferramentas do browser consegue guardá-lo.
+  - **Leitor:** também descarrega (um a um ou em zip).
+  - **Colaborador:** também deposita material novo (só no depósito).
+  - **Organizador:** também arruma («A rever», classificação, nomes, cadeiras, cursos,
+    conjuntos, remover), sem mudar o que é público.
+  - **Editor:** tudo o que tu fazes na interface, incluindo o que é público.
+  Ninguém com conta mexe na configuração (`nexus.yaml`), nos códigos de acesso, nos workflows
+  nem nos originais. Não é só a interface a esconder botões: o Worker verifica cada commit
+  antes de o aceitar, e cada um leva `Feito por: <nome> (conta <email>)`. Mudar o nível,
+  suspender ou pôr um prazo vale logo. Só tu vês a lista das contas.
 - **Marcas de leitura** de quem entra com conta: na D1, por pessoa (não no repositório).
 
 **Ligar (uma vez, no Ubuntu/WSL, na pasta do repositório da aplicação):**

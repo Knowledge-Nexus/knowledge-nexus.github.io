@@ -874,7 +874,7 @@ test.describe("PDF num ecrã de alta densidade", () => {
   });
 });
 
-test("contas: criar conta, o dono dá acesso, convite e suspensão", async ({ page, browser }) => {
+test("contas: níveis de acesso, convite e suspensão", async ({ page, browser }) => {
   const fake = await withFakeGitHub(page);
   const env = await workerEnv(fake);
   // Uma pessoa cria conta: fica à espera, a ver o material público.
@@ -888,40 +888,64 @@ test("contas: criar conta, o dono dá acesso, convite e suspensão", async ({ pa
   await expect(page.getByText("Olá, Rita: a tua conta está criada.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Ver o material público" })).toBeVisible();
 
-  // O dono, noutro browser, dá-lhe «Ver e descarregar» e cria um convite com acesso total.
+  // Só o dono vê a lista das contas. Dá à Rita o nível mais baixo (Observador), com a
+  // descrição de cada nível à vista, e cria um convite de Organizador para a Joana.
   const ownerContext = await browser.newContext();
   const owner = await ownerContext.newPage();
   await routeGitHub(owner, fake);
   await login(owner, fake);
   await owner.getByRole("link", { name: "Definições" }).first().click();
-  await owner
-    .getByRole("listitem", { name: "Rita" })
-    .getByRole("button", { name: "Dar «Ver e descarregar»" })
-    .click();
-  await expect(owner.getByRole("combobox", { name: "Acesso de Rita" })).toHaveValue("reader");
-  await owner.getByRole("combobox", { name: "Acesso", exact: true }).selectOption("editor");
+  await expect(owner.getByText("Os níveis de acesso")).toBeVisible();
+  await expect(owner.getByText(/Não descarrega: os botões de descarga não aparecem/)).toBeVisible();
+  const rita = owner.getByRole("listitem", { name: "Rita" });
+  await expect(rita.getByRole("combobox", { name: "Nível a dar a Rita" })).toHaveValue("viewer");
+  await rita.getByRole("button", { name: "Dar acesso" }).click();
+  await expect(owner.getByRole("combobox", { name: "Nível de Rita" })).toHaveValue("viewer");
+  await owner.getByRole("combobox", { name: "Nível", exact: true }).selectOption("organizer");
   await owner.getByLabel("Para quem (opcional)").fill("Joana");
   await owner.getByRole("button", { name: "Criar convite" }).click();
   const link = await owner.getByLabel("Ligação do convite").inputValue();
   expect(link).toMatch(/#\/convite\/KNC-/);
 
-  // A Rita volta: entra na biblioteca, mas não deposita nem revê.
+  // A Rita (Observador) entra: vê a biblioteca e os documentos, sem descarregar, com o nome
+  // dela por cima das páginas; não deposita nem revê.
+  const pdf = Object.entries(snapshot.main)
+    .filter(([p]) => p.startsWith("documentos/"))
+    .map(([, b64]) => YAML.parse(Buffer.from(b64, "base64").toString("utf-8")))
+    .find((d) => d.blob.ext === "pdf" && !d.removed && !d.duplicate_of && d.filed_name);
   await page.reload();
   await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
   const nav = page.getByRole("navigation", { name: "principal" });
   await expect(nav.getByRole("link", { name: "Depositar" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: /A rever/ })).toHaveCount(0);
   await expect(page.getByText("Rita · estudo-dados")).toBeVisible();
+  await expect(page.getByText("Observador", { exact: true })).toBeVisible();
+  await page.goto(`/#/documento/${pdf.id}`);
+  await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Descarregar original" })).toHaveCount(0);
+  await expect(page.locator('[style*="image/svg+xml"]').first()).toBeAttached();
   await nav.getByRole("link", { name: "Biblioteca", exact: true }).click();
-  await expect(page.getByRole("link", { name: /Análise Matemática I/ }).first()).toBeVisible();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await expect(page.getByRole("button", { name: /Descarregar tudo/ })).toHaveCount(0);
 
-  // A Joana abre o convite, cria conta e entra logo com acesso total.
+  // O dono muda-a para Leitor: passa a descarregar (a sessão recarrega sozinha com o nível).
+  await owner.getByRole("combobox", { name: "Nível de Rita" }).selectOption("reader");
+  await expect(owner.getByRole("combobox", { name: "Nível de Rita" })).toHaveValue("reader");
+  await page.goto(`/#/documento/${pdf.id}`);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Descarregar original" })).toBeVisible();
+  await expect(page.locator('[style*="image/svg+xml"]')).toHaveCount(0);
+
+  // A Joana abre o convite, cria conta e entra logo como Organizadora.
   const joanaContext = await browser.newContext();
   const joana = await joanaContext.newPage();
   await routeGitHub(joana, fake);
   await joana.goto(link.replace(/^https?:\/\/[^/]+/, ""));
   const invited = joana.getByRole("dialog", { name: "Criar conta" });
-  await expect(invited.getByText("Este convite dá-te acesso: Acesso total")).toBeVisible();
+  await expect(invited.getByText("Este convite dá-te o nível: Organizador")).toBeVisible();
   await invited.getByLabel("Nome").fill("Joana");
   await invited.getByLabel("Email").fill("joana@exemplo.pt");
   await invited.getByLabel("Palavra-passe").fill("outro-segredo");
@@ -938,6 +962,11 @@ test("contas: criar conta, o dono dá acesso, convite e suspensão", async ({ pa
   await expect(joana.getByText(/Removeste grafos_ficha2\.pdf/)).toBeVisible();
   const commit = fake.repos.get(REPO)!.commits.at(-1)!;
   expect(commit.message).toContain("Feito por: Joana (conta joana@exemplo.pt)");
+  expect(commit.branch).toBe("main");
+  // Arruma, mas não escolhe o que é público.
+  await joana.goto(`/#/documento/${pdf.id}`);
+  await expect(joana.getByRole("button", { name: "Descarregar original" })).toBeVisible();
+  await expect(joana.getByRole("heading", { name: "Visibilidade", exact: true })).toHaveCount(0);
 
   // Suspensa pelo dono, a Rita deixa de ver a biblioteca (o Worker recusa logo).
   await owner.reload();

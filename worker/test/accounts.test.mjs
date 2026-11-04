@@ -14,9 +14,14 @@ const READ_TOKEN = "github_pat_dono_so_leitura";
 const ORIGIN = "https://knowledge-nexus.github.io";
 const sha = (text) => createHash("sha256").update(text).digest("hex");
 
-/** GitHub simulado: o suficiente para o Worker (dono, nexus.yaml, acessos e o proxy). */
+const HEAD = "a".repeat(40);
+
+/** GitHub simulado: o suficiente para o Worker (dono, nexus.yaml, acessos e o proxy). Cada
+ * commit criado pelo proxy muda os ficheiros de `nextFiles` (o que a comparação devolve). */
 function fakeGitHub() {
   const calls = [];
+  const commits = new Map();
+  const state = { nextFiles: [], counter: 0 };
   const fetchImpl = async (url, init = {}) => {
     const { pathname, search } = new URL(url);
     const auth = new Headers(init.headers).get("Authorization") ?? "";
@@ -34,13 +39,30 @@ function fakeGitHub() {
       return new Response(`- id: a1\n  token_sha256: ${sha(GUEST_TOKEN)}\n`);
     if (init.method && init.method !== "GET" && auth === `Bearer ${READ_TOKEN}`)
       return json(403, { message: "Resource not accessible by personal access token" });
-    if (pathname === `/repos/${REPO}/git/commits` && init.method === "POST")
-      return json(201, { sha: "c".repeat(40), message: JSON.parse(init.body).message });
+    if (pathname === `/repos/${REPO}/git/commits` && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      const id = String(++state.counter).padStart(40, "c");
+      commits.set(id, { parents: body.parents.map((p) => ({ sha: p })), files: state.nextFiles });
+      return json(201, { sha: id, message: body.message });
+    }
+    if (pathname === `/repos/${REPO}/git/ref/heads/main`) return json(200, { object: { sha: HEAD } });
+    const commitGet = /\/git\/commits\/(\w+)$/.exec(pathname);
+    if (commitGet && !init.method) {
+      const commit = commits.get(commitGet[1]);
+      return commit ? json(200, { parents: commit.parents }) : json(404, { message: "Not Found" });
+    }
+    const compare = /\/compare\/(\w+)\.\.\.(\w+)$/.exec(pathname);
+    if (compare) {
+      const commit = commits.get(compare[2]);
+      return commit ? json(200, { files: commit.files }) : json(404, { message: "Not Found" });
+    }
+    if (pathname === `/repos/${REPO}/git/refs/heads/main` && init.method === "PATCH")
+      return json(200, { ref: "refs/heads/main", body: JSON.parse(init.body) });
     if (pathname.startsWith(`/repos/${REPO}/contents/`) && init.method === "PUT")
       return json(201, { commit: { message: JSON.parse(init.body).message } });
     return json(200, { ok: true, path: pathname });
   };
-  return { calls, fetchImpl };
+  return { calls, fetchImpl, state };
 }
 
 let gh;
@@ -194,9 +216,10 @@ test("leitor lê pelo proxy e não escreve; editor escreve e o commit leva o nom
 
   await setRole(data.user.id, { role: "editor" });
   assert.equal((await call("GET", `/gh/repos/${REPO}`, { token })).data.permissions.push, true);
+  gh.state.nextFiles = [{ filename: "documentos/a.yaml", status: "modified", patch: "+x: 1" }];
   const commit = await call("POST", `/gh/repos/${REPO}/git/commits`, {
     token,
-    body: { message: "revisão: x", tree: "t".repeat(40), parents: ["p".repeat(40)] },
+    body: { message: "revisão: x", tree: "t".repeat(40), parents: [HEAD] },
   });
   assert.equal(commit.status, 201);
   assert.equal(commit.data.message, "revisão: x\n\nFeito por: Rita (conta rita@exemplo.pt)");
@@ -207,9 +230,83 @@ test("leitor lê pelo proxy e não escreve; editor escreve e o commit leva o nom
   assert.equal(put.data.commit.message, "estrutura\n\nFeito por: Rita (conta rita@exemplo.pt)");
   const ref = await call("PATCH", `/gh/repos/${REPO}/git/refs/heads/main`, {
     token,
-    body: { sha: "c".repeat(40) },
+    body: { sha: commit.data.sha, force: false },
   });
   assert.equal(ref.status, 200);
+  // Para o GitHub só vai o sha (nunca `force`).
+  assert.deepEqual(ref.data.body, { sha: commit.data.sha });
+});
+
+/** Um commit com estes ficheiros e o pedido para o ramo avançar até ele. */
+async function push(token, files, { parents = [HEAD], branch = "main", force } = {}) {
+  gh.state.nextFiles = files;
+  const commit = await call("POST", `/gh/repos/${REPO}/git/commits`, {
+    token,
+    body: { message: "x", tree: "t".repeat(40), parents },
+  });
+  return call("PATCH", `/gh/repos/${REPO}/git/refs/heads/${branch}`, {
+    token,
+    body: { sha: commit.data.sha, ...(force ? { force } : {}) },
+  });
+}
+
+const file = (filename, patch = "+a: 1") => ({ filename, status: "modified", patch });
+const visibility = "@@ -1,3 +1,3 @@\n id: x\n-visibility: private\n+visibility: public";
+
+test("cada nível só grava o que lhe cabe (o Worker verifica cada commit)", async () => {
+  const { data } = await signup();
+  const token = data.token;
+  const expect = async (files, status, error, options) => {
+    const res = await push(token, files, options);
+    assert.equal(res.status, status, `${JSON.stringify(files)} → ${JSON.stringify(res.data)}`);
+    if (error) assert.equal(res.data.error, error);
+  };
+
+  // Observador e Leitor não gravam nada.
+  for (const role of ["viewer", "reader"]) {
+    await setRole(data.user.id, { role });
+    const blob = await call("POST", `/gh/repos/${REPO}/git/blobs`, { token, body: {} });
+    assert.equal(blob.status, 403, role);
+  }
+
+  // Colaborador: só o depósito do dono.
+  await setRole(data.user.id, { role: "contributor" });
+  await expect([file("deposito/aluna/lote-1/exame.pdf")], 200);
+  await expect([file("deposito/aluna/lote-1/a.pdf"), file("documentos/x.yaml")], 403, "fora_do_teu_nivel");
+  await expect([file("deposito/outra/lote/a.pdf")], 403, "fora_do_teu_nivel");
+  const put = await call("PUT", `/gh/repos/${REPO}/contents/catalogo/x.yaml`, {
+    token,
+    body: { message: "x", content: "" },
+  });
+  assert.equal(put.data.error, "fora_do_teu_nivel");
+
+  // Organizador: arruma, mas não muda o que é público.
+  await setRole(data.user.id, { role: "organizer" });
+  await expect([file("documentos/x.yaml", "+removed:\n+  at: 2026-01-01")], 200);
+  await expect([file("catalogo/_importar/pedido.yaml")], 200);
+  await expect([file("documentos/x.yaml", visibility)], 403, "so_o_editor_publica");
+  await expect([{ filename: "documentos/x.yaml", status: "modified" }], 403, "so_o_editor_publica");
+  await expect([file("utilizadores/aluna.yaml")], 403, "fora_do_teu_nivel");
+
+  // Editor: também o que é público; nunca o que é só do dono.
+  await setRole(data.user.id, { role: "editor" });
+  await expect([file("documentos/x.yaml", visibility), file("utilizadores/aluna.yaml")], 200);
+  for (const path of ["nexus.yaml", "acessos.yaml", ".github/workflows/x.yml", "originais/ab/c.pdf"])
+    await expect([file(path)], 403, "fora_do_teu_nivel");
+  await expect(
+    [{ filename: "documentos/novo.yaml", previous_filename: "nexus.yaml", status: "renamed" }],
+    403,
+    "fora_do_teu_nivel",
+  );
+
+  // Só o ramo principal, sem forçar, logo a seguir ao commit actual.
+  await expect([file("documentos/x.yaml")], 403, "pedido_nao_permitido", { force: true });
+  await expect([file("documentos/x.yaml")], 403, "pedido_nao_permitido", { branch: "indices" });
+  await expect([file("documentos/x.yaml")], 403, "commit_invalido", { parents: ["b".repeat(40)] });
+  await expect([file("documentos/x.yaml")], 403, "commit_invalido", {
+    parents: [HEAD, "b".repeat(40)],
+  });
+  await expect(Array.from({ length: 300 }, (_, i) => file(`documentos/${i}.yaml`)), 403, "demasiados_ficheiros");
 });
 
 test("o proxy só deixa passar o repositório de dados e os pedidos da interface", async () => {

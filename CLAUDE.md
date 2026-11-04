@@ -70,10 +70,18 @@ convenções ou comandos.
 - **Contas (opcional, no mesmo Worker do R2):** `worker/src/accounts.js` (D1: `users`,
   `sessions`, `invites`, `tickets`, `attempts`, `marks`; migrações em `worker/migrations/`).
   Email e palavra-passe (PBKDF2) ou Google (OIDC, opcional); sessão `nxs_…` (só o SHA-256 na
-  D1). Papéis `none` (à espera), `reader`, `editor`, com `status` e prazo (`until`);
-  `effectiveRole`. Quem entra com conta usa o mesmo `GitHubClient` com base `<Worker>/gh`
-  (`worker/src/proxy.js`): só o repositório de dados e só os pedidos da interface; o leitor só
-  lê; o Worker acrescenta `Feito por: <nome> (conta <email>)` a cada commit. A credencial do
+  D1). Níveis (`worker/src/ranks.js` e `frontend/src/lib/ranks.ts`, cada um com tudo o do
+  anterior): `none` (à espera), `viewer` Observador (sem descarregar: sem botões e com marca
+  de água, `components/Watermark.tsx`), `reader` Leitor, `contributor` Colaborador (só
+  `deposito/<dono>/`), `organizer` Organizador (sem `utilizadores/` nem linhas `visibility:`
+  nos documentos), `editor` Editor; com `status` e prazo (`until`); `effectiveRole`. Nenhum
+  grava `nexus.yaml`, `acessos.yaml`, `.github/`, `.claude/` nem `originais/`. Quem entra com
+  conta usa o mesmo `GitHubClient` com base `<Worker>/gh` (`worker/src/proxy.js`): só o
+  repositório de dados e só os pedidos da interface; antes de o ramo avançar, `checkCommit`
+  confirma (comparação do GitHub com o pai, um só pai = HEAD, sem `force`, só `main`) que o
+  commit cabe no nível; o Worker acrescenta `Feito por: <nome> (conta <email>)` a cada commit.
+  Na interface, `Capabilities` (`download`, `upload`, `organize`, `visibility`, `configure`)
+  vêm de `GitHubDataSource.capabilities` e chegam aos componentes por `useApp().can`. A credencial do
   GitHub é uma GitHub App (`worker/src/github.js`, JWT RS256, chave PKCS#1) ou `GITHUB_TOKEN`.
   O dono gere tudo com o token dele (`/contas/admin/*`: o login tem de ser o `owner` do
   `nexus.yaml` e o token não pode estar no `acessos.yaml`). Interface: `data/accounts.ts`,

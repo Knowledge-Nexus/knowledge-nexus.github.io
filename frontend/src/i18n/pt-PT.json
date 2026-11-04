@@ -778,7 +778,7 @@
     "password_help": "Pelo menos 8 caracteres.",
     "invite_code": "Código de convite",
     "invite_code_help": "Opcional. Se recebeste um convite, cola-o aqui: entras logo com o acesso que te deram.",
-    "invite_info": "Este convite dá-te acesso: {{role}}",
+    "invite_info": "Este convite dá-te o nível: {{role}}",
     "until": "(até {{when}})",
     "or": "ou",
     "google": "Entrar com Google",
@@ -798,9 +798,12 @@
     "waiting_ended": "O teu acesso terminou a {{when}}. Pede mais tempo ao dono do material. Entretanto, vês o material público.",
     "use_invite": "Usar o convite",
     "roles": {
-      "none": "Sem acesso",
-      "reader": "Ver e descarregar",
-      "editor": "Acesso total"
+      "none": "À espera",
+      "viewer": "Observador",
+      "reader": "Leitor",
+      "contributor": "Colaborador",
+      "organizer": "Organizador",
+      "editor": "Editor"
     },
     "mine": "A tua conta",
     "saved": "Guardado.",
@@ -841,11 +844,9 @@
     },
     "admin": {
       "title": "Contas",
-      "intro": "Quem cria conta fica à espera até lhe dares acesso. «Ver e descarregar» vê tudo (também o privado) e não muda nada; «Acesso total» pode fazer o mesmo que tu na interface. Mudar o acesso, suspender ou pôr um prazo vale logo.",
+      "intro": "Só tu vês esta lista. Quem cria conta fica à espera até lhe dares um nível; podes mudá-lo, suspender ou pôr um prazo quando quiseres, e vale logo.",
       "off": "As contas ainda não estão ligadas: falta configurar o Worker (docs/configuracao.md, secção 4.5). Os códigos de acesso continuam a funcionar como até aqui.",
       "waiting": "À espera de acesso ({{count}})",
-      "give_reader": "Dar «Ver e descarregar»",
-      "give_editor": "Dar «Acesso total»",
       "refuse": "Recusar",
       "refuse_confirm": "Recusar e apagar a conta de {{name}}?",
       "state": {
@@ -856,7 +857,7 @@
       },
       "last_seen": "último acesso {{when}}",
       "created": "criada {{when}}",
-      "role_of": "Acesso de {{name}}",
+      "role_of": "Nível de {{name}}",
       "until": "Até",
       "until_of": "Prazo de {{name}}",
       "no_until": "Sem prazo",
@@ -870,7 +871,7 @@
       "none": "Ainda ninguém criou conta.",
       "invites_title": "Convites",
       "invites_intro": "Um convite é uma ligação: quem a abre cria conta (ou entra na que já tem) e fica logo com o acesso escolhido. Vale 30 dias e serve uma vez.",
-      "invite_role": "Acesso",
+      "invite_role": "Nível",
       "invite_label": "Para quem (opcional)",
       "invite_until": "Acesso até (opcional)",
       "invite_create": "Criar convite",
@@ -880,7 +881,21 @@
       "invite_used": "usado por {{name}} ({{when}})",
       "invite_expired": "expirou",
       "invite_open": "por usar, válido até {{when}}",
-      "invite_remove": "Apagar"
-    }
+      "invite_remove": "Apagar",
+      "give": "Dar acesso",
+      "give_as": "Nível a dar a {{name}}"
+    },
+    "rank_help": {
+      "none": "Criou conta e ainda não tem acesso: vê só o material público.",
+      "viewer": "Vê e lê tudo no site, também o que é privado, e faz as suas marcas de leitura. Não descarrega: os botões de descarga não aparecem e as páginas levam o nome da pessoa por cima.",
+      "reader": "Tudo o que o Observador faz e também descarrega os ficheiros, um a um ou em zip.",
+      "contributor": "Tudo o que o Leitor faz e também deposita material novo. Não muda a organização.",
+      "organizer": "Tudo o que o Colaborador faz e também arruma: «A rever», classificação, nomes, cadeiras, cursos, conjuntos e remover ficheiros. Não escolhe o que é público.",
+      "editor": "Tudo o que tu fazes na interface, incluindo escolher o que é público. Não vê as contas nem os códigos de acesso, e não muda a configuração do repositório."
+    },
+    "ranks_title": "Os níveis de acesso",
+    "ranks_intro": "Cada nível pode tudo o que o anterior pode. Mudas o nível de qualquer pessoa quando quiseres e vale logo: é o servidor que o impõe, não só a interface.",
+    "ranks_note": "Sobre o Observador: para mostrar um ficheiro, o browser tem de o receber, por isso quem souber usar as ferramentas do browser consegue guardá-lo. A marca de água diz de quem veio.",
+    "rank_of_you": "O teu nível: {{role}}"
   }
 }

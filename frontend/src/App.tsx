@@ -32,29 +32,33 @@ const queryClient = new QueryClient({
 });
 
 function Home() {
-  const { manifest, meta, indexLoading, readOnly } = useApp();
+  const { manifest, meta, indexLoading, can } = useApp();
   if (indexLoading || manifest === undefined) return <Spinner />;
-  if (!readOnly && (!manifest || !meta || meta.institutions().length === 0))
+  if (can.configure && (!manifest || !meta || meta.institutions().length === 0))
     return <Navigate to="/configuracao" replace />;
   return <Navigate to="/inicio" replace />;
 }
 
 function Shell(props: { connected: Connected; onLogout: () => void }) {
-  // «Só ver e descarregar»: as páginas que só servem para mudar o material não existem.
-  const viewOnly = props.connected.source.viewOnly;
-  const writing = (element: ReactNode) =>
-    viewOnly ? <Navigate to="/biblioteca" replace /> : element;
+  // Só existem as páginas que esta pessoa pode usar (o nível da conta ou o código de acesso).
+  const { source } = props.connected;
+  const can = source.capabilities;
+  const only = (allowed: boolean, element: ReactNode) =>
+    allowed ? element : <Navigate to="/biblioteca" replace />;
+  const account = source.account?.user;
+  // Quem só vê (sem descarregar) leva o nome por cima das páginas.
+  const watermark = account && !can.download ? `${account.name} · ${account.email}` : null;
   return (
-    <DataProvider source={props.connected.source} onLogout={props.onLogout} readOnly={viewOnly}>
+    <DataProvider source={source} onLogout={props.onLogout} can={can} watermark={watermark}>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/inicio" element={<HomePage />} />
-          <Route path="/configuracao" element={writing(<SetupPage />)} />
-          <Route path="/depositar" element={writing(<UploadPage />)} />
+          <Route path="/configuracao" element={only(can.configure, <SetupPage />)} />
+          <Route path="/depositar" element={only(can.upload, <UploadPage />)} />
           <Route path="/biblioteca" element={<LibraryPage />} />
           <Route path="/documento/:id" element={<DocumentPage />} />
-          <Route path="/rever" element={writing(<ReviewPage />)} />
+          <Route path="/rever" element={only(can.organize, <ReviewPage />)} />
           <Route path="/pesquisa" element={<SearchPage />} />
           <Route path="/definicoes" element={<SettingsPage />} />
           <Route path="/ajuda" element={<HelpPage />} />

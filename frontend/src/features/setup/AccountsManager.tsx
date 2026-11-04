@@ -1,6 +1,6 @@
-// Contas nas Definições. O dono vê os pedidos de acesso, dá e tira papéis, suspende, põe
-// prazos, cria convites e ligações para repor a palavra-passe (com o token dele do GitHub).
-// Quem entrou com conta vê só a sua (nome e palavra-passe).
+// Contas nas Definições. Só o dono vê a lista: os pedidos de acesso, o nível de cada pessoa
+// (`lib/ranks.ts`), prazos, suspender, convites e ligações para repor a palavra-passe (com o
+// token dele do GitHub). Quem entrou com conta vê só a sua (nome, nível e palavra-passe).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import {
   siteLink,
 } from "../../data/accounts";
 import { formatWhen } from "../../lib/labels";
+import { ACCOUNT_RANKS } from "../../lib/ranks";
 import { useAccountError } from "../entry/EntryDialogs";
 
 const input = "rounded-xl border border-line-strong bg-white px-2.5 py-1.5 text-sm";
@@ -48,6 +49,54 @@ function CopyField(props: { label: string; value: string }) {
   );
 }
 
+/** Os níveis, com o que cada um pode fazer (para o dono escolher). */
+function RanksLegend() {
+  const { t } = useTranslation();
+  return (
+    <details className="rounded-xl border border-line bg-paper/60 px-4 py-3 text-sm" open>
+      <summary className="cursor-pointer font-semibold">{t("accounts.ranks_title")}</summary>
+      <p className="mt-2 text-xs text-ink-soft">{t("accounts.ranks_intro")}</p>
+      <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+        {(["none", ...ACCOUNT_RANKS] as const).map((rank) => (
+          <div key={rank} className="rounded-lg border border-line bg-sheet px-3 py-2">
+            <dt className="font-medium">{t(`accounts.roles.${rank}`)}</dt>
+            <dd className="text-xs text-ink-soft">{t(`accounts.rank_help.${rank}`)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs text-muted">{t("accounts.ranks_note")}</p>
+    </details>
+  );
+}
+
+function RankSelect(props: {
+  label: string;
+  value: AccountRole;
+  onChange: (role: AccountRole) => void;
+  disabled?: boolean;
+  /** Também «À espera» (tirar o acesso). */
+  withNone?: boolean;
+}) {
+  const { t } = useTranslation();
+  const ranks: AccountRole[] = props.withNone ? [...ACCOUNT_RANKS, "none"] : [...ACCOUNT_RANKS];
+  return (
+    <select
+      className={input}
+      aria-label={props.label}
+      title={t(`accounts.rank_help.${props.value}`)}
+      value={props.value}
+      disabled={props.disabled}
+      onChange={(e) => props.onChange(e.target.value as AccountRole)}
+    >
+      {ranks.map((rank) => (
+        <option key={rank} value={rank} title={t(`accounts.rank_help.${rank}`)}>
+          {t(`accounts.roles.${rank}`)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function accountState(user: AccountUser): "waiting" | "paused" | "ended" | "active" {
   if (user.role === "none") return "waiting";
   if (user.status === "paused") return "paused";
@@ -61,6 +110,8 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
   const queryClient = useQueryClient();
   const { user, api, token } = props;
   const [reset, setReset] = useState<string | null>(null);
+  // Por defeito, o nível mais baixo: dar mais é uma escolha.
+  const [give, setGive] = useState<AccountRole>("viewer");
   const state = accountState(user);
   const update = useMutation({
     mutationFn: (patch: Parameters<AccountsApi["updateUser"]>[2]) =>
@@ -93,16 +144,15 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
         </span>
       </div>
       {state === "waiting" ? (
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={busy} onClick={() => update.mutate({ role: "reader" })}>
-            {t("accounts.admin.give_reader")}
-          </Button>
-          <Button
-            variant="secondary"
+        <div className="flex flex-wrap items-center gap-2">
+          <RankSelect
+            label={t("accounts.admin.give_as", { name: user.name })}
+            value={give}
+            onChange={setGive}
             disabled={busy}
-            onClick={() => update.mutate({ role: "editor" })}
-          >
-            {t("accounts.admin.give_editor")}
+          />
+          <Button disabled={busy} onClick={() => update.mutate({ role: give })}>
+            {t("accounts.admin.give")}
           </Button>
           <Button
             variant="danger"
@@ -117,19 +167,13 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <select
-            className={input}
-            aria-label={t("accounts.admin.role_of", { name: user.name })}
+          <RankSelect
+            label={t("accounts.admin.role_of", { name: user.name })}
             value={user.role}
+            onChange={(role) => update.mutate({ role })}
             disabled={busy}
-            onChange={(e) => update.mutate({ role: e.target.value as AccountRole })}
-          >
-            {(["reader", "editor", "none"] as const).map((role) => (
-              <option key={role} value={role}>
-                {t(`accounts.roles.${role}`)}
-              </option>
-            ))}
-          </select>
+            withNone
+          />
           <label className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
             {t("accounts.admin.until")}
             <input
@@ -194,7 +238,7 @@ function InvitesCard(props: { api: AccountsApi; token: string }) {
     queryKey: ["accounts-invites"],
     queryFn: () => api.invites(token),
   });
-  const [role, setRole] = useState<AccountRole>("reader");
+  const [role, setRole] = useState<AccountRole>("viewer");
   const [label, setLabel] = useState("");
   const [until, setUntil] = useState("");
   const [link, setLink] = useState<string | null>(null);
@@ -226,19 +270,12 @@ function InvitesCard(props: { api: AccountsApi; token: string }) {
     <Card title={t("accounts.admin.invites_title")}>
       <p className="mb-3 text-sm text-ink-soft">{t("accounts.admin.invites_intro")}</p>
       <form className="flex flex-wrap items-end gap-3 text-sm" onSubmit={submit}>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-soft">
+        <div className="flex flex-col gap-1">
+          <span aria-hidden="true" className="text-xs font-medium text-ink-soft">
             {t("accounts.admin.invite_role")}
           </span>
-          <select
-            className={input}
-            value={role}
-            onChange={(e) => setRole(e.target.value as AccountRole)}
-          >
-            <option value="reader">{t("accounts.roles.reader")}</option>
-            <option value="editor">{t("accounts.roles.editor")}</option>
-          </select>
-        </label>
+          <RankSelect label={t("accounts.admin.invite_role")} value={role} onChange={setRole} />
+        </div>
         <label className="flex min-w-48 flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-ink-soft">
             {t("accounts.admin.invite_label")}
@@ -337,7 +374,8 @@ export function AccountsManager(props: { token: string }) {
   return (
     <>
       <Card title={t("accounts.admin.title")}>
-        <p className="mb-2 text-sm text-ink-soft">{t("accounts.admin.intro")}</p>
+        <p className="mb-3 text-sm text-ink-soft">{t("accounts.admin.intro")}</p>
+        <RanksLegend />
         {users.isLoading && <Spinner />}
         {users.error ? <ErrorBox error={message(users.error)} /> : null}
         {waiting.length > 0 && (
@@ -390,12 +428,18 @@ export function AccountCard(props: { account: AccountSession }) {
   return (
     <Card title={t("accounts.mine")}>
       <div className="space-y-4 text-sm">
-        <p>
-          {account.user.email} · <strong>{t(`accounts.roles.${account.user.access}`)}</strong>
-          {account.user.until
-            ? ` ${t("accounts.until", { when: formatWhen(account.user.until) })}`
-            : ""}
-        </p>
+        <div>
+          <p>
+            {account.user.email} ·{" "}
+            <strong>
+              {t("accounts.rank_of_you", { role: t(`accounts.roles.${account.user.access}`) })}
+            </strong>
+            {account.user.until
+              ? ` ${t("accounts.until", { when: formatWhen(account.user.until) })}`
+              : ""}
+          </p>
+          <p className="text-xs text-ink-soft">{t(`accounts.rank_help.${account.user.access}`)}</p>
+        </div>
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
