@@ -111,6 +111,20 @@ increased").
   faz-se no browser). Num PC novo, o Ubuntu precisa do `uv` e das ferramentas de extracção
   (secção 6; o `.bat` diz o que falta) e, para o material público e o R2, das variáveis no
   `~/.bashrc` (secções 3 e 4.2). Com outra distribuição do WSL: `set NEXUS_WSL=<nome>`.
+- **«Could not resolve host: github.com»:** o Ubuntu do WSL ficou sem DNS (acontece depois de
+  suspender o PC, mudar de rede ou ligar uma VPN). O `.bat` avisa ao arrancar e continua a
+  tentar de 30 em 30 s. Para resolver já: no PowerShell do Windows, `wsl --shutdown`, e abre
+  o `.bat` de novo. Para não voltar a acontecer, fixa o DNS no Ubuntu:
+  ```bash
+  printf '[network]\ngenerateResolvConf = false\n' | sudo tee -a /etc/wsl.conf
+  ```
+  depois `wsl --shutdown` no PowerShell, abre o Ubuntu e:
+  ```bash
+  sudo rm -f /etc/resolv.conf
+  printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' | sudo tee /etc/resolv.conf
+  getent hosts github.com   # tem de mostrar um endereço
+  ```
+  (Numa rede de empresa com nomes internos, usa os servidores de DNS dessa rede em vez destes.)
 - **Desligar o Actions:** cria a variável `NEXUS_PROCESSAMENTO` com o valor `local` em
   *Settings → Secrets and variables → Actions → Variables* do repositório de dados. O
   workflow passa a aparecer como "skipped" e não gasta minutos. Apaga a variável para voltar

@@ -82,6 +82,16 @@ echo "Aplicação: $APP"
 echo "Dados:     $DADOS"
 echo
 
+# O WSL às vezes fica sem DNS (depois de suspender o PC, mudar de rede ou ligar uma VPN): cada
+# verificação falhava com «Could not resolve host» sem se perceber porquê.
+if ! getent hosts github.com >/dev/null 2>&1; then
+  echo "Aviso: o Ubuntu não encontra o github.com (o DNS do WSL falhou)."
+  echo "  Para resolver já: no PowerShell do Windows, corre  wsl --shutdown  e abre o .bat de novo."
+  echo "  Para não voltar a acontecer: docs/configuracao.md, 4.1 («Could not resolve host»)."
+  echo "  Entretanto continua a tentar de 30 em 30 s."
+  echo
+fi
+
 # Quando sai uma versão nova da aplicação, o nexus servir termina com o código 75: actualiza
 # e volta a arrancar.
 while true; do
