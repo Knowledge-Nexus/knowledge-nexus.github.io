@@ -132,22 +132,45 @@ export function certaintyLevel(confidence: number): "high" | "medium" | "low" {
   return "low";
 }
 
-/** Indicador discreto de certeza (três pontos) em vez de percentagens. */
-export function ConfidenceBadge(props: { field?: FieldValue | null }) {
+/**
+ * Indicador discreto de certeza (três pontos) em vez de percentagens. `compact`: só os
+ * pontos (a palavra fica na dica), para tabelas.
+ */
+export function ConfidenceBadge(props: { field?: FieldValue | null; compact?: boolean }) {
   const { t } = useTranslation();
   const field = props.field;
   if (!field) return null;
   const kind = methodKind(field.method);
   if (kind === "user") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-sage">
-        ✓ {t("common.method.user")}
+      <span
+        className="inline-flex items-center gap-1 text-xs font-medium text-sage"
+        title={props.compact ? t("common.method.user") : undefined}
+      >
+        ✓ {props.compact ? null : t("common.method.user")}
       </span>
     );
   }
   const level = certaintyLevel(field.confidence);
   const filled = { high: 3, medium: 2, low: 1 }[level];
   const color = { high: "bg-sage", medium: "bg-pen", low: "bg-marker" }[level];
+  if (props.compact) {
+    return (
+      <span
+        className="inline-flex gap-0.5"
+        role="img"
+        aria-label={t(`common.certainty.${level}`)}
+        title={`${kind === "ai" ? `${t("common.method.ai")} · ` : ""}${t(`common.certainty.${level}`)}`}
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`h-1.5 w-1.5 rounded-full ${i < filled ? color : "bg-line-strong"}`}
+          />
+        ))}
+      </span>
+    );
+  }
   return (
     <span
       className="inline-flex items-center gap-1.5 text-xs text-muted"

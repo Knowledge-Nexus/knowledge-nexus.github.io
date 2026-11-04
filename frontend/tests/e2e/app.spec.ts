@@ -291,7 +291,14 @@ test("confirmar vários documentos de uma vez em «A rever»", async ({ page }) 
   await page.getByRole("checkbox", { name: "grafos_ficha2.pdf" }).check();
   await page.getByRole("checkbox", { name: "trabalho-p1" }).check();
   await expect(page.getByText("Confirmar 2 documentos de uma vez")).toBeVisible();
+  // A sugestão de cada um vê-se numa tabela, sem abrir os documentos um a um.
+  const table = page.getByRole("table", { name: "Sugestão de cada documento" });
+  await expect(table.getByRole("row")).toHaveCount(3);
+  await expect(table.getByRole("rowheader", { name: "grafos_ficha2.pdf" })).toBeVisible();
+  await expect(page.getByText(/^Sugestões:/)).toHaveCount(6);
   await page.getByLabel("Cadeira", { exact: true }).selectOption("ufe/fg");
+  await expect(table.getByText("Física Geral (FG)")).toHaveCount(2);
+  await expect(page.getByText(/^Sugestões:/)).toHaveCount(5);
   await page.getByRole("button", { name: "Confirmar 2 documentos" }).click();
   await expect(page.getByText(/2 documentos confirmados/)).toBeVisible();
   const commit = fake.repos.get(REPO)!.commits.at(-1)!;
