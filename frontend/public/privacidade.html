@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Privacidade · Knowledge Nexus</title>
+    <link rel="icon" href="/brand/icon-32.png" type="image/png" sizes="32x32" />
+    <style>
+      /* As cores são as da interface (frontend/src/styles.css). */
+      :root {
+        --paper: #f4efe4;
+        --sheet: #fffdf8;
+        --ink: #16213a;
+        --ink-soft: #424c63;
+        --pen: #1c3563;
+        --navy: #0b1a31;
+        --gold: #c9a24d;
+        --line: #e5dcc8;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      header {
+        background: var(--navy);
+        border-bottom: 2px solid var(--gold);
+        padding: 20px 16px;
+      }
+      header a {
+        color: #e8cf8f;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 20px;
+        letter-spacing: 0.06em;
+        text-decoration: none;
+      }
+      main {
+        max-width: 760px;
+        margin: 24px auto 48px;
+        padding: 24px 20px;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      h1,
+      h2 {
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--ink);
+      }
+      h1 {
+        font-size: 28px;
+        margin-top: 0;
+      }
+      h2 {
+        font-size: 20px;
+        margin-top: 28px;
+      }
+      p,
+      li {
+        color: var(--ink-soft);
+      }
+      a {
+        color: var(--pen);
+      }
+      .small {
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header><a href="/">KNOWLEDGE NEXUS</a></header>
+    <main>
+      <h1>Privacidade</h1>
+      <p class="small">Actualizada a 4 de Novembro de 2026.</p>
+
+      <p>
+        O Knowledge Nexus reúne e arruma material de estudo. Cada biblioteca pertence ao seu
+        dono e fica num repositório privado dele no GitHub. Esta página explica que dados o site
+        guarda sobre quem cria conta e entra, para que servem e onde ficam.
+      </p>
+
+      <h2>Que dados guardamos</h2>
+      <ul>
+        <li>
+          <strong>A tua conta:</strong> o nome, o email, a data em que a criaste e a do último
+          acesso, e o nível de acesso que o dono do material te deu. A palavra-passe nunca é
+          guardada: fica só um resumo (PBKDF2) que serve para a confirmar.
+        </li>
+        <li>
+          <strong>Entrar com Google:</strong> recebemos o teu nome, o teu email (já confirmado
+          pelo Google) e o identificador da tua conta Google. Não pedimos acesso a mais nada da
+          tua conta Google (nem contactos, nem ficheiros, nem email). Estes dados servem só para
+          te identificar quando entras; não são usados para mais nada nem passados a ninguém.
+        </li>
+        <li>
+          <strong>A sessão:</strong> quando entras, o teu browser guarda um identificador
+          aleatório; no servidor fica só um resumo dele. Ao saíres, a sessão termina.
+        </li>
+        <li>
+          <strong>As tuas marcas de leitura</strong> (marcador, sublinhado, caneta) nos
+          documentos.
+        </li>
+        <li>
+          <strong>O que fazes no material</strong> (depositar, corrigir, arrumar, conforme o teu
+          nível) fica no histórico do repositório do dono, com o teu nome e o teu email.
+        </li>
+      </ul>
+
+      <h2>Onde ficam e quem os vê</h2>
+      <ul>
+        <li>
+          As contas, as sessões e as marcas de leitura ficam numa base de dados da Cloudflare
+          (D1). O material e o seu histórico ficam no repositório privado do dono, no GitHub.
+        </li>
+        <li>
+          Só o dono do material vê a lista das contas e o nível de cada uma. O material privado
+          só se vê com o acesso que o dono deu.
+        </li>
+        <li>
+          Não vendemos nem partilhamos dados com terceiros. Não há publicidade, nem análises de
+          visitas, nem rastreadores. O site não usa cookies: guarda a sessão e as tuas
+          preferências no armazenamento do próprio browser.
+        </li>
+      </ul>
+
+      <h2>Os teus pedidos</h2>
+      <p>
+        Nas Definições podes mudar o teu nome e a tua palavra-passe. Para veres, corrigires ou
+        apagares a tua conta, pede ao dono do material que te deu acesso: ao apagar a conta,
+        apagam-se também as tuas marcas de leitura. O que fizeste no material fica no histórico
+        do repositório do dono, como qualquer alteração.
+      </p>
+
+      <h2>Contacto</h2>
+      <p>
+        Fala com o dono do material ou deixa um pedido em
+        <a href="https://github.com/Knowledge-Nexus/knowledge-nexus.github.io/issues"
+          >github.com/Knowledge-Nexus/knowledge-nexus.github.io/issues</a
+        >.
+      </p>
+
+      <p class="small"><a href="/">Voltar ao Knowledge Nexus</a></p>
+    </main>
+  </body>
+</html>

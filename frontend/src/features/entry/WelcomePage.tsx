@@ -270,6 +270,11 @@ export function WelcomePage(props: {
           </a>
           <p className="text-xs text-white/60">{t("welcome.public_hint")}</p>
         </div>
+        <p className="mt-12 text-xs">
+          <a className="text-white/50 underline hover:text-gold-light" href="/privacidade.html">
+            {t("welcome.privacy")}
+          </a>
+        </p>
       </section>
 
       {dialog === "conta" && accounts && signedOut && (

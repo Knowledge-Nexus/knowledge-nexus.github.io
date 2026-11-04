@@ -768,7 +768,8 @@
     "code": "Tenho um código",
     "admin": "Administrador",
     "public": "Ver o material público",
-    "public_hint": "Sem conta: o que o dono do material escolheu partilhar."
+    "public_hint": "Sem conta: o que o dono do material escolheu partilhar.",
+    "privacy": "Privacidade"
   },
   "accounts": {
     "sign_in": "Entrar",
