@@ -346,10 +346,12 @@ test("cada nível só grava o que lhe cabe (o Worker verifica cada commit)", asy
   await expect([file("documentos/x.yaml", visibility)], 403, "so_o_editor_publica");
   await expect([{ filename: "documentos/x.yaml", status: "modified" }], 403, "so_o_editor_publica");
   await expect([file("utilizadores/aluna.yaml")], 403, "fora_do_teu_nivel");
+  await expect([file(`gerado/${"a".repeat(64)}/perguntas.yaml`)], 403, "fora_do_teu_nivel");
 
   // Editor: também o que é público; nunca o que é só do dono.
   await setRole(data.user.id, { role: "editor" });
   await expect([file("documentos/x.yaml", visibility), file("utilizadores/aluna.yaml")], 200);
+  await expect([file(`gerado/${"a".repeat(64)}/perguntas.yaml`)], 200);
   for (const path of ["nexus.yaml", "acessos.yaml", ".github/workflows/x.yml", "originais/ab/c.pdf"])
     await expect([file(path)], 403, "fora_do_teu_nivel");
   await expect(

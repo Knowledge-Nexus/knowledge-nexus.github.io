@@ -60,8 +60,9 @@ convenções ou comandos.
   commit com `git ls-remote` e só faz fetch quando mudou.
   Faz o mesmo que o Actions: `migrate()` antes de processar, depósitos aos bocados
   (`BATCH_ITEMS` = 10 por commit) e o material público (`publish_public_if_due`: só quando
-  mudam `documentos`, `catalogo`, `utilizadores`, `texto` ou o `nexus.yaml` (`public_key`,
-  guardada em `.git/nexus-publico`), no máximo de 5 em 5 min, com `NEXUS_PUBLICO_TOKEN`; uma
+  mudam `documentos`, `catalogo`, `utilizadores`, `texto`, `gerado` ou o `nexus.yaml`
+  (`public_key`, com `git ls-tree`, que ignora o que ainda não existe; guardada em
+  `.git/nexus-publico`), no máximo de 5 em 5 min, com `NEXUS_PUBLICO_TOKEN`; uma
   falha espera 30 min e não pára o ciclo).
 - **Raspberry Pi (ou outro Linux com systemd):** `scripts/raspberry-pi/instalar.sh`
   (`--verificar` só diagnostica; `--desinstalar`) instala o `nexus servir` como serviço
@@ -88,7 +89,8 @@ convenções ou comandos.
   repositório de dados e só os pedidos da interface; antes de o ramo avançar, `checkCommit`
   confirma (comparação do GitHub com o pai, um só pai = HEAD, sem `force`, só `main`) que o
   commit cabe no nível; o Worker acrescenta `Feito por: <nome> (conta <email>)` a cada commit.
-  Na interface, `Capabilities` (`download`, `upload`, `organize`, `visibility`, `configure`)
+  Na interface, `Capabilities` (`download`, `upload`, `organize`, `visibility`, `verify`,
+  `configure`)
   vêm de `GitHubDataSource.capabilities` e chegam aos componentes por `useApp().can`. A credencial do
   GitHub é uma GitHub App (`worker/src/github.js`, JWT RS256, chave PKCS#1) ou `GITHUB_TOKEN`.
   O dono gere tudo com o token dele (`/contas/admin/*`: o login tem de ser o `owner` do
@@ -313,7 +315,7 @@ Dependências de sistema (Ubuntu/WSL2):
   - regenerar o contrato;
   - criar uma revisão Alembic em `backend/nexus/index/alembic/versions/`;
   - manter `MIN_SCHEMA_VERSION` a ler o esquema anterior (índices ainda por reconstruir),
-    com a cópia `meta-v3.db` do contrato.
+    com a cópia desse esquema no contrato (agora `meta-v4.db`, sem o banco de perguntas).
 - **Mudar o formato dos ficheiros do repositório de dados:** subir `FORMAT_VERSION`
   (`nexus/__init__.py`) e registar a migração em `nexus/formats`.
 - **Novo tipo de documento, avaliação ou época:** só dados (`config/vocabularios.yaml`),
@@ -395,6 +397,18 @@ Dependências de sistema (Ubuntu/WSL2):
   se mostram (uma pergunta cujo caso está excluído também não). Publica-se logo; quem
   verifica (dono, Editor, Gestor) confirma ou rejeita depois (`review`, mantida enquanto o
   `text_sha256` for o mesmo). `still_in_file` volta a confirmar o texto a cada índice.
+  Índice: tabela `questions` (esquema 5; `status` visible, excluded, rejected ou missing, com
+  o caso prático na mesma linha); no material público só as visíveis de enunciados públicos,
+  sem quem as verificou. Interface (`features/questions/QuestionBank.tsx`): na página da
+  cadeira, o separador «Material · Perguntas (N)» só aparece com perguntas (`?ver=perguntas`,
+  o material fica igual); cada pergunta mostra o texto tal e qual, «Do enunciado» e «Ver no
+  original (p. N)»; quem tem `can.verify` confirma, rejeita, desfaz ou «Confirmar todas» (um
+  só commit, `DataSource.reviewQuestions`). Na página de um enunciado, «N perguntas deste
+  enunciado»; em «A rever», «Perguntas por verificar» (fechado). O Organizador não grava
+  `gerado/` (Worker). **Etiqueta de IA:** as perguntas tal e qual não a levam; o que a IA
+  escrever no banco de perguntas (fases seguintes: respostas, flashcards) leva sempre, à
+  vista, «Gerado por IA: não faz parte dos documentos da cadeira nem foi verificado pelos
+  docentes». Só aí: no resto (classificação) continua «a IA é discreta».
 - **Mudar o tipo na biblioteca:** arrastar um documento (ou a selecção) para outro cartão de
   tipo na cadeira grava `document_type` com `method: user`.
 - **Classificação (regras que evitam erros conhecidos):**

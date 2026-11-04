@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, insert
 
-from nexus import FORMAT_VERSION, __version__, clock
+from nexus import FORMAT_VERSION, __version__, clock, questions
 from nexus.datarepo.store import DataRepo
 from nexus.domain.catalog import Topic
 from nexus.domain.documents import Document, DocumentKind
@@ -102,6 +102,47 @@ def _strip_reasons(classification: dict[str, Any]) -> dict[str, Any]:
     caminhos e nomes de pastas do dono)."""
     return {name: {k: v for k, v in field.items() if k not in ("reasons", "alternatives")}
             if isinstance(field, dict) else field for name, field in classification.items()}
+
+
+def _question_rows(repo: DataRepo, documents: list[Document],
+                   public: bool) -> list[dict[str, Any]]:
+    """O banco de perguntas dos enunciados que entram no índice (um por conteúdo). O texto é
+    confirmado outra vez no ficheiro (`still_in_file`). No material público, só as visíveis e
+    sem quem as verificou."""
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for doc in documents:
+        sha = doc.blob.sha256
+        if sha in seen or questions.eligibility(repo, doc) is not None:
+            continue
+        seen.add(sha)
+        qset = questions.load(repo, sha)
+        if qset is None:
+            continue
+        present = questions.still_in_file(repo, qset)
+        contexts = {c.id: c for c in qset.contexts}
+        for q in qset.questions:
+            status = ("excluded" if q.excluded else
+                      "rejected" if q.review and q.review.status == "rejected" else
+                      "missing" if q.id not in present else "visible")
+            if public and status != "visible":
+                continue
+            context = contexts.get(q.context) if q.context else None
+            review = q.review if not public else None
+            rows.append({
+                "sha256": sha, "id": q.id, "ord": q.order, "label": q.label,
+                "pages": q.pages, "text": q.text,
+                "context_id": context.id if context else None,
+                "context_label": context.label if context else None,
+                "context_text": context.text if context else None,
+                "status": status, "excluded": q.excluded,
+                "review_status": review.status if review else None,
+                "review_by": review.by if review else None,
+                "review_at": review.at.isoformat() if review and review.at else None,
+                "generated_by": qset.generated.by,
+                "generated_at": None if public else qset.generated.at.isoformat(),
+            })
+    return rows
 
 
 def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
@@ -234,6 +275,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                     course=course_key, document_type=c.value("document_type"),
                     academic_year=c.value("academic_year"), title=doc.display_name))
     pairs = near_duplicate_pairs(repo, included if public else None)
+    question_rows = _question_rows(repo, documents, public)
 
     with engine.begin() as con:
         con.execute(insert(schema.meta), [{"key": k, "value": v}
@@ -281,6 +323,8 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
             con.execute(insert(schema.documents), doc_rows)
         if extraction_rows:
             con.execute(insert(schema.extractions), extraction_rows)
+        if question_rows:
+            con.execute(insert(schema.questions), question_rows)
         if pairs:
             con.execute(insert(schema.near_duplicates), [
                 {"doc_a": a, "doc_b": b, "distance": d, "score": s} for a, b, d, s in pairs])

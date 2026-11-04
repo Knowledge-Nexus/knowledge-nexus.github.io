@@ -34,6 +34,26 @@ Grupo II (8 valores)
 4. Determine uma primitiva de h(x) = 1 / (1 + x^2).
 """
 
+# Um enunciado sem fórmulas: as perguntas mostram-se (as do exame de recurso, com matemática,
+# ficam de fora). Banco de perguntas: nexus/questions.py (contrato e E2E).
+EXAME_NORMAL_AM1 = """Universidade Fictícia de Exemplo
+Licenciatura em Engenharia Informática
+Unidade Curricular: Análise Matemática I
+Exame - Época Normal
+Ano Lectivo 2023/2024 - 15 de Janeiro de 2024
+
+Grupo I (10 valores)
+1. Enuncie o teorema de Bolzano e explique o seu significado geométrico.
+2. Explique a diferença entre continuidade e diferenciabilidade de uma função real.
+
+Grupo II (10 valores)
+3. Descreva o método da bissecção e indique quando pode ser aplicado.
+"""
+PERGUNTAS_EXAME_NORMAL_AM1 = [
+    ("1", "1. Enuncie o teorema de Bolzano e explique o seu significado geométrico."),
+    ("2", "2. Explique a diferença entre continuidade e diferenciabilidade de uma função real."),
+    ("3", "3. Descreva o método da bissecção e indique quando pode ser aplicado."),
+]
 RESOLUCAO_AM1 = """Universidade Fictícia de Exemplo
 Análise Matemática I - Proposta de Resolução
 Exame - Época de Recurso - Ano Lectivo 2023/2024

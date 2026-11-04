@@ -151,6 +151,13 @@ export interface DataSource {
     message: string,
   ): Promise<string>;
   patchUser(update: (user: Record<string, unknown>) => void): Promise<string>;
+  /** Banco de perguntas: confirmar, rejeitar ou desfazer (`null`) a decisão sobre perguntas
+   * de um enunciado (pelo número), num só commit. */
+  reviewQuestions(
+    sha256: string,
+    labels: string[],
+    status: "confirmed" | "rejected" | null,
+  ): Promise<string>;
   catalogRequest(bundle: CatalogBundle, message: string): Promise<string>;
   runs(): Promise<WorkflowRun[]>;
   structureReady(): Promise<boolean>;
@@ -458,6 +465,34 @@ export class GitHubDataSource implements DataSource {
     return this.commit(
       patches.map((p) => ({ path: `documentos/${p.id}.yaml`, update: yamlUpdate(p.patch) })),
       message,
+    );
+  }
+
+  reviewQuestions(
+    sha256: string,
+    labels: string[],
+    status: "confirmed" | "rejected" | null,
+  ): Promise<string> {
+    const by = this.guest ? guestName(this.guest) : (this.account?.user.name ?? this.login);
+    const at = nowIso();
+    const verb =
+      status === "confirmed" ? "confirmar" : status === "rejected" ? "rejeitar" : "repor";
+    return this.commit(
+      [
+        {
+          path: `gerado/${sha256}/perguntas.yaml`,
+          update: yamlUpdate((set) => {
+            const questions = (set.questions as Record<string, unknown>[] | undefined) ?? [];
+            for (const label of labels) {
+              const question = questions.find((q) => q.label === label);
+              if (!question) throw new Error(`pergunta inexistente: ${label}`);
+              if (status) question.review = { status, by, at };
+              else delete question.review;
+            }
+          }),
+        },
+      ],
+      `perguntas: ${verb} ${labels.length === 1 ? `a ${labels[0]}` : `${labels.length} perguntas`}`,
     );
   }
 

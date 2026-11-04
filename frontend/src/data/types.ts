@@ -184,6 +184,26 @@ export interface Evidence {
   snippet: string;
 }
 
+/** Uma pergunta do banco (fase A): o texto do enunciado tal e qual, nunca escrito pela IA. */
+export interface QuestionRow {
+  sha256: string;
+  id: string;
+  ord: number;
+  label: string;
+  pages: number[];
+  text: string;
+  context_id: string | null;
+  context_label: string | null;
+  context_text: string | null;
+  status: "visible" | "excluded" | "rejected" | "missing";
+  excluded: "figure" | "math" | "garbled" | null;
+  review_status: "confirmed" | "rejected" | null;
+  review_by: string | null;
+  review_at: string | null;
+  generated_by: string;
+  generated_at: string | null;
+}
+
 export interface ProposalRow {
   id: string;
   kind: "institution" | "course" | "unit";

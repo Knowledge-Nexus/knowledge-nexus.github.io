@@ -295,6 +295,11 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Análise Matemática I/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Álgebra Linear/ })).toHaveCount(0);
   await page.getByRole("link", { name: /Análise Matemática I/ }).click();
+  // O banco de perguntas também é público (o enunciado é público), sem botões para verificar.
+  await page.getByRole("tab", { name: "Perguntas (3)" }).click();
+  await expect(page.getByText(/^1\. Enuncie o teorema de Bolzano/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirmar" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Material" }).click();
   await page.getByTitle("2023-2024_exame-recurso-2024-02-05-enunciado.pdf").click();
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.getByRole("link", { name: "Corrigir classificação" })).toHaveCount(0);
@@ -327,6 +332,85 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
   await expect(page.getByText(/0 resultado\(s\)|Sem resultados/)).toBeVisible();
   expect(apiCalls).toBe(0);
   expect(errors).toEqual([]);
+});
+
+test("banco de perguntas: tal e qual do enunciado, ver no original e verificar", async ({
+  page,
+}) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  const exam = Object.entries(snapshot.main)
+    .filter(([p]) => p.startsWith("documentos/"))
+    .map(([, b64]) => YAML.parse(Buffer.from(b64, "base64").toString("utf-8")))
+    .find((d) => d.sources?.[0]?.path.endsWith("Exame_Normal_2023-24.pdf"));
+  const path = `gerado/${exam.blob.sha256}/perguntas.yaml`;
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  // O material fica como estava; o separador das perguntas aparece porque há perguntas.
+  await expect(page.getByRole("tab", { name: "Material" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByRole("tab", { name: "Perguntas (3)" }).click();
+  await expect(page).toHaveURL(/ver=perguntas/);
+  const first = page.getByRole("listitem", { name: "Pergunta 1" });
+  await expect(
+    first.getByText("1. Enuncie o teorema de Bolzano e explique o seu significado geométrico."),
+  ).toBeVisible();
+  // Sem etiqueta de IA: o texto é o do ficheiro, e cada pergunta leva à página do original.
+  await expect(first.getByText("Do enunciado")).toBeVisible();
+  await expect(page.getByText(/Gerado por IA/)).toHaveCount(0);
+  await expect(first.getByRole("link", { name: "Ver no original (p. 1)" })).toHaveAttribute(
+    "href",
+    new RegExp(`/documento/${exam.id}\\?pagina=1$`),
+  );
+
+  // Confirmar a 1 e rejeitar a 3: um commit cada, no ficheiro das perguntas.
+  await first.getByRole("button", { name: "Confirmar" }).click();
+  await expect(first.getByText("Verificada")).toBeVisible();
+  expect(YAML.parse(fake.text(REPO, path)!).questions[0].review).toMatchObject({
+    status: "confirmed",
+    by: "aluna",
+  });
+  const third = page.getByRole("listitem", { name: "Pergunta 3" });
+  await third.getByRole("button", { name: "Rejeitar" }).click();
+  await expect(third.getByText("Rejeitada: não se mostra")).toBeVisible();
+  expect(YAML.parse(fake.text(REPO, path)!).questions[2].review.status).toBe("rejected");
+  expect(fake.repos.get(REPO)!.commits.at(-1)!.message).toContain("perguntas: rejeitar a 3");
+  await third.getByRole("button", { name: "Repor" }).click();
+  await expect.poll(() => YAML.parse(fake.text(REPO, path)!).questions[2].review).toBeUndefined();
+  // As que faltam (a 2 e a 3) confirmam-se de uma vez, num só commit.
+  const commits = fake.repos.get(REPO)!.commits.length;
+  await page.getByRole("button", { name: "Confirmar todas (2)" }).click();
+  await expect(third.getByText("Verificada")).toBeVisible();
+  await expect(
+    page.getByRole("listitem", { name: "Pergunta 2" }).getByText("Verificada"),
+  ).toBeVisible();
+  expect(fake.repos.get(REPO)!.commits.length).toBe(commits + 1);
+  expect(fake.repos.get(REPO)!.commits.at(-1)!.message).toContain(
+    "perguntas: confirmar 2 perguntas",
+  );
+  const reviews = YAML.parse(fake.text(REPO, path)!).questions.map(
+    (q: { review?: { status: string } }) => q.review?.status,
+  );
+  expect(reviews).toEqual(["confirmed", "confirmed", "confirmed"]);
+
+  // Da página do enunciado chega-se às perguntas dele; em «A rever», as que faltam verificar.
+  await page.goto(`/#/documento/${exam.id}`);
+  await page.getByRole("link", { name: /3 perguntas deste enunciado/ }).click();
+  await expect(page.getByRole("tab", { name: "Perguntas (3)" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page
+    .getByRole("navigation", { name: "principal" })
+    .getByRole("link", { name: /A rever/ })
+    .click();
+  await page.getByText("Perguntas por verificar (3)").click();
+  await expect(page.getByText("3 por verificar")).toBeVisible();
 });
 
 test("criar de uma vez as cadeiras propostas", async ({ page }) => {

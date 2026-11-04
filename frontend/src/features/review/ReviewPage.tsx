@@ -18,6 +18,7 @@ import type { CatalogBundle, DocumentRow, ProposalRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { slugify } from "../../lib/normalize";
 import { settleRemovals, useRemovals } from "../../lib/removal";
+import { QuestionsToVerify } from "../questions/QuestionBank";
 import { BulkReview } from "./BulkReview";
 import { type Removal, RemoveButton, RemovedList, RemovedNotice } from "./RemoveDocuments";
 import { ReviewForm } from "./ReviewForm";
@@ -559,6 +560,7 @@ export function ReviewPage() {
           )}
         </div>
       )}
+      <QuestionsToVerify />
       <RemovedList docs={removedDocs} />
     </div>
   );

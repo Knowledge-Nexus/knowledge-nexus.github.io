@@ -31,16 +31,31 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
         removed: string[];
         search: Record<string, [string, number][]>;
         search_other_viewer: [string, number][];
+        questions: Record<string, string[]>;
       })
     : null;
 
-  it("continua a ler um índice do esquema anterior (sem conjuntos)", async () => {
-    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta-v3.db"))));
+  it("continua a ler um índice do esquema anterior (sem o banco de perguntas)", async () => {
+    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta-v4.db"))));
     expect(meta.schemaVersion()).toBe(MIN_SCHEMA_VERSION);
     const docs = meta.documents({ includeArchives: true });
     expect(docs.map((d) => d.id).sort()).toEqual(expected!.documents);
-    expect(docs.every((d) => d.bundle_id === null && d.bundle_lead === null)).toBe(true);
     expect(meta.reviewQueue().length).toBeGreaterThan(0);
+    expect(meta.questions(Object.keys(expected!.questions))).toEqual([]);
+    expect(meta.questionCounts().size).toBe(0);
+  });
+
+  it("lê o banco de perguntas: só as que se mostram, pela ordem do exame", async () => {
+    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta.db"))));
+    for (const [sha, labels] of Object.entries(expected!.questions)) {
+      const rows = meta.questions([sha]);
+      expect(rows.map((q) => q.label)).toEqual(labels);
+      expect(rows.every((q) => Array.isArray(q.pages) && q.pages.length > 0)).toBe(true);
+      expect(rows[0]!.generated_by).toBe("ai:claude-code");
+      expect(meta.questionCounts().get(sha)).toBe(labels.length);
+      // As do exame com fórmulas ficam de fora: nenhum outro enunciado tem perguntas visíveis.
+      expect(meta.questionCounts().size).toBe(1);
+    }
   });
 
   it("lê meta.db com o esquema suportado", async () => {

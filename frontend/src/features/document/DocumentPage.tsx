@@ -113,6 +113,7 @@ export function DocumentPage() {
   const children = doc.kind === "archive" ? (meta?.children(doc.id) ?? []) : [];
   // O dono e quem entrou com um código de acesso (que usa o token do dono); nunca visitantes.
   const isOwner = doc.owner === login && !readOnly;
+  const questionCount = meta?.questionCounts().get(doc.sha256) ?? 0;
   // Removido no índice ou agora mesmo (até o índice ser actualizado).
   const removed = doc.status === "removed" || removals.hidden.has(doc.id);
   const canRead = hasOriginalView || doc.pages > 0;
@@ -226,6 +227,14 @@ export function DocumentPage() {
         </div>
       </header>
       {error ? <ErrorBox error={error} /> : null}
+      {!removed && doc.unit && questionCount > 0 && (
+        <Link
+          to={to(`/biblioteca?uc=${encodeURIComponent(doc.unit)}&ver=perguntas&exame=${doc.id}`)}
+          className="inline-flex text-sm text-pen hover:underline"
+        >
+          {t("questions.in_exam", { count: questionCount })} →
+        </Link>
+      )}
       {removing && (
         <RemoveDialog
           doc={doc}

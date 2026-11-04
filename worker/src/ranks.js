@@ -28,8 +28,9 @@ const OWNER_ONLY = [/^\.github\//, /^\.claude\//, /^acessos\.yaml$/, /^nexus\.ya
 export function pathAllowed(role, path, owner) {
   if (OWNER_ONLY.some((re) => re.test(path))) return false;
   if (role === "contributor") return path.startsWith(`deposito/${owner}/`);
-  // A visibilidade por cadeira e por tipo fica em `utilizadores/` (só o editor a muda).
-  if (role === "organizer") return !path.startsWith("utilizadores/");
+  // A visibilidade por cadeira e por tipo fica em `utilizadores/` (só o editor a muda), e
+  // confirmar ou rejeitar perguntas do banco (`gerado/`) é de quem verifica (Editor e acima).
+  if (role === "organizer") return !path.startsWith("utilizadores/") && !path.startsWith("gerado/");
   return atLeast(role, "editor");
 }
 

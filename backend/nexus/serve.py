@@ -51,7 +51,7 @@ BATCH_ITEMS = 10
 # de uma falha (ex.: sem NEXUS_PUBLICO_TOKEN), espera meia hora antes de tentar de novo.
 PUBLIC_EVERY = 300
 PUBLIC_RETRY = 1800
-PUBLIC_PATHS = ("documentos", "catalogo", "utilizadores", "texto", "nexus.yaml")
+PUBLIC_PATHS = ("documentos", "catalogo", "utilizadores", "texto", "gerado", "nexus.yaml")
 PUBLIC_STATE = "nexus-publico"  # em .git/: a última versão publicada (nunca vai para o GitHub)
 
 
@@ -128,7 +128,9 @@ def serve_once(root: Path, remote: str = "origin", branch: str = "main",
 def public_key(git: Git) -> str:
     """Muda quando muda alguma coisa de que o material público depende (documentos, catálogo,
     escolhas de visibilidade, texto, definições) ou o formato dos índices."""
-    trees = git.run("rev-parse", *[f"HEAD:{p}" for p in PUBLIC_PATHS], check=False)
+    # `ls-tree` omite o que ainda não existe (ex.: `gerado/`); o `rev-parse` parava no primeiro
+    # caminho em falta e deixava de contar os seguintes.
+    trees = git.run("ls-tree", "HEAD", "--", *PUBLIC_PATHS, check=False)
     return hashlib.sha256(f"{SCHEMA_VERSION}/{FORMAT_VERSION}\n{trees}".encode()).hexdigest()
 
 

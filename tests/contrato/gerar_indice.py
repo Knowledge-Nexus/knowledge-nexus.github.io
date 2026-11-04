@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tests"))
 
 from amostras import gerar  # noqa: E402
-from nexus import clock  # noqa: E402
+from nexus import clock, questions  # noqa: E402
 from nexus.datarepo.catalog_io import import_bundle  # noqa: E402
 from nexus.datarepo.store import DataRepo  # noqa: E402
 from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed  # noqa: E402
@@ -40,6 +40,8 @@ def build(out: Path) -> None:
         import_bundle(DataRepo(root).layout,
                       read_yaml(ROOT / "config" / "catalogo" / "exemplo.yaml"))
         gerar.pasta_exemplo(root / "deposito" / OWNER)
+        gerar.pdf_nativo(root / "deposito" / OWNER / "exemplo" / "AM1" / "Exame_Normal_2023-24.pdf",
+                         gerar.EXAME_NORMAL_AM1)
         gerar.pdf_nativo(root / "deposito" / OWNER / "exemplo" / "AM1" / "slides_limites.pdf",
                          gerar.SLIDES_ALGA)
         Pipeline(DataRepo(root)).run()
@@ -51,6 +53,11 @@ def build(out: Path) -> None:
         record["removed"] = {"at": "2025-10-01T12:00:00Z", "by": OWNER}
         write_yaml_if_changed(path, record)
         Pipeline(DataRepo(root)).run()
+        exam = next(d for d in DataRepo(root).documents.values()
+                    if d.sources and d.sources[0].path.endswith("Exame_Normal_2023-24.pdf"))
+        qset = questions.propose(DataRepo(root), exam.id, {"blocks": [
+            {"kind": "question", "label": label, "text": text}
+            for label, text in gerar.PERGUNTAS_EXAME_NORMAL_AM1]})
         repo = DataRepo(root)
         build_indices(repo, out, built_from="contrato")
         kept = [d for d in repo.documents.values() if d.removed is None]
@@ -63,23 +70,23 @@ def build(out: Path) -> None:
             "search": {q: [[h.doc_id, h.page] for h in search.search(q, OWNER)]
                        for q in QUERIES},
             "search_other_viewer": [[h.doc_id, h.page] for h in search.search("sucessao", "x")],
+            "questions": {qset.sha256: [q.label for q in qset.questions if q.visible]},
         }
         (out / "esperado.json").write_text(json.dumps(expected, indent=2), encoding="utf-8")
         _previous_schema(out)
 
 
 def _previous_schema(out: Path) -> None:
-    """Cópia no esquema 3 (sem as colunas dos conjuntos): a interface tem de continuar a ler
-    os índices antigos até o repositório de dados voltar a ser processado."""
+    """Cópia no esquema 4 (sem o banco de perguntas): a interface tem de continuar a ler os
+    índices antigos até o repositório de dados voltar a ser processado."""
     import shutil
     import sqlite3
 
-    target = out / "meta-v3.db"
+    target = out / "meta-v4.db"
     shutil.copyfile(out / "meta.db", target)
     con = sqlite3.connect(target)
-    for column in ("bundle_id", "bundle_name", "bundle_method", "bundle_lead"):
-        con.execute(f"ALTER TABLE documents DROP COLUMN {column}")
-    con.execute("UPDATE meta SET value = '3' WHERE key = 'schema_version'")
+    con.execute("DROP TABLE questions")
+    con.execute("UPDATE meta SET value = '4' WHERE key = 'schema_version'")
     con.commit()
     con.close()
 

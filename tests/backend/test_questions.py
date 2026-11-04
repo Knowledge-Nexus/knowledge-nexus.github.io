@@ -265,3 +265,41 @@ def test_cli(exam: DataRepo, tmp_path: Path) -> None:
     assert checked.exit_code == 0, checked.output
     shown = runner.invoke(app, ["perguntas", "mostrar", DOC_ID, "--repo", str(exam.root)])
     assert json.loads(shown.output)["questions"][0]["review"]["status"] == "rejected"
+
+
+def _rows(out: Path) -> list[dict]:
+    import sqlite3
+
+    con = sqlite3.connect(out / "meta.db")
+    con.row_factory = sqlite3.Row
+    rows = [dict(r) for r in con.execute("SELECT * FROM questions ORDER BY ord")]
+    con.close()
+    return rows
+
+
+def test_index_rows_and_public_material(exam: DataRepo, tmp_path: Path) -> None:
+    from nexus.index.builder import build_indices
+
+    propose(exam, DOC_ID, FULL)
+    review(exam, DOC_ID, "2", "rejected", "aluna")
+    review(exam, DOC_ID, "3", "confirmed", "aluna")
+    build_indices(DataRepo(exam.root), tmp_path / "privado")
+    rows = _rows(tmp_path / "privado")
+    assert [(r["label"], r["status"]) for r in rows] == [
+        ("1", "visible"), ("2", "rejected"), ("3", "visible"), ("4", "visible")]
+    assert rows[0]["context_text"].startswith("Ana vendeu")
+    assert rows[2]["review_status"] == "confirmed" and rows[2]["review_by"] == "aluna"
+    assert rows[0]["generated_by"] == "ai:claude-code"
+
+    # Privado: nada no material público.
+    build_indices(DataRepo(exam.root), tmp_path / "publico", public=True)
+    assert _rows(tmp_path / "publico") == []
+    # Público: só as visíveis, sem quem as verificou.
+    path = exam.layout.document_path(DOC_ID)
+    record = read_yaml(path)
+    record["visibility"] = "public"
+    write_yaml_if_changed(path, record)
+    build_indices(DataRepo(exam.root), tmp_path / "publico2", public=True)
+    rows = _rows(tmp_path / "publico2")
+    assert [r["label"] for r in rows] == ["1", "3", "4"]
+    assert all(r["review_by"] is None and r["generated_at"] is None for r in rows)

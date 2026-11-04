@@ -23,7 +23,7 @@ from sqlalchemy import (
     Text,
 )
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 metadata = MetaData()
 
@@ -189,6 +189,30 @@ extractions = Table(
     Column("pages", JSON, nullable=False),
     Column("metadata", JSON, nullable=False),
     Column("warnings", JSON, nullable=False),
+)
+
+# Banco de perguntas (fase A): uma linha por pergunta de um enunciado (por conteúdo), com o
+# caso prático que a acompanha. `status`: visible, excluded (figuras, matemática, texto
+# estragado), rejected (por quem verifica) ou missing (o texto já não está no ficheiro).
+questions = Table(
+    "questions", metadata,
+    Column("sha256", String(64), nullable=False),
+    Column("id", String(32), nullable=False),
+    Column("ord", Integer, nullable=False),
+    Column("label", String(32), nullable=False),
+    Column("pages", JSON, nullable=False),
+    Column("text", Text, nullable=False),
+    Column("context_id", String(16)),
+    Column("context_label", String(120)),
+    Column("context_text", Text),
+    Column("status", String(16), nullable=False),
+    Column("excluded", String(16)),
+    Column("review_status", String(16)),
+    Column("review_by", String(120)),
+    Column("review_at", String(32)),
+    Column("generated_by", String(64), nullable=False),
+    Column("generated_at", String(32)),
+    PrimaryKeyConstraint("sha256", "id"),
 )
 
 # pesquisa.db (FTS5), publicada comprimida como pesquisa.db.gz, é criada com SQL próprio

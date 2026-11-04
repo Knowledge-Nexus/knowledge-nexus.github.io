@@ -63,6 +63,10 @@ test("capturas", async ({ page }) => {
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
   await page.getByRole("button", { name: "Pública" }).waitFor();
   await page.screenshot({ path: `${out}/2c-uc.png`, fullPage: true });
+  await page.getByRole("tab", { name: /Perguntas/ }).click();
+  await page.getByRole("listitem", { name: "Pergunta 1" }).waitFor();
+  await page.screenshot({ path: `${out}/2e-perguntas.png`, fullPage: true });
+  await page.getByRole("tab", { name: "Material" }).click();
   await page.getByRole("button", { name: "Editar cursos" }).click();
   await page.getByRole("button", { name: "Acrescentar curso" }).click();
   await page.getByLabel("Nome do curso").fill("Mat");

@@ -74,8 +74,9 @@ Todos os registos gerados têm `generated` (proveniência) e ligam a `SourceRef`
   `excluded`: `figure`, `math` ou `garbled`, e `review`: `confirmed`/`rejected`, por quem e
   quando). `text_origin: original` e `generated` (quem dividiu, a IA, e as páginas). O motor
   (`nexus/questions.py`) só grava se cada bloco estiver no texto das páginas nativas tal e
-  qual, pela ordem, com a numeração completa e sem perguntas de fora. Mais tarde: cotação,
-  tópicos e ligação à resolução (sha + página), para a análise de frequência por tópico.
+  qual, pela ordem, com a numeração completa e sem perguntas de fora. No índice: tabela
+  `questions` (esquema 5). Mais tarde: cotação, tópicos e ligação à resolução (sha + página),
+  para a análise de frequência por tópico.
 - **Resumo, glossário, conceitos, fichas de revisão e formulários:**
   `gerado/<sha>/…` (Markdown com citações).
 

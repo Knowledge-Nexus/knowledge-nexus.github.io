@@ -8,6 +8,7 @@ import type {
   InstitutionRow,
   NearDuplicate,
   ProposalRow,
+  QuestionRow,
   UnitRow,
   UserRow,
   VocabKind,
@@ -15,10 +16,12 @@ import type {
 } from "../types";
 import type { ReadonlyDb } from "./db";
 
-export const SUPPORTED_SCHEMA_VERSION = 4;
-/** O esquema 3 só não tem as colunas dos conjuntos (lidas como vazias): enquanto o
- * repositório de dados não voltar a ser processado, a interface continua a funcionar. */
-export const MIN_SCHEMA_VERSION = 3;
+export const SUPPORTED_SCHEMA_VERSION = 5;
+/** O esquema 4 só não tem o banco de perguntas (lido como vazio): enquanto o repositório de
+ * dados não voltar a ser processado, a interface continua a funcionar. */
+export const MIN_SCHEMA_VERSION = 4;
+/** Primeiro esquema com a tabela `questions`. */
+const QUESTIONS_SCHEMA = 5;
 
 const JSON_DOC_COLUMNS = [
   "review_reasons",
@@ -75,6 +78,40 @@ export class MetaIndex {
 
   schemaVersion(): number {
     return Number(this.meta().schema_version ?? 0);
+  }
+
+  /**
+   * As perguntas destes enunciados (por conteúdo), pela ordem do exame. Por defeito, só as que
+   * se mostram; com `withRejected`, também as rejeitadas (para quem verifica as poder repor).
+   */
+  questions(sha256s: string[], withRejected = false): QuestionRow[] {
+    if (this.schemaVersion() < QUESTIONS_SCHEMA || sha256s.length === 0) return [];
+    const marks = sha256s.map(() => "?").join(", ");
+    const statuses = withRejected ? "'visible', 'rejected'" : "'visible'";
+    return this.db
+      .all<Record<string, unknown>>(
+        `SELECT * FROM questions WHERE sha256 IN (${marks}) AND status IN (${statuses})
+         ORDER BY sha256, ord`,
+        sha256s,
+      )
+      .map((row) => ({ ...row, pages: parsePages(row.pages) }) as unknown as QuestionRow);
+  }
+
+  /**
+   * Quantas perguntas de cada enunciado (sha256 → número): as que se mostram, as que ficaram
+   * de fora (figuras, matemática) ou as que se mostram e ainda ninguém verificou.
+   */
+  questionCounts(kind: "visible" | "excluded" | "unreviewed" = "visible"): Map<string, number> {
+    if (this.schemaVersion() < QUESTIONS_SCHEMA) return new Map();
+    const where = {
+      visible: "status = 'visible'",
+      excluded: "status = 'excluded'",
+      unreviewed: "status = 'visible' AND review_status IS NULL",
+    }[kind];
+    const rows = this.db.all<{ sha256: string; n: number }>(
+      `SELECT sha256, count(*) AS n FROM questions WHERE ${where} GROUP BY sha256`,
+    );
+    return new Map(rows.map((r) => [r.sha256, r.n]));
   }
 
   institutions(): InstitutionRow[] {
@@ -288,5 +325,15 @@ export class MetaIndex {
       owner ? [owner] : [],
     );
     return { total: row?.total ?? 0, review: row?.review ?? 0, filed: row?.filed ?? 0 };
+  }
+}
+
+function parsePages(value: unknown): number[] {
+  if (Array.isArray(value)) return value as number[];
+  try {
+    const parsed = JSON.parse(String(value ?? "[]"));
+    return Array.isArray(parsed) ? (parsed as number[]) : [];
+  } catch {
+    return [];
   }
 }

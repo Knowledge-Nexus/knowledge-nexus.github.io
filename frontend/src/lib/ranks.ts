@@ -22,6 +22,8 @@ export interface Capabilities {
   organize: boolean;
   /** Escolher o que é público. */
   visibility: boolean;
+  /** Confirmar ou rejeitar perguntas do banco de perguntas (Editor e acima). */
+  verify: boolean;
   /** Configuração do repositório (assistente inicial). Só o dono e os códigos de acesso. */
   configure: boolean;
 }
@@ -31,6 +33,7 @@ export const FULL: Capabilities = {
   upload: true,
   organize: true,
   visibility: true,
+  verify: true,
   configure: true,
 };
 
@@ -40,6 +43,7 @@ export const READ_AND_DOWNLOAD: Capabilities = {
   upload: false,
   organize: false,
   visibility: false,
+  verify: false,
   configure: false,
 };
 
@@ -60,6 +64,7 @@ export function rankCapabilities(role: AccountRole): Capabilities {
     upload: level >= LEVEL.contributor,
     organize: level >= LEVEL.organizer,
     visibility: level >= LEVEL.editor,
+    verify: level >= LEVEL.editor,
     configure: false,
   };
 }
