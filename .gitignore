@@ -64,3 +64,10 @@ Thumbs.db
 
 worker/.wrangler/
 worker/node_modules/
+
+# graphify (grafo do projecto): vão para o git os resultados e a cache dos documentos; o resto
+# é temporário, refaz-se sem custo ou tem caminhos desta máquina.
+graphify-out/.graphify_*
+!graphify-out/.graphify_labels.json
+graphify-out/cache/ast/
+graphify-out/cache/stat-index.json

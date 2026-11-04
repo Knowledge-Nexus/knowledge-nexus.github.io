@@ -31,6 +31,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Ferramentas de extracção
+        # Um espelho do apt que não responde deixava o job pendurado durante horas.
+        timeout-minutes: 15
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \

@@ -1,0 +1,7 @@
+# O que o graphify (grafo do projecto, graphify-out/) não lê: as imagens da marca (logótipos,
+# nada a extrair), listas de dados sem relações e a configuração do Claude Code deste
+# repositório (a do template do repositório de dados, em backend/nexus/scaffold/, entra).
+frontend/public/brand/
+frontend/public/robots.txt
+config/nomes-proprios.txt
+/.claude/

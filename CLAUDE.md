@@ -458,3 +458,24 @@ Dependências de sistema (Ubuntu/WSL2):
 - **Fase 4:** restantes ferramentas.
 - **Fase 5:** abertura a outros utilizadores (backend, autenticação, grupos, limites de IA),
   partilha por utilizador ou por ligação (valores `user:<login>` e `link` já reservados).
+
+## graphify
+
+O grafo do projecto (graphify, https://github.com/safishamsi/graphify) está em `graphify-out/`:
+os módulos centrais, as comunidades e as relações entre ficheiros (código e documentação).
+
+- Quando existe `graphify-out/graph.json`, numa pergunta sobre o código corre primeiro
+  `graphify query "<pergunta>"`, antes da primeira pesquisa ou leitura de ficheiros, e põe esta
+  regra em cada prompt de subagente que explore o código. Lê os ficheiros só nas linhas que o
+  grafo (ou uma leitura anterior) já localizou. `graphify path "<A>" "<B>"` mostra a ligação
+  entre duas coisas e `graphify explain "<conceito>"` explica uma só.
+- `graphify-out/GRAPH_REPORT.md` só para uma revisão geral da arquitectura, ou quando
+  query/path/explain não chegam. `graphify-out/graph.html` é o grafo interactivo (abre no browser).
+- Depois de mudar código, `graphify update .` actualiza o grafo (só a estrutura do código, sem
+  custo de IA). Ao mudar documentação (`docs/`, `CLAUDE.md`), `/graphify . --update` volta a
+  extrair só os documentos alterados (a cache fica em `graphify-out/cache/`).
+- O `graphify-out/graph.json` é reescrito inteiro a cada construção: um diff grande é normal.
+- Instalar: `uv tool install 'graphifyy[sql]==0.9.102'` (a skill `/graphify` está em
+  `.claude/skills/graphify/`). Nas sessões do Claude Code na nuvem, o hook `SessionStart`
+  instala-o; sem ele, os hooks do `.claude/settings.json` não fazem nada. O que fica de fora do
+  grafo está em `.graphifyignore`.
