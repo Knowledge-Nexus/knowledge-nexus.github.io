@@ -47,7 +47,8 @@ convenções ou comandos.
   o OCR e só publica os índices se estiverem desactualizados. Quando a aplicação tem commits
   novos, o `nexus servir` sai com o código 75 (`UPDATE_EXIT`) e o `vigiar-deposito.bat` faz
   `git pull` e volta a arrancá-lo. O `.bat` corre `scripts/vigiar-deposito.sh` a partir da sua
-  própria pasta (qualquer PC e pasta; uma cópia solta usa `~/nexus`): dados em `NEXUS_DADOS`,
+  própria pasta (`wsl --cd … --exec`: sem `--exec`, a shell por defeito do WSL expandia os `$`
+  do comando antes do tempo) (qualquer PC e pasta; uma cópia solta usa `~/nexus`): dados em `NEXUS_DADOS`,
   `~/dados` ou `../estudo-dados` (senão oferece clonar), ambiente uv em
   `~/.cache/knowledge-nexus/venv` (`uv run --frozen`), `core.autocrlf` e `safe.directory` numa
   pasta do Windows; `.gitattributes` mantém os `.sh` em LF. Antes de processar, espera que o remoto fique 20 s sem
