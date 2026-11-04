@@ -1,6 +1,8 @@
 // Definições → «Acessos que deste» (só para o dono): ver os códigos, mudar o prazo,
 // suspender, reactivar, renovar com um token novo e terminar. O registo fica em
-// `acessos.yaml` no repositório de dados (`lib/access.ts`); os códigos, só neste browser.
+// `acessos.yaml` no repositório de dados (`lib/access.ts`); os códigos neste browser e, com
+// as contas ligadas, guardados cifrados no Worker para se verem em qualquer browser
+// (`lib/codeVault.ts`; nunca no repositório, que quem só lê também vê).
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -16,11 +18,11 @@ import {
   clampUntil,
   newAccessId,
   scopeOf,
-  storeCode,
   storedCodes,
   TOKENS_PAGE,
   tokenFingerprint,
 } from "../../lib/access";
+import { loadCodes, saveCode } from "../../lib/codeVault";
 import { type AccessScope, decodeInvite, encodeInvite, tokenPageUrl } from "../../lib/invite";
 import { formatWhen } from "../../lib/labels";
 
@@ -96,7 +98,8 @@ export async function registerAccess(
     (list) => [...others(list), entry],
     `acessos: código para ${entry.name}`,
   );
-  storeCode(`${source.repo.owner}/${source.repo.name}`, entry.id, code);
+  await saveCode(source, entry.id, code);
+  void queryClient.invalidateQueries({ queryKey: ["access-codes"] });
   queryClient.setQueryData<AccessEntry[]>(accessesKey(source), (old) => [
     ...others(old ?? []),
     entry,
@@ -118,7 +121,16 @@ export function AccessManager(props: { source: GitHubDataSource; fetchImpl?: Fet
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const entries = query.data ?? [];
-  const codes = storedCodes(repoName);
+  const known = entries.map((e) => e.id);
+  // Os deste browser e os guardados no Worker (os que só estão aqui sobem nesta altura).
+  const vault = useQuery({
+    queryKey: ["access-codes", repoName, known.join(",")],
+    enabled: !query.isLoading,
+    queryFn: () => loadCodes(source, known),
+    staleTime: 60_000,
+  });
+  const codes = vault.data?.codes ?? storedCodes(repoName);
+  const synced = vault.data?.synced ?? false;
 
   async function change(
     id: string,
@@ -143,10 +155,9 @@ export function AccessManager(props: { source: GitHubDataSource; fetchImpl?: Fet
     }
   }
 
-  function remember(id: string, code: string | null) {
-    storeCode(repoName, id, code);
-    // Os códigos lêem-se do armazenamento local em cada desenho: basta redesenhar.
-    queryClient.setQueryData<AccessEntry[]>(accessesKey(source), (old) => [...(old ?? [])]);
+  async function remember(id: string, code: string | null) {
+    await saveCode(source, id, code);
+    void queryClient.invalidateQueries({ queryKey: ["access-codes"] });
   }
 
   const add = (entry: AccessEntry, code: string) =>
@@ -171,10 +182,19 @@ export function AccessManager(props: { source: GitHubDataSource; fetchImpl?: Fet
               repo={source.repo}
               fetchImpl={props.fetchImpl}
               change={(mutate, message) => change(entry.id, mutate, message)}
-              remember={(code) => remember(entry.id, code)}
+              remember={(code) => void remember(entry.id, code)}
+              synced={synced}
             />
           ))}
         </ul>
+        {vault.data && (
+          <p className="text-xs text-muted">
+            {t(synced ? "access.codes_synced" : "access.codes_local")}
+            {vault.data.unreadable > 0
+              ? ` ${t("access.codes_unreadable", { count: vault.data.unreadable })}`
+              : ""}
+          </p>
+        )}
         {error ? <ErrorBox error={error} /> : null}
         <ImportCode repo={source.repo} fetchImpl={props.fetchImpl} known={entries} onAdd={add} />
         <p className="text-xs text-muted">
@@ -197,6 +217,8 @@ function AccessRow(props: {
   fetchImpl?: FetchLike;
   change: (mutate: (entry: AccessEntry) => AccessEntry | null, message: string) => Promise<void>;
   remember: (code: string | null) => void;
+  /** Os códigos estão guardados no Worker (vêem-se em qualquer browser). */
+  synced?: boolean;
 }) {
   const { t } = useTranslation();
   const { entry } = props;
@@ -490,7 +512,9 @@ function AccessRow(props: {
             </Button>
           </div>
         ) : (
-          <p className="text-xs text-muted">{t("access.code_not_here")}</p>
+          <p className="text-xs text-muted">
+            {t(props.synced ? "access.code_not_saved" : "access.code_not_here")}
+          </p>
         ))}
 
       {panel === "until" && (

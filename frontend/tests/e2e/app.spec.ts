@@ -1022,6 +1022,45 @@ test("acesso temporário: o dono cria um código e outra pessoa entra com ele", 
     .toContain("Feito por: Ana (acesso temporário)");
 });
 
+test("os códigos de acesso vêem-se em qualquer browser onde o dono entre", async ({
+  page,
+  browser,
+}) => {
+  const fake = await withFakeGitHub(page);
+  fake.readOnlyTokens.add("token-da-ana");
+  await login(page, fake);
+  await page.getByRole("link", { name: "Definições" }).first().click();
+  await page.getByRole("radio", { name: /Só ver e descarregar/ }).check();
+  await page.getByLabel("Nome de quem recebe o acesso").fill("Ana");
+  await page.getByLabel("Cola aqui o token criado").fill("token-da-ana");
+  await page.getByRole("button", { name: "Gerar o código" }).click();
+  const code = await page.getByLabel("Código de acesso").inputValue();
+  await expect(page.getByText(/Os códigos ficam guardados no servidor das contas/)).toBeVisible();
+
+  // Noutro browser (sem nada guardado), o dono vê o mesmo código.
+  const other = await (await browser.newContext()).newPage();
+  await routeGitHub(other, fake);
+  await login(other, fake);
+  await other.getByRole("link", { name: "Definições" }).first().click();
+  const row = other.getByRole("listitem", { name: "Ana" });
+  await row.getByRole("button", { name: "Ver código" }).click();
+  await expect(row.getByLabel("Código de Ana")).toHaveValue(code);
+  // Na base de dados das contas está cifrado; no repositório, nunca.
+  const env = await workerEnv(fake);
+  const db = env.DB as {
+    raw: { prepare: (sql: string) => { get: () => { code: string; n: number }; run: () => void } };
+  };
+  expect(db.raw.prepare("SELECT code FROM access_codes").get().code).not.toContain("KN1-");
+  expect(fake.text(REPO, "acessos.yaml")).not.toContain(code);
+
+  // Um código feito antes (só no browser onde foi criado) sobe quando o dono abre as
+  // Definições nesse browser.
+  db.raw.prepare("DELETE FROM access_codes").run();
+  await page.reload();
+  await expect(page.getByText(/Os códigos ficam guardados no servidor das contas/)).toBeVisible();
+  await expect.poll(() => db.raw.prepare("SELECT count(*) AS n FROM access_codes").get().n).toBe(1);
+});
+
 test("código «só ver e descarregar»: vê e descarrega tudo, não muda nada", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   fake.readOnlyTokens.add("token-so-leitura");

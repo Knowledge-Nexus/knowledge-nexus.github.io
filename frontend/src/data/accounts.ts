@@ -227,6 +227,27 @@ export class AccountsApi {
   removeInvite(githubToken: string, id: string) {
     return this.call<{ ok: boolean }>("DELETE", `/admin/convites/${id}`, githubToken);
   }
+
+  /** Os códigos de acesso KN1-… guardados (cifrados no Worker), por id do acesso. */
+  codes(githubToken: string, repo: string) {
+    return this.call<{ codes: Record<string, string>; unreadable: number }>(
+      "GET",
+      `/admin/codigos?repo=${encodeURIComponent(repo)}`,
+      githubToken,
+    );
+  }
+
+  saveCodes(githubToken: string, repo: string, codes: Record<string, string>) {
+    return this.call<{ saved: number }>("PUT", "/admin/codigos", githubToken, { repo, codes });
+  }
+
+  removeCode(githubToken: string, repo: string, id: string) {
+    return this.call<{ ok: boolean }>(
+      "DELETE",
+      `/admin/codigos/${encodeURIComponent(id)}?repo=${encodeURIComponent(repo)}`,
+      githubToken,
+    );
+  }
 }
 
 /** Ligações que o dono envia: convite e repor a palavra-passe (no site, não no Worker). */

@@ -353,7 +353,10 @@ Dependências de sistema (Ubuntu/WSL2):
 - **Gerir os acessos** (`lib/access.ts`, `features/setup/AccessManager.tsx`, só para o dono):
   cada código fica no registo `acessos.yaml` do repositório de dados (id, nome, SHA-256 do
   token, fim do token, prazo, `active|paused|revoked`; nunca o token) e o código em si só no
-  localStorage do dono. Ver o código, mudar o nome (lápis: o registo e o código guardado,
+  localStorage do dono e, com as contas ligadas, também no Worker (`worker/src/codes.js`,
+  tabela `access_codes` cifrada com AES-GCM, só pelas rotas do dono; `lib/codeVault.ts`: ao
+  abrir as Definições, o que só está neste browser sobe), por isso vêem-se em qualquer browser
+  onde o dono entre. Nunca no repositório (quem só lê veria tokens que escrevem). Ver o código, mudar o nome (lápis: o registo e o código guardado,
   mesmo token; quem entra vê o nome novo em `GuestInfo.label`, que vai na faixa e nos
   commits, `guestName`; o `name` do código continua a dar a pasta das marcas), +1/+7 dias,
   mudar o prazo (nunca além do fim do token: `clampUntil`), suspender, reactivar, renovar

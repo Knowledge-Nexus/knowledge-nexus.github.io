@@ -304,6 +304,12 @@ tu continuas a entrar como **Administrador** (repositório + token).
   (*Contents* leitura e escrita, *Actions* leitura, sem prazo) em
   `npx wrangler secret put GITHUB_TOKEN`. Funciona igual, mas os commits ficam em teu nome.
 
+**Códigos de acesso em qualquer browser:** com as contas ligadas, os códigos KN1-… que
+deste ficam guardados no Worker, cifrados, e vês-los nas Definições em qualquer browser onde
+entres como administrador. Um código feito antes só está no browser onde o criaste: abre lá
+as Definições uma vez e ele fica guardado. Se já não estiver em lado nenhum, usa «Renovar com
+um token novo».
+
 **Esqueceram-se da palavra-passe?** Não há envio de emails: em «Contas», «Repor palavra-passe»
 dá-te uma ligação (uma vez, 7 dias) para enviares à pessoa.
 

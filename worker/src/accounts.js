@@ -4,6 +4,7 @@
 // Níveis de acesso: ver `ranks.js` (de `none`, à espera, até `editor`). Só o dono vê e gere
 // as contas, com o token dele do GitHub (o mesmo com que entra como administrador).
 
+import { handleCodes } from "./codes.js";
 import { adminLogin, dataRepo, githubConfigured, ownerLogin } from "./github.js";
 import { atLeast, isRank } from "./ranks.js";
 import {
@@ -483,6 +484,7 @@ async function route(request, env, fetchImpl, path) {
 async function admin(request, env, fetchImpl, path) {
   const login = await requireAdmin(request, env, fetchImpl);
   const method = request.method;
+  if (path === "/codigos" || path.startsWith("/codigos/")) return handleCodes(request, env, path);
 
   if (method === "GET" && path === "/contas") {
     const { results } = await env.DB.prepare("SELECT * FROM users ORDER BY created_at DESC").all();

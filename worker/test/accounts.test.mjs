@@ -543,3 +543,42 @@ test("GitHub App: a chave PKCS#1 do GitHub assina o JWT e o token da instalaçã
     "POST /app/installations/77/access_tokens",
   ]);
 });
+
+test("códigos de acesso guardados: só o dono os lê, e ficam cifrados na base de dados", async () => {
+  const code = "KN1-eyJyZXBvIjoieCJ9";
+  const put = (token, body) => call("PUT", "/contas/admin/codigos", { token, body });
+  // Só o dono: nem um token de código de acesso, nem uma conta.
+  const { data } = await signup();
+  assert.equal((await put(GUEST_TOKEN, { repo: REPO, codes: { a1: code } })).status, 403);
+  assert.equal((await put(data.token, { repo: REPO, codes: { a1: code } })).status, 401);
+  assert.equal((await put(OWNER_TOKEN, { repo: "outra/coisa", codes: { a1: code } })).status, 400);
+  assert.equal((await put(OWNER_TOKEN, { repo: REPO, codes: { a1: "isto não" } })).status, 400);
+
+  assert.deepEqual((await put(OWNER_TOKEN, { repo: REPO, codes: { a1: code, b2: `${code}2` } })).data, {
+    saved: 2,
+  });
+  const read = await call("GET", `/contas/admin/codigos?repo=${encodeURIComponent(REPO)}`, {
+    token: OWNER_TOKEN,
+  });
+  assert.deepEqual(read.data, { codes: { a1: code, b2: `${code}2` }, unreadable: 0 });
+  // Na base de dados não aparece o código.
+  const stored = env.DB.raw.prepare("SELECT code FROM access_codes WHERE id = 'a1'").get();
+  assert.match(stored.code, /^v1\./);
+  assert.ok(!stored.code.includes("KN1-"));
+
+  // Com outra chave (ex.: chave nova da GitHub App) não se lê: conta como ilegível.
+  env.GITHUB_TOKEN = "outro-segredo";
+  const lost = await call("GET", `/contas/admin/codigos?repo=${encodeURIComponent(REPO)}`, {
+    token: OWNER_TOKEN,
+  });
+  assert.deepEqual(lost.data, { codes: {}, unreadable: 2 });
+  env.GITHUB_TOKEN = WORKER_TOKEN;
+
+  await call("DELETE", `/contas/admin/codigos/b2?repo=${encodeURIComponent(REPO)}`, {
+    token: OWNER_TOKEN,
+  });
+  const after = await call("GET", `/contas/admin/codigos?repo=${encodeURIComponent(REPO)}`, {
+    token: OWNER_TOKEN,
+  });
+  assert.deepEqual(after.data.codes, { a1: code });
+});
