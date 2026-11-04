@@ -276,8 +276,10 @@ tu continuas a entrar como **Administrador** (repositório + token).
    cópia local: o `vigiar-deposito.bat` deixa de actualizar se houver alterações locais).
    Depois cria as tabelas: `npx wrangler d1 migrations apply nexus-contas --remote`.
 2. **GitHub App** (deixa o Worker ler e escrever só no repositório de dados): abre
-   [esta página, já preenchida](https://github.com/organizations/Knowledge-Nexus/settings/apps/new?name=Knowledge%20Nexus%20contas&url=https%3A%2F%2Fknowledge-nexus.github.io&public=false&webhook_active=false&contents=write&actions=read&metadata=read)
-   e carrega em *Create GitHub App*. Na página da App:
+   [esta página, já preenchida](https://github.com/settings/apps/new?name=Knowledge%20Nexus%20contas&url=https%3A%2F%2Fknowledge-nexus.github.io&public=false&webhook_active=false&contents=write&actions=read&metadata=read)
+   com a sessão do GitHub iniciada na conta dona do repositório de dados (`Knowledge-Nexus`,
+   que é uma conta de utilizador: uma App privada só se instala na conta onde é criada) e
+   carrega em *Create GitHub App*. Na página da App:
    - anota o **App ID** (no topo);
    - em *Private keys*, carrega em *Generate a private key* (descarrega um `.pem`);
    - em *Install App*, instala-a só no `estudo-dados` (*Only select repositories*).
