@@ -6,15 +6,14 @@ compatibility_date = "2025-01-01"
 binding = "BUCKET"
 bucket_name = "nexus-ficheiros"
 
-# Contas (docs/configuracao.md, 4.5). Cria a base de dados com
+# Contas (docs/configuracao.md, 4.5): a base de dados D1 criada com
 #   npx wrangler d1 create nexus-contas
-# e põe aqui o database_id que o comando mostra (não é segredo). Sem este bloco, o Worker
-# continua a servir os originais e a interface não mostra «Entrar» nem «Criar conta».
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "nexus-contas"
-# database_id = "<database_id>"
-# migrations_dir = "migrations"
+# (o database_id não é segredo). Tabelas: npx wrangler d1 migrations apply nexus-contas --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "nexus-contas"
+database_id = "5410656d-00e0-4048-96bb-80daa38405ca"
+migrations_dir = "migrations"
 
 [vars]
 # Repositórios de dados (privados) autorizados; o primeiro usa o prefixo `blobs/` e é o das contas.

@@ -270,10 +270,11 @@ tu continuas a entrar como **Administrador** (repositório + token).
 
 **Ligar (uma vez, no Ubuntu/WSL, na pasta do repositório da aplicação):**
 
-1. **Base de dados:** `cd worker` e `npx wrangler d1 create nexus-contas`. Copia o
-   `database_id` que aparece para o bloco `[[d1_databases]]` do `worker/wrangler.toml`
-   (tira os `#` dessas 5 linhas). Depois cria as tabelas:
-   `npx wrangler d1 migrations apply nexus-contas --remote`.
+1. **Base de dados:** já criada (`nexus-contas`, com o `database_id` no `worker/wrangler.toml`).
+   Num repositório novo: `cd worker`, `npx wrangler d1 create nexus-contas` e pôr o
+   `database_id` nesse ficheiro (por um commit no repositório da aplicação, nunca só na
+   cópia local: o `vigiar-deposito.bat` deixa de actualizar se houver alterações locais).
+   Depois cria as tabelas: `npx wrangler d1 migrations apply nexus-contas --remote`.
 2. **GitHub App** (deixa o Worker ler e escrever só no repositório de dados): abre
    [esta página, já preenchida](https://github.com/organizations/Knowledge-Nexus/settings/apps/new?name=Knowledge%20Nexus%20contas&url=https%3A%2F%2Fknowledge-nexus.github.io&public=false&webhook_active=false&contents=write&actions=read&metadata=read)
    e carrega em *Create GitHub App*. Na página da App:
