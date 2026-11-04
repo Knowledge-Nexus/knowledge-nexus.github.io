@@ -814,7 +814,8 @@
       "reader": "Leitor",
       "contributor": "Colaborador",
       "organizer": "Organizador",
-      "editor": "Editor"
+      "editor": "Editor",
+      "manager": "Gestor"
     },
     "mine": "A tua conta",
     "saved": "Guardado.",
@@ -855,7 +856,9 @@
     },
     "admin": {
       "title": "Contas",
-      "intro": "Só tu vês esta lista. Quem cria conta fica à espera até lhe dares um nível; podes mudá-lo, suspender ou pôr um prazo quando quiseres, e vale logo.",
+      "intro": "Só tu (e os Gestores que escolheres) vês esta lista. Quem cria conta fica à espera até lhe dares um nível; podes mudá-lo, suspender ou pôr um prazo quando quiseres, e vale logo.",
+      "intro_manager": "Como Gestor, dás acesso a quem pede e mudas níveis, prazos e estados até Editor. As contas dos Gestores e o nível Gestor ficam com o dono do material.",
+      "manager_row": "Gestor: só o dono do material muda esta conta.",
       "off": "As contas ainda não estão ligadas: falta configurar o Worker (docs/configuracao.md, secção 4.5). Os códigos de acesso continuam a funcionar como até aqui.",
       "waiting": "À espera de acesso ({{count}})",
       "refuse": "Recusar",
@@ -902,7 +905,8 @@
       "reader": "Tudo o que o Observador faz e também descarrega os ficheiros, um a um ou em zip.",
       "contributor": "Tudo o que o Leitor faz e também deposita material novo. Não muda a organização.",
       "organizer": "Tudo o que o Colaborador faz e também arruma: «A rever», classificação, nomes, cadeiras, cursos, conjuntos e remover ficheiros. Não escolhe o que é público.",
-      "editor": "Tudo o que tu fazes na interface, incluindo escolher o que é público. Não vê as contas nem os códigos de acesso, e não muda a configuração do repositório."
+      "editor": "Tudo o que tu fazes na interface, incluindo escolher o que é público. Não vê as contas nem os códigos de acesso, e não muda a configuração do repositório.",
+      "manager": "Tudo o que o Editor faz e ainda gere as contas: dá acesso a quem pede, muda níveis (até Editor), prazos, suspende, convida e repõe palavras-passe. Não vê os códigos de acesso (levam os teus tokens do GitHub), não muda a configuração do repositório e não mexe nas contas de outros Gestores: dar o nível Gestor é só teu."
     },
     "ranks_title": "Os níveis de acesso",
     "ranks_intro": "Cada nível pode tudo o que o anterior pode. Mudas o nível de qualquer pessoa quando quiseres e vale logo: é o servidor que o impõe, não só a interface.",

@@ -191,11 +191,70 @@ test("só o dono gere as contas: um token de código de acesso não serve", asyn
   assert.equal((await call("GET", "/contas/admin/contas", { token: GUEST_TOKEN })).status, 403);
   // Um token só de leitura do dono (ex.: de um código «só ver» antigo) também não.
   assert.equal((await call("GET", "/contas/admin/contas", { token: READ_TOKEN })).status, 403);
-  assert.equal((await call("GET", "/contas/admin/contas", { token: data.token })).status, 401);
+  // Uma conta que não é Gestor também não (a sessão vale, o nível não chega).
+  assert.equal((await call("GET", "/contas/admin/contas", { token: data.token })).status, 403);
   assert.equal((await call("GET", "/contas/admin/contas")).status, 401);
   const list = await call("GET", "/contas/admin/contas", { token: OWNER_TOKEN });
   assert.equal(list.status, 200);
   assert.equal(list.data.users[0].id, data.user.id);
+});
+
+test("Gestor: gere as contas até Editor, sem códigos nem outros Gestores", async () => {
+  const boss = await signup("gestor@exemplo.pt");
+  const other = await signup("ana@exemplo.pt");
+  const peer = await signup("rui@exemplo.pt");
+  const token = boss.data.token;
+  // Antes de ser Gestor, a sessão não serve para gerir.
+  assert.equal((await call("GET", "/contas/admin/contas", { token })).status, 403);
+  await setRole(boss.data.user.id, { role: "manager" });
+  await setRole(peer.data.user.id, { role: "manager" });
+
+  const list = await call("GET", "/contas/admin/contas", { token });
+  assert.equal(list.status, 200);
+  assert.equal(list.data.users.length, 3);
+  const patch = (id, body) => call("PATCH", `/contas/admin/contas/${id}`, { token, body });
+  assert.equal((await patch(other.data.user.id, { role: "editor", until: null })).status, 200);
+  assert.equal((await patch(other.data.user.id, { status: "paused" })).status, 200);
+  // Dar o nível Gestor, ou mexer noutro Gestor (ou em si próprio), é só do dono.
+  for (const res of [
+    await patch(other.data.user.id, { role: "manager" }),
+    await patch(peer.data.user.id, { role: "reader" }),
+    await patch(boss.data.user.id, { role: "editor" }),
+    await call("DELETE", `/contas/admin/contas/${peer.data.user.id}`, { token }),
+    await call("POST", `/contas/admin/contas/${peer.data.user.id}/repor`, { token }),
+  ]) {
+    assert.equal(res.status, 403);
+    assert.equal(res.data.error, "so_o_dono");
+  }
+  const listed = await call("GET", "/contas/admin/contas", { token: OWNER_TOKEN });
+  assert.equal(listed.data.users.find((u) => u.id === peer.data.user.id).role, "manager");
+  assert.equal(
+    (await call("POST", `/contas/admin/contas/${other.data.user.id}/repor`, { token })).status,
+    200,
+  );
+
+  // Convites até Editor; um convite de Gestor (do dono) não se apaga.
+  const invite = await call("POST", "/contas/admin/convites", { token, body: { role: "editor" } });
+  assert.equal(invite.status, 200);
+  const high = await call("POST", "/contas/admin/convites", { token, body: { role: "manager" } });
+  assert.equal(high.data.error, "so_o_dono");
+  const owners = await call("POST", "/contas/admin/convites", {
+    token: OWNER_TOKEN,
+    body: { role: "manager" },
+  });
+  assert.equal(owners.status, 200);
+  const del = (id) => call("DELETE", `/contas/admin/convites/${id}`, { token });
+  assert.equal((await del(owners.data.invite.id)).data.error, "so_o_dono");
+  assert.equal((await del(invite.data.invite.id)).status, 200);
+
+  // Os códigos de acesso levam os tokens do dono: o Gestor não os vê.
+  const codes = await call("GET", `/contas/admin/codigos?repo=${REPO}`, { token });
+  assert.equal(codes.status, 403);
+  assert.equal(codes.data.error, "so_o_dono");
+
+  // Suspenso, deixa de gerir logo.
+  await setRole(boss.data.user.id, { status: "paused" });
+  assert.equal((await call("GET", "/contas/admin/contas", { token })).status, 403);
 });
 
 test("leitor lê pelo proxy e não escreve; editor escreve e o commit leva o nome", async () => {
@@ -298,6 +357,13 @@ test("cada nível só grava o que lhe cabe (o Worker verifica cada commit)", asy
     403,
     "fora_do_teu_nivel",
   );
+
+  // Gestor: no repositório, o mesmo que o Editor.
+  await setRole(data.user.id, { role: "manager" });
+  await expect([file("documentos/x.yaml", visibility), file("utilizadores/aluna.yaml")], 200);
+  for (const path of ["nexus.yaml", "acessos.yaml", ".github/workflows/x.yml", "originais/ab/c.pdf"])
+    await expect([file(path)], 403, "fora_do_teu_nivel");
+  await setRole(data.user.id, { role: "editor" });
 
   // Só o ramo principal, sem forçar, logo a seguir ao commit actual.
   await expect([file("documentos/x.yaml")], 403, "pedido_nao_permitido", { force: true });
@@ -550,7 +616,7 @@ test("códigos de acesso guardados: só o dono os lê, e ficam cifrados na base 
   // Só o dono: nem um token de código de acesso, nem uma conta.
   const { data } = await signup();
   assert.equal((await put(GUEST_TOKEN, { repo: REPO, codes: { a1: code } })).status, 403);
-  assert.equal((await put(data.token, { repo: REPO, codes: { a1: code } })).status, 401);
+  assert.equal((await put(data.token, { repo: REPO, codes: { a1: code } })).status, 403);
   assert.equal((await put(OWNER_TOKEN, { repo: "outra/coisa", codes: { a1: code } })).status, 400);
   assert.equal((await put(OWNER_TOKEN, { repo: REPO, codes: { a1: "isto não" } })).status, 400);
 

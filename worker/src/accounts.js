@@ -2,7 +2,8 @@
 // sessões, papéis, convites e as marcas de leitura de cada pessoa.
 //
 // Níveis de acesso: ver `ranks.js` (de `none`, à espera, até `editor`). Só o dono vê e gere
-// as contas, com o token dele do GitHub (o mesmo com que entra como administrador).
+// as contas, com o token dele do GitHub (o mesmo com que entra como administrador); um Gestor
+// também, com a sessão dele, até ao nível Editor.
 
 import { handleCodes } from "./codes.js";
 import { adminLogin, dataRepo, githubConfigured, ownerLogin } from "./github.js";
@@ -147,12 +148,30 @@ async function requireUser(request, env) {
   return user;
 }
 
+/**
+ * Quem gere as contas: o dono (com o token dele do GitHub) ou uma conta Gestor (com a sessão).
+ * Devolve `{ login }` para o dono e `{ manager }` (a conta) para um Gestor.
+ */
 async function requireAdmin(request, env, fetchImpl) {
   const token = bearer(request);
-  if (!token || token.startsWith(SESSION_PREFIX)) throw new HttpError(401, "so_o_dono");
+  if (!token) throw new HttpError(401, "so_o_dono");
+  if (token.startsWith(SESSION_PREFIX)) {
+    const user = await sessionUser(env, token);
+    if (!user) throw new HttpError(401, "sessao_invalida");
+    if (effectiveRole(user) !== "manager") throw new HttpError(403, "so_o_dono");
+    return { manager: user };
+  }
   const login = await adminLogin(token, env, fetchImpl);
   if (!login) throw new HttpError(403, "so_o_dono");
-  return login;
+  return { login };
+}
+
+/** O que um Gestor não faz: dar o nível Gestor e mexer nas contas de outros Gestores. */
+function managerLimits(who, { role, target } = {}) {
+  if (!who.manager) return;
+  if (role === "manager") throw new HttpError(403, "so_o_dono");
+  if (target && (target.role === "manager" || target.id === who.manager.id))
+    throw new HttpError(403, "so_o_dono");
 }
 
 /** Limita tentativas (entrar, registar) por chave numa janela de tempo. */
@@ -480,11 +499,17 @@ async function route(request, env, fetchImpl, path) {
   throw new HttpError(404, "nao_encontrado");
 }
 
-/** Gestão das contas e dos convites (só o dono, com o token dele do GitHub). */
+/**
+ * Gestão das contas e dos convites: o dono (com o token dele do GitHub) ou um Gestor (até ao
+ * nível Editor). Os códigos de acesso só o dono: levam os tokens dele.
+ */
 async function admin(request, env, fetchImpl, path) {
-  const login = await requireAdmin(request, env, fetchImpl);
+  const who = await requireAdmin(request, env, fetchImpl);
   const method = request.method;
-  if (path === "/codigos" || path.startsWith("/codigos/")) return handleCodes(request, env, path);
+  if (path === "/codigos" || path.startsWith("/codigos/")) {
+    if (who.manager) throw new HttpError(403, "so_o_dono");
+    return handleCodes(request, env, path);
+  }
 
   if (method === "GET" && path === "/contas") {
     const { results } = await env.DB.prepare("SELECT * FROM users ORDER BY created_at DESC").all();
@@ -494,6 +519,7 @@ async function admin(request, env, fetchImpl, path) {
   if (user) {
     const target = await userById(env, user[1]);
     if (!target) throw new HttpError(404, "conta_nao_existe");
+    managerLimits(who, { target });
     if (method === "POST" && user[2]) {
       const code = `KNR-${randomToken(15)}`;
       await env.DB.prepare(
@@ -506,6 +532,7 @@ async function admin(request, env, fetchImpl, path) {
     if (method === "PATCH" && !user[2]) {
       const body = await readJson(request);
       const role = body.role !== undefined ? cleanRole(body.role) : target.role;
+      managerLimits(who, { role });
       const status = body.status !== undefined ? String(body.status) : target.status;
       if (!["active", "paused"].includes(status)) throw new HttpError(400, "estado_invalido");
       const until = body.until !== undefined ? cleanUntil(body.until) : target.until;
@@ -538,6 +565,7 @@ async function admin(request, env, fetchImpl, path) {
   if (method === "POST" && path === "/convites") {
     const body = await readJson(request);
     const role = cleanRole(body.role, false);
+    managerLimits(who, { role });
     const label = body.label ? cleanName(body.label) : null;
     const until = cleanUntil(body.until);
     const code = `KNC-${randomToken(15)}`;
@@ -553,12 +581,25 @@ async function admin(request, env, fetchImpl, path) {
       `INSERT INTO invites (id, code_hash, role, label, until, created_by, created_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(invite.id, await digest(code), role, label, until, login, invite.created_at, invite.expires_at)
+      .bind(
+        invite.id,
+        await digest(code),
+        role,
+        label,
+        until,
+        who.login ?? who.manager.id,
+        invite.created_at,
+        invite.expires_at,
+      )
       .run();
     return { invite, code };
   }
   const invite = /^\/convites\/(i_[A-Za-z0-9_-]+)$/.exec(path);
   if (invite && method === "DELETE") {
+    if (who.manager) {
+      const row = await env.DB.prepare("SELECT role FROM invites WHERE id = ?").bind(invite[1]).first();
+      managerLimits(who, { role: row?.role });
+    }
     await env.DB.prepare("DELETE FROM invites WHERE id = ?").bind(invite[1]).run();
     return { ok: true };
   }

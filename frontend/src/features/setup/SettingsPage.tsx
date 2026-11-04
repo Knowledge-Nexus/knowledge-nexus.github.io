@@ -6,6 +6,7 @@ import { clearCache } from "../../data/cache";
 import { useApp } from "../../data/context";
 import { GitHubDataSource } from "../../data/source";
 import { academicYears, formatWhen, useLabels } from "../../lib/labels";
+import { managesAccounts } from "../../lib/ranks";
 import { AccessManager } from "./AccessManager";
 import { AccountCard, AccountsManager } from "./AccountsManager";
 import { InviteCard } from "./InviteCard";
@@ -78,6 +79,9 @@ export function SettingsPage() {
       </Card>
       {account && <AccountCard account={account} />}
       {owner && <AccountsManager token={source.client.token} />}
+      {!owner && account && managesAccounts(account.user.access) && (
+        <AccountsManager token={account.token} manager />
+      )}
       {owner && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
       {owner && <AccessManager source={source} />}
       {/* «Só ver e descarregar» e contas: nada do que se segue é para eles (são escolhas do

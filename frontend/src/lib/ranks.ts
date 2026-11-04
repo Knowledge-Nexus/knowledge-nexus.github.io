@@ -1,7 +1,14 @@
 // O que cada pessoa pode fazer na interface. O Worker impõe o mesmo do lado dele
 // (worker/src/ranks.js): aqui só se escondem os botões que não serviriam.
 
-export const ACCOUNT_RANKS = ["viewer", "reader", "contributor", "organizer", "editor"] as const;
+export const ACCOUNT_RANKS = [
+  "viewer",
+  "reader",
+  "contributor",
+  "organizer",
+  "editor",
+  "manager",
+] as const;
 export type AccountRank = (typeof ACCOUNT_RANKS)[number];
 /** `none`: conta criada, à espera de acesso. */
 export type AccountRole = "none" | AccountRank;
@@ -43,6 +50,7 @@ const LEVEL: Record<AccountRole, number> = {
   contributor: 3,
   organizer: 4,
   editor: 5,
+  manager: 6,
 };
 
 export function rankCapabilities(role: AccountRole): Capabilities {
@@ -55,6 +63,9 @@ export function rankCapabilities(role: AccountRole): Capabilities {
     configure: false,
   };
 }
+
+/** Gere as contas (Definições): o dono e os Gestores, estes até ao nível Editor. */
+export const managesAccounts = (role: AccountRole) => role === "manager";
 
 /** Grava alguma coisa no repositório (para o estado do processamento e os commits). */
 export const writes = (can: Capabilities) => can.upload || can.organize;

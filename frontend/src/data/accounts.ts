@@ -182,70 +182,67 @@ export class AccountsApi {
     );
   }
 
-  // --- só o dono (com o token dele do GitHub) -----------------------------------------------
+  // --- gerir as contas: o dono (token dele do GitHub) ou um Gestor (sessão) -----------------
 
-  users(githubToken: string) {
-    return this.call<{ users: AccountUser[] }>("GET", "/admin/contas", githubToken);
+  users(token: string) {
+    return this.call<{ users: AccountUser[] }>("GET", "/admin/contas", token);
   }
 
   updateUser(
-    githubToken: string,
+    token: string,
     id: string,
     patch: Partial<Pick<AccountUser, "role" | "status" | "until" | "name">>,
   ) {
-    return this.call<{ user: AccountUser }>("PATCH", `/admin/contas/${id}`, githubToken, patch);
+    return this.call<{ user: AccountUser }>("PATCH", `/admin/contas/${id}`, token, patch);
   }
 
-  removeUser(githubToken: string, id: string) {
-    return this.call<{ ok: boolean }>("DELETE", `/admin/contas/${id}`, githubToken);
+  removeUser(token: string, id: string) {
+    return this.call<{ ok: boolean }>("DELETE", `/admin/contas/${id}`, token);
   }
 
-  resetLink(githubToken: string, id: string) {
+  resetLink(token: string, id: string) {
     return this.call<{ code: string; expires_at: string }>(
       "POST",
       `/admin/contas/${id}/repor`,
-      githubToken,
+      token,
     );
   }
 
-  invites(githubToken: string) {
-    return this.call<{ invites: AccountInvite[] }>("GET", "/admin/convites", githubToken);
+  invites(token: string) {
+    return this.call<{ invites: AccountInvite[] }>("GET", "/admin/convites", token);
   }
 
-  createInvite(
-    githubToken: string,
-    data: { role: AccountRole; label?: string; until?: string | null },
-  ) {
+  createInvite(token: string, data: { role: AccountRole; label?: string; until?: string | null }) {
     return this.call<{ invite: AccountInvite; code: string }>(
       "POST",
       "/admin/convites",
-      githubToken,
+      token,
       data,
     );
   }
 
-  removeInvite(githubToken: string, id: string) {
-    return this.call<{ ok: boolean }>("DELETE", `/admin/convites/${id}`, githubToken);
+  removeInvite(token: string, id: string) {
+    return this.call<{ ok: boolean }>("DELETE", `/admin/convites/${id}`, token);
   }
 
   /** Os códigos de acesso KN1-… guardados (cifrados no Worker), por id do acesso. */
-  codes(githubToken: string, repo: string) {
+  codes(token: string, repo: string) {
     return this.call<{ codes: Record<string, string>; unreadable: number }>(
       "GET",
       `/admin/codigos?repo=${encodeURIComponent(repo)}`,
-      githubToken,
+      token,
     );
   }
 
-  saveCodes(githubToken: string, repo: string, codes: Record<string, string>) {
-    return this.call<{ saved: number }>("PUT", "/admin/codigos", githubToken, { repo, codes });
+  saveCodes(token: string, repo: string, codes: Record<string, string>) {
+    return this.call<{ saved: number }>("PUT", "/admin/codigos", token, { repo, codes });
   }
 
-  removeCode(githubToken: string, repo: string, id: string) {
+  removeCode(token: string, repo: string, id: string) {
     return this.call<{ ok: boolean }>(
       "DELETE",
       `/admin/codigos/${encodeURIComponent(id)}?repo=${encodeURIComponent(repo)}`,
-      githubToken,
+      token,
     );
   }
 }

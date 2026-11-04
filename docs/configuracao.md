@@ -283,10 +283,14 @@ tu continuas a entrar como **Administrador** (repositório + token).
   - **Organizador:** também arruma («A rever», classificação, nomes, cadeiras, cursos,
     conjuntos, remover), sem mudar o que é público.
   - **Editor:** tudo o que tu fazes na interface, incluindo o que é público.
+  - **Gestor:** tudo o que o Editor faz e ainda gere as contas nas Definições: dá acesso a
+    quem pede, muda níveis (até Editor), prazos e estados, convida e repõe palavras-passe.
+    Não vê os códigos de acesso (levam os teus tokens do GitHub) e não mexe nas contas dos
+    Gestores: dar o nível Gestor é só teu.
   Ninguém com conta mexe na configuração (`nexus.yaml`), nos códigos de acesso, nos workflows
   nem nos originais. Não é só a interface a esconder botões: o Worker verifica cada commit
   antes de o aceitar, e cada um leva `Feito por: <nome> (conta <email>)`. Mudar o nível,
-  suspender ou pôr um prazo vale logo. Só tu vês a lista das contas.
+  suspender ou pôr um prazo vale logo. Só tu e os Gestores vêem a lista das contas.
 - **Marcas de leitura** de quem entra com conta: na D1, por pessoa (não no repositório).
 
 **Ligar (uma vez, no Ubuntu/WSL, na pasta do repositório da aplicação):**

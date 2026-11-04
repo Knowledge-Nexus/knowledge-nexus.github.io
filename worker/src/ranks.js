@@ -7,13 +7,15 @@
 //   organizer    Organizador: também arruma (A rever, classificação, cadeiras, cursos...),
 //                sem mudar o que é público
 //   editor       Editor: tudo o que a interface faz, incluindo o que é público
+//   manager      Gestor: tudo o que o Editor faz e ainda gere as contas (até Editor; ver
+//                `accounts.js`, rotas `/admin`)
 //
 // Ninguém com conta mexe no que é só do dono: configuração (`nexus.yaml`), códigos de acesso
 // (`acessos.yaml`), workflows e originais. Quem decide é o Worker, commit a commit (`checkCommit`).
 
 import { HttpError } from "./util.js";
 
-export const RANKS = ["none", "viewer", "reader", "contributor", "organizer", "editor"];
+export const RANKS = ["none", "viewer", "reader", "contributor", "organizer", "editor", "manager"];
 const LEVEL = Object.fromEntries(RANKS.map((rank, index) => [rank, index]));
 
 export const isRank = (value) => Object.hasOwn(LEVEL, value);
@@ -28,7 +30,7 @@ export function pathAllowed(role, path, owner) {
   if (role === "contributor") return path.startsWith(`deposito/${owner}/`);
   // A visibilidade por cadeira e por tipo fica em `utilizadores/` (só o editor a muda).
   if (role === "organizer") return !path.startsWith("utilizadores/");
-  return role === "editor";
+  return atLeast(role, "editor");
 }
 
 /** No diff de um documento, uma linha `visibility:` mudou (o que é público). */

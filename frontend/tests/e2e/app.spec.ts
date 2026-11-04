@@ -1042,6 +1042,67 @@ test("contas: níveis de acesso, convite e suspensão", async ({ page, browser }
   await joanaContext.close();
 });
 
+test("Gestor: gere as contas até Editor, sem os códigos de acesso", async ({ page, browser }) => {
+  const fake = await withFakeGitHub(page);
+  await workerEnv(fake);
+  // O Rui cria conta e fica à espera.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  const signUp = page.getByRole("dialog", { name: "Criar conta" });
+  await signUp.getByLabel("Nome").fill("Rui");
+  await signUp.getByLabel("Email").fill("rui@exemplo.pt");
+  await signUp.getByLabel("Palavra-passe").fill("segredo-longo");
+  await signUp.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page.getByText("Olá, Rui: a tua conta está criada.")).toBeVisible();
+
+  // O dono convida a Marta como Gestora.
+  const ownerContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  await routeGitHub(owner, fake);
+  await login(owner, fake);
+  await owner.getByRole("link", { name: "Definições" }).first().click();
+  await expect(owner.getByText(/ainda gere as contas/).first()).toBeVisible();
+  await owner.getByRole("combobox", { name: "Nível", exact: true }).selectOption("manager");
+  await owner.getByRole("button", { name: "Criar convite" }).click();
+  const link = await owner.getByLabel("Ligação do convite").inputValue();
+
+  const martaContext = await browser.newContext();
+  const marta = await martaContext.newPage();
+  await routeGitHub(marta, fake);
+  await marta.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  const invited = marta.getByRole("dialog", { name: "Criar conta" });
+  await expect(invited.getByText("Este convite dá-te o nível: Gestor")).toBeVisible();
+  await invited.getByLabel("Nome").fill("Marta");
+  await invited.getByLabel("Email").fill("marta@exemplo.pt");
+  await invited.getByLabel("Palavra-passe").fill("outro-segredo");
+  await invited.getByRole("button", { name: "Criar conta" }).click();
+  await expect(marta.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+
+  // Nas Definições, a Marta vê as contas: dá acesso ao Rui, mas o nível Gestor não é opção,
+  // a conta dela fica com o dono e os códigos de acesso não aparecem.
+  await marta.getByRole("link", { name: "Definições" }).first().click();
+  await expect(marta.getByText(/Como Gestor, dás acesso a quem pede/)).toBeVisible();
+  const rui = marta.getByRole("listitem", { name: "Rui" });
+  const give = rui.getByRole("combobox", { name: "Nível a dar a Rui" });
+  await expect(give.locator("option")).toHaveText([
+    "Observador",
+    "Leitor",
+    "Colaborador",
+    "Organizador",
+    "Editor",
+  ]);
+  await give.selectOption("editor");
+  await rui.getByRole("button", { name: "Dar acesso" }).click();
+  await expect(marta.getByRole("combobox", { name: "Nível de Rui" })).toHaveValue("editor");
+  await expect(
+    marta.getByRole("listitem", { name: "Marta" }).getByText(/só o dono do material muda/),
+  ).toBeVisible();
+  await expect(marta.getByRole("combobox", { name: "Nível de Marta" })).toHaveCount(0);
+  await expect(marta.getByRole("heading", { name: "Acessos que deste" })).toHaveCount(0);
+  await ownerContext.close();
+  await martaContext.close();
+});
+
 test("acesso temporário: o dono cria um código e outra pessoa entra com ele", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);

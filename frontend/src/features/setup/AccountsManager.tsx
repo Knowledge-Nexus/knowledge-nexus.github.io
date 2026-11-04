@@ -1,6 +1,7 @@
-// Contas nas Definições. Só o dono vê a lista: os pedidos de acesso, o nível de cada pessoa
-// (`lib/ranks.ts`), prazos, suspender, convites e ligações para repor a palavra-passe (com o
-// token dele do GitHub). Quem entrou com conta vê só a sua (nome, nível e palavra-passe).
+// Contas nas Definições. Só o dono (com o token dele do GitHub) e os Gestores (com a sessão,
+// até ao nível Editor) vêem a lista: os pedidos de acesso, o nível de cada pessoa
+// (`lib/ranks.ts`), prazos, suspender, convites e ligações para repor a palavra-passe. Quem
+// entrou com conta vê a sua (nome, nível e palavra-passe).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useMemo, useState } from "react";
@@ -76,9 +77,12 @@ function RankSelect(props: {
   disabled?: boolean;
   /** Também «À espera» (tirar o acesso). */
   withNone?: boolean;
+  /** Quem escolhe é um Gestor: o nível Gestor é só do dono. */
+  manager?: boolean;
 }) {
   const { t } = useTranslation();
-  const ranks: AccountRole[] = props.withNone ? [...ACCOUNT_RANKS, "none"] : [...ACCOUNT_RANKS];
+  const given = ACCOUNT_RANKS.filter((rank) => !(props.manager && rank === "manager"));
+  const ranks: AccountRole[] = props.withNone ? [...given, "none"] : [...given];
   return (
     <select
       className={input}
@@ -104,7 +108,7 @@ function accountState(user: AccountUser): "waiting" | "paused" | "ended" | "acti
   return "active";
 }
 
-function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) {
+function UserRow(props: { user: AccountUser; api: AccountsApi; token: string; manager?: boolean }) {
   const { t } = useTranslation();
   const message = useAccountError();
   const queryClient = useQueryClient();
@@ -128,6 +132,8 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
   });
   const error = update.error ?? remove.error ?? resetLink.error;
   const busy = update.isPending || remove.isPending;
+  // Um Gestor não mexe nas contas dos Gestores (nem na sua): só o dono.
+  const locked = props.manager && user.role === "manager";
 
   return (
     <li aria-label={user.name} className="space-y-2 py-3">
@@ -143,13 +149,16 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
             : t("accounts.admin.created", { when: formatWhen(user.created_at) })}
         </span>
       </div>
-      {state === "waiting" ? (
+      {locked ? (
+        <p className="text-xs text-ink-soft">{t("accounts.admin.manager_row")}</p>
+      ) : state === "waiting" ? (
         <div className="flex flex-wrap items-center gap-2">
           <RankSelect
             label={t("accounts.admin.give_as", { name: user.name })}
             value={give}
             onChange={setGive}
             disabled={busy}
+            manager={props.manager}
           />
           <Button disabled={busy} onClick={() => update.mutate({ role: give })}>
             {t("accounts.admin.give")}
@@ -173,6 +182,7 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
             onChange={(role) => update.mutate({ role })}
             disabled={busy}
             withNone
+            manager={props.manager}
           />
           <label className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
             {t("accounts.admin.until")}
@@ -229,7 +239,7 @@ function UserRow(props: { user: AccountUser; api: AccountsApi; token: string }) 
   );
 }
 
-function InvitesCard(props: { api: AccountsApi; token: string }) {
+function InvitesCard(props: { api: AccountsApi; token: string; manager?: boolean }) {
   const { t } = useTranslation();
   const message = useAccountError();
   const queryClient = useQueryClient();
@@ -274,7 +284,12 @@ function InvitesCard(props: { api: AccountsApi; token: string }) {
           <span aria-hidden="true" className="text-xs font-medium text-ink-soft">
             {t("accounts.admin.invite_role")}
           </span>
-          <RankSelect label={t("accounts.admin.invite_role")} value={role} onChange={setRole} />
+          <RankSelect
+            label={t("accounts.admin.invite_role")}
+            value={role}
+            onChange={setRole}
+            manager={props.manager}
+          />
         </div>
         <label className="flex min-w-48 flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-ink-soft">
@@ -340,8 +355,11 @@ function InvitesCard(props: { api: AccountsApi; token: string }) {
   );
 }
 
-/** Só o dono (entrou com o token dele do GitHub). */
-export function AccountsManager(props: { token: string }) {
+/**
+ * O dono (`token` é o dele do GitHub) ou um Gestor (`token` é a sessão e `manager`: até ao
+ * nível Editor, sem as contas dos Gestores).
+ */
+export function AccountsManager(props: { token: string; manager?: boolean }) {
   const { t } = useTranslation();
   const message = useAccountError();
   const api = useMemo(() => new AccountsApi(), []);
@@ -374,7 +392,9 @@ export function AccountsManager(props: { token: string }) {
   return (
     <>
       <Card title={t("accounts.admin.title")}>
-        <p className="mb-3 text-sm text-ink-soft">{t("accounts.admin.intro")}</p>
+        <p className="mb-3 text-sm text-ink-soft">
+          {props.manager ? t("accounts.admin.intro_manager") : t("accounts.admin.intro")}
+        </p>
         <RanksLegend />
         {users.isLoading && <Spinner />}
         {users.error ? <ErrorBox error={message(users.error)} /> : null}
@@ -385,7 +405,13 @@ export function AccountsManager(props: { token: string }) {
             </h3>
             <ul className="divide-y divide-line">
               {waiting.map((user) => (
-                <UserRow key={user.id} user={user} api={api} token={props.token} />
+                <UserRow
+                  key={user.id}
+                  user={user}
+                  api={api}
+                  token={props.token}
+                  manager={props.manager}
+                />
               ))}
             </ul>
           </section>
@@ -393,7 +419,13 @@ export function AccountsManager(props: { token: string }) {
         {others.length > 0 ? (
           <ul className="mt-2 divide-y divide-line">
             {others.map((user) => (
-              <UserRow key={user.id} user={user} api={api} token={props.token} />
+              <UserRow
+                key={user.id}
+                user={user}
+                api={api}
+                token={props.token}
+                manager={props.manager}
+              />
             ))}
           </ul>
         ) : (
@@ -401,7 +433,7 @@ export function AccountsManager(props: { token: string }) {
           waiting.length === 0 && <p className="text-sm text-muted">{t("accounts.admin.none")}</p>
         )}
       </Card>
-      <InvitesCard api={api} token={props.token} />
+      <InvitesCard api={api} token={props.token} manager={props.manager} />
     </>
   );
 }
