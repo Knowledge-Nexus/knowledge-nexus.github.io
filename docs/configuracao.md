@@ -102,8 +102,15 @@ increased").
   várias cadeiras seguidas são vários commits) e processa-as de uma vez. Se mesmo assim o
   repositório mudar durante o processamento, junta as alterações e processa de novo; nada se
   perde. A cada 10 minutos vê se há uma versão nova da aplicação; se houver, o `.bat` actualiza-a e
-  volta a arrancar sozinho (se usas uma cópia do `.bat` fora da pasta `~/nexus`, copia-o de
-  novo).
+  volta a arrancar sozinho.
+- **O `.bat` funciona em qualquer PC e em qualquer pasta** (`scripts/vigiar-deposito.sh`): a
+  aplicação é a pasta onde ele está (por exemplo, `Documentos\knowledge-nexus.github.io`); uma
+  cópia solta do `.bat` usa `~/nexus` no Ubuntu. O repositório de dados procura-se em
+  `NEXUS_DADOS`, `~/dados` ou numa pasta `estudo-dados` ao lado da aplicação; se não houver,
+  oferece-se para o clonar para `~/dados` (com o Git do Windows instalado, o login no GitHub
+  faz-se no browser). Num PC novo, o Ubuntu precisa do `uv` e das ferramentas de extracção
+  (secção 6; o `.bat` diz o que falta) e, para o material público e o R2, das variáveis no
+  `~/.bashrc` (secções 3 e 4.2). Com outra distribuição do WSL: `set NEXUS_WSL=<nome>`.
 - **Desligar o Actions:** cria a variável `NEXUS_PROCESSAMENTO` com o valor `local` em
   *Settings → Secrets and variables → Actions → Variables* do repositório de dados. O
   workflow passa a aparecer como "skipped" e não gasta minutos. Apaga a variável para voltar

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { IconTrash } from "../../components/icons";
+import { Modal } from "../../components/Modal";
 import { Button, ErrorBox } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { DocumentRow } from "../../data/types";
@@ -96,6 +97,56 @@ export function RemoveButton(props: {
       </div>
       {error ? <ErrorBox error={error} /> : null}
     </div>
+  );
+}
+
+/** Popup de confirmação para remover um ficheiro (na página do documento). */
+export function RemoveDialog(props: {
+  doc: DocumentRow;
+  onClose: () => void;
+  onRemoved: () => void;
+}) {
+  const { t } = useTranslation();
+  const { meta, source, login, notifyCommit } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const ids = meta ? withCopies(meta, [props.doc]) : [props.doc.id];
+  const name = originalName(props.doc);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await removeDocuments(source, ids, login, name);
+      notifyCommit();
+      hideRemoved(ids);
+      props.onRemoved();
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title={t("document.remove_title")} icon={<IconTrash />} onClose={props.onClose}>
+      <div className="space-y-3 text-sm">
+        <p className="font-medium break-words text-ink">{name}</p>
+        <p className="text-ink-soft">{t("document.remove_text")}</p>
+        {ids.length > 1 && (
+          <p className="text-ink-soft">{t("review.remove_also", { count: ids.length - 1 })}</p>
+        )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button variant="danger" disabled={busy} onClick={() => void remove()}>
+            <IconTrash size={16} />
+            {busy ? t("common.saving") : t("review.remove")}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={props.onClose}>
+            {t("common.cancel")}
+          </Button>
+        </div>
+        {error ? <ErrorBox error={error} /> : null}
+      </div>
+    </Modal>
   );
 }
 

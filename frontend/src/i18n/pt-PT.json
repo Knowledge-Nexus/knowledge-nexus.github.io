@@ -266,7 +266,11 @@
     "marks_private": "Só tu as vês: os outros (e «Ver o original») mostram o documento sem elas.",
     "marks_open": "Ver as marcas",
     "marks_start": "Começar a marcar",
-    "removed": "Removeste este ficheiro: não aparece na biblioteca, em «A rever» nem na pesquisa. O original continua guardado."
+    "removed": "Removeste este ficheiro: não aparece na biblioteca, em «A rever» nem na pesquisa. O original continua guardado.",
+    "remove": "Remover",
+    "remove_hint": "Remover este ficheiro (o original fica guardado e podes repô-lo)",
+    "remove_title": "Remover este ficheiro?",
+    "remove_text": "Sai da biblioteca, de «A rever» e da pesquisa. O original continua guardado: podes repô-lo aqui, na página dele, ou em «Removidos», no fim de «A rever»."
   },
   "review": {
     "title": "A rever",

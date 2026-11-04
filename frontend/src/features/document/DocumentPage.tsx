@@ -13,7 +13,7 @@ import {
   TextPane,
 } from "../../components/DocumentViewer";
 import { FileBadge } from "../../components/FileBadge";
-import { IconBookOpen, IconDownload, IconExpand } from "../../components/icons";
+import { IconBookOpen, IconDownload, IconExpand, IconTrash } from "../../components/icons";
 import { Badge, Button, buttonClass, Card, Empty, ErrorBox, Spinner } from "../../components/ui";
 import { DocumentVisibility, PublicBadge } from "../../components/Visibility";
 import { useApp } from "../../data/context";
@@ -21,8 +21,9 @@ import { markCount, markedPages } from "../../lib/annotations";
 import { formatBytes } from "../../lib/files";
 import { formatWhen, useLabels } from "../../lib/labels";
 import { lastPage } from "../../lib/reader";
+import { useRemovals } from "../../lib/removal";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
-import { RestoreButton } from "../review/RemoveDocuments";
+import { RemoveDialog, RestoreButton } from "../review/RemoveDocuments";
 import { ClassificationFields, TitleEditor } from "./DocumentFields";
 import { Reader } from "./Reader";
 import { useSavedMarks } from "./useMarks";
@@ -49,6 +50,8 @@ export function DocumentPage() {
   const [tab, setTab] = useState<"text" | "original">(hasOriginalView ? "original" : "text");
   const [notes, setNotes] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [removing, setRemoving] = useState(false);
+  const removals = useRemovals();
   const marks = useSavedMarks(doc);
 
   if (indexLoading) return <Spinner />;
@@ -110,6 +113,8 @@ export function DocumentPage() {
   const children = doc.kind === "archive" ? (meta?.children(doc.id) ?? []) : [];
   // O dono e quem entrou com um código de acesso (que usa o token do dono); nunca visitantes.
   const isOwner = doc.owner === login && !readOnly;
+  // Removido no índice ou agora mesmo (até o índice ser actualizado).
+  const removed = doc.status === "removed" || removals.hidden.has(doc.id);
   const canRead = hasOriginalView || doc.pages > 0;
   const resume = lastPage(doc.id);
   const pageMarks = marks.data?.file.pages ?? {};
@@ -171,8 +176,8 @@ export function DocumentPage() {
               {t("document.original_name", { name: originalName(doc) })}
             </p>
             <div className="flex flex-wrap gap-1">
-              <Badge tone={doc.status === "removed" ? "warn" : "neutral"}>
-                {t(`status.${doc.status}`)}
+              <Badge tone={removed ? "warn" : "neutral"}>
+                {t(`status.${removed ? "removed" : doc.status}`)}
               </Badge>
               {doc.needs_review && <Badge tone="warn">{t("nav.review")}</Badge>}
               {isOwner && can.visibility && <PublicBadge value={doc.visibility} />}
@@ -200,6 +205,18 @@ export function DocumentPage() {
                 </span>
               </Button>
             )}
+            {isOwner && !removed && (
+              <Button
+                variant="danger"
+                onClick={() => setRemoving(true)}
+                title={t("document.remove_hint")}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <IconTrash />
+                  {t("document.remove")}
+                </span>
+              </Button>
+            )}
             {isOwner && doc.needs_review && (
               <Link to={to(`/rever?doc=${doc.id}`)} className={buttonClass("secondary")}>
                 {t("document.correct")}
@@ -209,7 +226,14 @@ export function DocumentPage() {
         </div>
       </header>
       {error ? <ErrorBox error={error} /> : null}
-      {doc.status === "removed" && (
+      {removing && (
+        <RemoveDialog
+          doc={doc}
+          onClose={() => setRemoving(false)}
+          onRemoved={() => setRemoving(false)}
+        />
+      )}
+      {removed && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-clay/30 bg-clay-soft/50 px-4 py-3 text-sm">
           <p className="flex-1">{t("document.removed")}</p>
           {isOwner && <RestoreButton doc={doc} />}

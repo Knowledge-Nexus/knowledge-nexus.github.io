@@ -22,7 +22,7 @@ import {
   TOKENS_PAGE,
   tokenFingerprint,
 } from "../../lib/access";
-import { loadCodes, saveCode } from "../../lib/codeVault";
+import { type LoadedCodes, loadCodes, saveCode } from "../../lib/codeVault";
 import { type AccessScope, decodeInvite, encodeInvite, tokenPageUrl } from "../../lib/invite";
 import { formatWhen } from "../../lib/labels";
 
@@ -156,8 +156,15 @@ export function AccessManager(props: { source: GitHubDataSource; fetchImpl?: Fet
   }
 
   async function remember(id: string, code: string | null) {
+    // Aparece já; o servidor das contas fica a saber a seguir.
+    queryClient.setQueriesData<LoadedCodes>({ queryKey: ["access-codes", repoName] }, (old) => {
+      if (!old) return old;
+      const codes = { ...old.codes };
+      if (code) codes[id] = code;
+      else delete codes[id];
+      return { ...old, codes };
+    });
     await saveCode(source, id, code);
-    void queryClient.invalidateQueries({ queryKey: ["access-codes"] });
   }
 
   const add = (entry: AccessEntry, code: string) =>

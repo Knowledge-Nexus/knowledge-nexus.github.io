@@ -437,6 +437,45 @@ test("caixote do lixo em «A rever»: remover, desfazer e repor", async ({ page 
   expect(YAML.parse(fake.text(REPO, restore.paths[0]!)!)).not.toHaveProperty("removed");
 });
 
+test("remover um ficheiro na página dele, com confirmação, e repô-lo", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  const doc = Object.entries(snapshot.main)
+    .filter(([p]) => p.startsWith("documentos/"))
+    .map(([, b64]) => YAML.parse(Buffer.from(b64, "base64").toString("utf-8")))
+    .find((d) => d.blob.ext === "pdf" && !d.removed && !d.duplicate_of && d.filed_name);
+  await page.goto(`/#/documento/${doc.id}`);
+  const commits = fake.repos.get(REPO)!.commits.length;
+  await page.getByRole("button", { name: "Remover", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Remover este ficheiro?" });
+  await expect(dialog).toContainText("O original continua guardado");
+  // Cancelar não muda nada.
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+  await expect(dialog).toBeHidden();
+  expect(fake.repos.get(REPO)!.commits.length).toBe(commits);
+
+  await page.getByRole("button", { name: "Remover", exact: true }).click();
+  await dialog.getByRole("button", { name: "Remover" }).click();
+  await expect(page.getByText(/Removeste este ficheiro/)).toBeVisible();
+  await expect(page.getByText("Removido", { exact: true })).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  const path = commit.paths.find((p) => p.includes(doc.id))!;
+  expect(YAML.parse(fake.text(REPO, path)!).removed).toMatchObject({ by: "aluna" });
+
+  // Na cadeira já não aparece; «Repor» na página dele trá-lo de volta.
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).first().click();
+  await page
+    .getByRole("link", { name: /Análise Matemática I/ })
+    .first()
+    .click();
+  await expect(page.getByRole("heading", { name: /Análise Matemática I/ }).first()).toBeVisible();
+  await expect(page.locator(`a[href$="/documento/${doc.id}"]`)).toHaveCount(0);
+  await page.goto(`/#/documento/${doc.id}`);
+  await page.getByRole("button", { name: "Repor" }).click();
+  await expect(page.getByRole("button", { name: "Remover", exact: true })).toBeVisible();
+  expect(YAML.parse(fake.text(REPO, path)!)).not.toHaveProperty("removed");
+});
+
 test("tipo de material público, selecção e descarga em zip", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);

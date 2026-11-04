@@ -28,6 +28,7 @@ import { joinBundle, separateBundle, suggestBundleName } from "../../lib/bundles
 import { groupByYear, yearLabel } from "../../lib/docOrder";
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
+import { useRemovals } from "../../lib/removal";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
 import { useFieldSaver } from "../document/DocumentFields";
 import { CourseCreator } from "./CourseManager";
@@ -306,6 +307,7 @@ function UnitDetail(props: { unitKey: string }) {
   const { meta, login, to, source, readOnly, can, notifyCommit } = useApp();
   const labels = useLabels(meta);
   const [params, setParams] = useSearchParams();
+  const removals = useRemovals();
   // Escolher documentos serve para descarregar ou arrumar; o Observador não faz nenhum dos dois.
   const selectable = can.download || !readOnly;
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -319,12 +321,15 @@ function UnitDetail(props: { unitKey: string }) {
   const onlyToConfirm = params.get("confirmar") === "1";
   if (!meta) return null;
   const unit = labels.units.find((u) => u.key === props.unitKey);
-  const allDocs = meta.documents({
-    owner: login,
-    unit: props.unitKey,
-    filedOnly: true,
-    academicYear: year || undefined,
-  });
+  // O que acabaste de remover já não aparece, mesmo antes de o índice ser actualizado.
+  const allDocs = meta
+    .documents({
+      owner: login,
+      unit: props.unitKey,
+      filedOnly: true,
+      academicYear: year || undefined,
+    })
+    .filter((d) => !removals.hidden.has(d.id));
   const toConfirm = allDocs.filter(typeToConfirm).length;
   // Com mais de um ano lectivo na cadeira, cada cartão separa-os (o mesmo "FT 1" de dois anos
   // parecia repetido).

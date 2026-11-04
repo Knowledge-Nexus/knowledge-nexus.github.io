@@ -1,0 +1,6 @@
+# Os scripts correm no Linux (WSL, Raspberry Pi): sempre com fins de linha LF, mesmo numa
+# cópia feita no Windows (senão o bash recusa-os).
+*.sh text eol=lf
+iniciar text eol=lf
+# O .bat corre no Windows.
+*.bat text eol=crlf

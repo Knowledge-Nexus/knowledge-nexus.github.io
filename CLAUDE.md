@@ -46,7 +46,11 @@ convenções ou comandos.
   de dados desliga o job (`if:` no `nexus.yml`). Sem nada no depósito, o workflow não instala
   o OCR e só publica os índices se estiverem desactualizados. Quando a aplicação tem commits
   novos, o `nexus servir` sai com o código 75 (`UPDATE_EXIT`) e o `vigiar-deposito.bat` faz
-  `git pull` e volta a arrancá-lo. Antes de processar, espera que o remoto fique 20 s sem
+  `git pull` e volta a arrancá-lo. O `.bat` corre `scripts/vigiar-deposito.sh` a partir da sua
+  própria pasta (qualquer PC e pasta; uma cópia solta usa `~/nexus`): dados em `NEXUS_DADOS`,
+  `~/dados` ou `../estudo-dados` (senão oferece clonar), ambiente uv em
+  `~/.cache/knowledge-nexus/venv` (`uv run --frozen`), `core.autocrlf` e `safe.directory` numa
+  pasta do Windows; `.gitattributes` mantém os `.sh` em LF. Antes de processar, espera que o remoto fique 20 s sem
   commits (`wait_until_quiet`: quem arruma na interface grava vários seguidos); um envio
   recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
   Commits só com marcas de leitura (`anotacoes/`) ou `acessos.yaml` não são processados
