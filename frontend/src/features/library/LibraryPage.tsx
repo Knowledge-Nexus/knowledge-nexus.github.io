@@ -29,6 +29,7 @@ import { groupByYear, yearLabel } from "../../lib/docOrder";
 import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { useFieldSaver } from "../document/DocumentFields";
 import { CourseCreator } from "./CourseManager";
 import { InstitutionManager } from "./InstitutionManager";
 import { Shelves } from "./Shelves";
@@ -52,13 +53,37 @@ export function DocumentLink(props: {
   groupedByType?: boolean;
   selected?: boolean;
   onSelect?: (on: boolean) => void;
+  /** Lápis para mudar o nome (quem arruma; na página da cadeira). */
+  renamable?: boolean;
 }) {
   const { t } = useTranslation();
-  const { meta, to, readOnly, can } = useApp();
+  const { meta, to, readOnly, can, login } = useApp();
   const labels = useLabels(meta);
   const { doc } = props;
-  const title = documentTitle(doc, labels, !props.groupedByType);
+  const [renaming, setRenaming] = useState(false);
+  // O nome acabado de gravar (ou o automático, ao voltar a ele) até o índice ser actualizado.
+  const [shown, setShown] = useState<string | null>(null);
+  const userTitle = doc.classification.title?.value as string | undefined;
+  const automatic = documentTitle(
+    { ...doc, classification: { ...doc.classification, title: undefined } },
+    labels,
+    !props.groupedByType,
+  );
+  const title = shown ?? documentTitle(doc, labels, !props.groupedByType);
   const file = originalName(doc);
+  const canRename = Boolean(props.renamable) && !readOnly && doc.owner === login;
+  if (renaming)
+    return (
+      <RenameForm
+        doc={doc}
+        current={shown ?? userTitle ?? title}
+        hasUserTitle={Boolean(userTitle) && shown !== automatic}
+        onDone={(next) => {
+          if (next !== undefined) setShown(next ?? automatic);
+          setRenaming(false);
+        }}
+      />
+    );
   const details = [
     props.showUnit ? (doc.unit ? labels.unit(doc.unit) : t("library.no_unit")) : null,
     documentDate(doc, labels),
@@ -97,7 +122,70 @@ export function DocumentLink(props: {
           )}
         </span>
       </Link>
+      {canRename && (
+        <EditButton
+          className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
+          label={t("edit.rename_doc", { name: title })}
+          onClick={() => setRenaming(true)}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Mudar o nome de um documento na lista (grava `classification.title`, como o lápis na página
+ * do documento). `onDone(undefined)`: cancelado; `null`: voltou ao nome automático.
+ */
+function RenameForm(props: {
+  doc: DocumentRow;
+  current: string;
+  hasUserTitle: boolean;
+  onDone: (next?: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const [value, setValue] = useState(props.current);
+  const { save, busy, error } = useFieldSaver(props.doc);
+  const name = originalName(props.doc);
+  return (
+    <form
+      className="space-y-2 px-1 py-2"
+      aria-label={t("edit.rename_doc", { name: props.current })}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const next = value.trim();
+        void save("title", next).then((ok) => ok && props.onDone(next));
+      }}
+    >
+      <input
+        className="w-full rounded-lg border border-line-strong bg-white px-2 py-1 text-sm"
+        aria-label={t("edit.new_name", { name })}
+        value={value}
+        autoFocus
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") props.onDone();
+        }}
+      />
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="submit" disabled={busy || !value.trim()}>
+          {busy ? t("common.saving") : t("common.save")}
+        </Button>
+        {props.hasUserTitle && (
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => void save("title", null).then((ok) => ok && props.onDone(null))}
+          >
+            {t("edit.title_reset")}
+          </Button>
+        )}
+        <Button variant="ghost" disabled={busy} onClick={() => props.onDone()}>
+          {t("common.cancel")}
+        </Button>
+      </div>
+      {error ? <ErrorBox error={error} /> : null}
+    </form>
   );
 }
 
@@ -635,6 +723,15 @@ function UnitDetail(props: { unitKey: string }) {
                                   className="min-w-0 border-b border-line"
                                   draggable={!readOnly}
                                   onDragStart={(e) => {
+                                    // A seleccionar texto ao mudar um nome, não se arrasta.
+                                    const active = document.activeElement;
+                                    if (
+                                      active?.tagName === "INPUT" &&
+                                      e.currentTarget.contains(active)
+                                    ) {
+                                      e.preventDefault();
+                                      return;
+                                    }
                                     const moving = ids.some((id) => selected.has(id))
                                       ? [...new Set([...selected, ...ids])]
                                       : ids;
@@ -645,6 +742,7 @@ function UnitDetail(props: { unitKey: string }) {
                                   <DocumentLink
                                     doc={doc}
                                     groupedByType
+                                    renamable
                                     selected={ids.every((id) => selected.has(id))}
                                     onSelect={selectable ? (on) => select(ids, on) : undefined}
                                   />

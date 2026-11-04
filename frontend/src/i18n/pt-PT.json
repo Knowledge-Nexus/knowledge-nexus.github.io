@@ -686,7 +686,9 @@
     "field": "Editar: {{field}}",
     "no_value": "Sem valor",
     "pending": "a actualizar",
-    "institution_hint": "A instituição é a da cadeira: escolhe a instituição e depois a cadeira."
+    "institution_hint": "A instituição é a da cadeira: escolhe a instituição e depois a cadeira.",
+    "rename_doc": "Mudar o nome de «{{name}}»",
+    "new_name": "Novo nome de {{name}}"
   },
   "reader": {
     "title": "Modo de leitura",

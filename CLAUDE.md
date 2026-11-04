@@ -255,7 +255,8 @@ Dependências de sistema (Ubuntu/WSL2):
     parciais (`DataSource.binaryRange`: Worker do R2 ou GitHub Pages), abre por partes
     (`PDFDataRangeTransport`) e só traz as páginas que se vêem.
   - **Editar no sítio** (só o dono e quem tem código de acesso; nunca visitantes): lápis
-    (`EditButton` em `components/ui.tsx`) no nome do documento e em cada campo da
+    (`EditButton` em `components/ui.tsx`) no nome do documento (na página dele e em cada
+    ficheiro da página da cadeira: `DocumentLink renamable`, `RenameForm`) e em cada campo da
     classificação (`features/document/DocumentFields.tsx`, `setUserField`: `method: user`;
     "sem valor" grava `null` como escolha; a instituição muda-se escolhendo uma cadeira de
     outra), no nome da cadeira (`UnitEditor`), no nome e grau de um curso (`CourseRenamer`,

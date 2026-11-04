@@ -51,7 +51,7 @@ export function setUserField(
   record.classification = classification;
 }
 
-function useFieldSaver(doc: DocumentRow) {
+export function useFieldSaver(doc: DocumentRow) {
   const { source, login, notifyCommit } = useApp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);

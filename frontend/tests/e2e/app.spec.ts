@@ -839,6 +839,24 @@ test("lápis na biblioteca: o nome de um curso e de uma cadeira", async ({ page 
     .getByRole("button", { name: /Mudar o nome, a sigla ou os nomes alternativos/ })
     .click();
   await expect(page.getByRole("button", { name: "Remover cadeira" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).first().click();
+
+  // Cada ficheiro tem o seu lápis: o nome muda ali mesmo, sem abrir o documento.
+  await page
+    .getByRole("button", { name: /^Mudar o nome de «/ })
+    .first()
+    .click();
+  const rename = page.getByRole("form", { name: /^Mudar o nome de «/ });
+  await rename.getByLabel(/^Novo nome de /).fill("Exame de recurso (versão final)");
+  await rename.getByRole("button", { name: "Guardar" }).click();
+  await expect(rename).toBeHidden();
+  await expect(page.getByText("Exame de recurso (versão final)")).toBeVisible();
+  const renamed = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(renamed.paths).toHaveLength(1);
+  expect(YAML.parse(fake.text(REPO, renamed.paths[0]!)!).classification.title).toMatchObject({
+    value: "Exame de recurso (versão final)",
+    method: "user",
+  });
 });
 
 test.describe("PDF num ecrã de alta densidade", () => {
