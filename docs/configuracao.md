@@ -240,6 +240,58 @@ No dia-a-dia:
   versões novas da aplicação chegam sozinhas, a cada 10 minutos);
 - retirar: `bash instalar.sh --desinstalar` (os dados ficam em `/home/nexus`).
 
+## 4.5 Contas (entrar com email e palavra-passe, ou com o Google)
+
+Com as contas, quem usa o site já não precisa de token nem de conta no GitHub: cria conta na
+página de entrada (ícones no canto) e fica à espera até lhe dares acesso, ou entra logo com
+um convite teu. Os códigos de acesso (`KN1-…`, 4.3) continuam a funcionar como até aqui, e
+tu continuas a entrar como **Administrador** (repositório + token).
+
+- **Como funciona:** o Worker do R2 (`worker/`) passa também a guardar as contas numa base
+  de dados do Cloudflare (D1) e é ele que fala com o GitHub, com uma GitHub App instalada só
+  no repositório de dados. O browser de quem entra só recebe uma sessão; a credencial do
+  GitHub nunca sai do Worker. As palavras-passe e as sessões ficam só como resumos.
+- **Acessos:** «Ver e descarregar» (vê tudo, também o privado, e não muda nada: o Worker
+  recusa as escritas) e «Acesso total» (o mesmo que tu na interface; cada commit leva
+  `Feito por: <nome> (conta <email>)`). Mudar, suspender ou pôr um prazo vale logo.
+- **Marcas de leitura** de quem entra com conta: na D1, por pessoa (não no repositório).
+
+**Ligar (uma vez, no Ubuntu/WSL, na pasta do repositório da aplicação):**
+
+1. **Base de dados:** `cd worker` e `npx wrangler d1 create nexus-contas`. Copia o
+   `database_id` que aparece para o bloco `[[d1_databases]]` do `worker/wrangler.toml`
+   (tira os `#` dessas 5 linhas). Depois cria as tabelas:
+   `npx wrangler d1 migrations apply nexus-contas --remote`.
+2. **GitHub App** (deixa o Worker ler e escrever só no repositório de dados): abre
+   [esta página, já preenchida](https://github.com/organizations/Knowledge-Nexus/settings/apps/new?name=Knowledge%20Nexus%20contas&url=https%3A%2F%2Fknowledge-nexus.github.io&public=false&webhook_active=false&contents=write&actions=read&metadata=read)
+   e carrega em *Create GitHub App*. Na página da App:
+   - anota o **App ID** (no topo);
+   - em *Private keys*, carrega em *Generate a private key* (descarrega um `.pem`);
+   - em *Install App*, instala-a só no `estudo-dados` (*Only select repositories*).
+3. **Segredos do Worker** (ainda em `worker/`):
+   - `npx wrangler secret put GITHUB_APP_ID` e escreve o número;
+   - `npx wrangler secret put GITHUB_APP_PRIVATE_KEY < /mnt/c/Users/<o teu utilizador>/Downloads/<nome>.pem`
+     (o ficheiro que descarregaste; depois podes apagá-lo).
+4. **Publicar:** `npx wrangler deploy`. Na página de entrada aparecem «Entrar» e «Criar conta»;
+   nas Definições aparecem «Contas» (pedidos de acesso, papéis, prazos, suspender, repor a
+   palavra-passe) e «Convites».
+
+**Opcional:**
+- **Entrar com Google:** na [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+  *Create credentials → OAuth client ID → Web application*, com o endereço de retorno
+  `https://nexus-ficheiros.nightmareftw.workers.dev/contas/google/volta`. Depois
+  `npx wrangler secret put GOOGLE_CLIENT_ID`, `npx wrangler secret put GOOGLE_CLIENT_SECRET` e
+  `npx wrangler deploy`. Só aceita emails confirmados pelo Google; o mesmo email liga-se à
+  conta que já existia.
+- **Só por convite:** `SIGNUP = "invite"` no `wrangler.toml` (por defeito, qualquer pessoa cria
+  conta e fica à espera).
+- **Sem GitHub App:** em vez dos passos 2 e 3, um token fine-grained só para o `estudo-dados`
+  (*Contents* leitura e escrita, *Actions* leitura, sem prazo) em
+  `npx wrangler secret put GITHUB_TOKEN`. Funciona igual, mas os commits ficam em teu nome.
+
+**Esqueceram-se da palavra-passe?** Não há envio de emails: em «Contas», «Repor palavra-passe»
+dá-te uma ligação (uma vez, 7 dias) para enviares à pessoa.
+
 ## 5. Claude Code sobre o repositório de dados
 
 - Abre uma sessão do Claude Code (web ou WSL2) com o repositório de dados. O hook

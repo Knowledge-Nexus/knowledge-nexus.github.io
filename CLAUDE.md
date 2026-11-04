@@ -67,6 +67,19 @@ convenções ou comandos.
   `NEXUS_OCR_WORKERS` (1 ou 2) a limitar o OCR em paralelo (`ocr_workers` em
   `extract/pdf.py`). Sai com 75 → o systemd volta a arrancá-lo e o `ExecStartPre` faz
   `git pull` da aplicação. Precisa de 64 bits (o PyMuPDF não tem versão para armv7).
+- **Contas (opcional, no mesmo Worker do R2):** `worker/src/accounts.js` (D1: `users`,
+  `sessions`, `invites`, `tickets`, `attempts`, `marks`; migrações em `worker/migrations/`).
+  Email e palavra-passe (PBKDF2) ou Google (OIDC, opcional); sessão `nxs_…` (só o SHA-256 na
+  D1). Papéis `none` (à espera), `reader`, `editor`, com `status` e prazo (`until`);
+  `effectiveRole`. Quem entra com conta usa o mesmo `GitHubClient` com base `<Worker>/gh`
+  (`worker/src/proxy.js`): só o repositório de dados e só os pedidos da interface; o leitor só
+  lê; o Worker acrescenta `Feito por: <nome> (conta <email>)` a cada commit. A credencial do
+  GitHub é uma GitHub App (`worker/src/github.js`, JWT RS256, chave PKCS#1) ou `GITHUB_TOKEN`.
+  O dono gere tudo com o token dele (`/contas/admin/*`: o login tem de ser o `owner` do
+  `nexus.yaml` e o token não pode estar no `acessos.yaml`). Interface: `data/accounts.ts`,
+  `features/entry/` (página de entrada com popups, `connect.ts`), `AccountsManager` nas
+  Definições. Os códigos `KN1-…` continuam iguais. Testes: `node --test worker/test/*.test.mjs`
+  (D1 em `node:sqlite`) e o E2E corre o Worker verdadeiro (`routeWorker`).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:
@@ -135,6 +148,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Tudo (lint, tipos, testes) | `./iniciar verificar` |
 | Backend | `uv run ruff check . && uv run mypy && uv run pytest -q` |
 | Frontend | `pnpm -C frontend lint && pnpm -C frontend typecheck && pnpm -C frontend test` |
+| Worker (R2 e contas) | `node --test worker/test/*.test.mjs`; publicar: `cd worker && npx wrangler deploy` |
 | Índice de contrato | `uv run python tests/contrato/gerar_indice.py frontend/test-fixtures/contrato` |
 | E2E | `uv run python tests/e2e/gerar_repo.py frontend/test-fixtures/e2e/repo.json && pnpm -C frontend e2e` |
 | E2E neste contentor | prefixar com `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium` |
@@ -181,8 +195,12 @@ Dependências de sistema (Ubuntu/WSL2):
     fontes são servidas pelo próprio site (`@fontsource`), por causa da CSP.
   - Para quem chega pela primeira vez: "Primeiros passos" no Início e a página
     "Como funciona" (`/ajuda`, textos em `guide.*`).
-  - Sem sessão, a entrada do site é a biblioteca pública (`#/publico`); o ecrã de
-    ligação está em `#/entrar` (botão "Entrar" no menu).
+  - Sem sessão, a entrada do site é a página de apresentação (`features/entry/WelcomePage.tsx`):
+    banner, o que o site faz e «Ver o material público» (`#/publico`). Os ícones do canto
+    abrem popups (`components/Modal.tsx`, `?entrar=conta|registo|codigo|admin`): conta (entrar
+    ou criar, se o Worker tiver contas), código de acesso e administrador (repositório +
+    token). `#/entrar` abre o do administrador; `#/convite/<código>` e `#/repor/<código>`
+    são as ligações que o dono envia.
   - Nas listas, o título vem da classificação (`lib/titles.ts`: "Exame · Época de recurso";
     as palavras em maiúsculas com 5 letras ou mais ficam só com a inicial, `soften`)
     e a data e o nome original ficam na linha secundária; o formato aparece em
@@ -308,7 +326,7 @@ Dependências de sistema (Ubuntu/WSL2):
   dono abre a página do GitHub já preenchida (`tokenPageUrl`: prazo, `contents=write`,
   `actions=read`; o repositório escolhe-se à mão) e cola o token; a interface gera um código
   `KN1-…` (base64url de repo + token + nome + prazo, NÃO cifrado: é tão secreto como o token).
-  Quem o recebe entra em «Recebeste um código de acesso?»; a sessão fica com `guest`, aparece
+  Quem o recebe entra em «Tenho um código» (popup na entrada); a sessão fica com `guest`, aparece
   uma faixa com o nome e o prazo, e cada commit leva `Feito por: <nome> (acesso temporário)`.
   Acaba quando o token expira ou o dono o apaga no GitHub.
   Dois tipos (`AccessScope`, campo `scope` no código e no registo; sem campo = total):

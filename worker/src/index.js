@@ -1,50 +1,22 @@
-// Worker do Knowledge Nexus: acesso aos originais guardados no R2.
+// Worker do Knowledge Nexus.
 //
-//   GET|HEAD /blob/<sha256>   descarrega (com Range)
+//   GET|HEAD /blob/<sha256>   descarrega um original do R2 (com Range)
 //   PUT      /blob/<sha256>   envia (o R2 confirma o SHA-256 e o Worker aplica o limite de espaço)
+//   /contas/…                 contas: registo, entrada, convites, gestão pelo dono (accounts.js)
+//   /gh/…                     API do GitHub para quem entra com conta (proxy.js)
 //
-// Autenticação: o token do GitHub do utilizador (Authorization: Bearer ...). O Worker pergunta
-// ao GitHub se esse token tem acesso ao repositório de dados PRIVADO, por isso a fronteira de
-// segurança continua a ser o repositório. O material público não passa por aqui: sai do
-// repositório público (GitHub Pages).
+// Autenticação nos originais: o token do GitHub (o Worker pergunta ao GitHub se esse token tem
+// acesso ao repositório de dados PRIVADO) ou a sessão de uma conta com acesso (`nxs_…`). O
+// material público não passa por aqui: sai do repositório público (GitHub Pages).
+
+import { canRead, canWrite, handleAccounts, SESSION_PREFIX, sessionUser } from "./accounts.js";
+import { handleProxy } from "./proxy.js";
+import { digest, list, reply } from "./util.js";
 
 const AUTH_TTL_MS = 5 * 60 * 1000;
 const USAGE_TTL_MS = 30 * 1000;
 const authCache = new Map();
 let usageCache = { at: 0, bytes: 0 };
-
-const list = (value) =>
-  String(value ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-function cors(request, env) {
-  const origin = request.headers.get("Origin");
-  const headers = { Vary: "Origin" };
-  if (origin && list(env.ALLOWED_ORIGINS).includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin;
-    headers["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, OPTIONS";
-    headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Range, X-Nexus-Repo";
-    headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, ETag";
-    headers["Access-Control-Max-Age"] = "86400";
-  }
-  return headers;
-}
-
-function reply(request, env, status, body = null, extra = {}) {
-  const headers = { ...cors(request, env), ...extra };
-  if (body !== null && typeof body === "object" && !(body instanceof ReadableStream)) {
-    headers["Content-Type"] = "application/json";
-    body = JSON.stringify(body);
-  }
-  return new Response(body, { status, headers });
-}
-
-async function digest(text) {
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 // O repositório tem de ser privado e o token tem de ter a permissão pedida.
 async function allowed(token, repo, write, fetchImpl) {
@@ -87,7 +59,19 @@ function keyFor(repos, repo, sha) {
 
 export async function handle(request, env, fetchImpl = fetch) {
   if (request.method === "OPTIONS") return reply(request, env, 204);
-  const match = /^\/blob\/([0-9a-f]{64})$/.exec(new URL(request.url).pathname);
+  const pathname = new URL(request.url).pathname;
+  try {
+    if (pathname === "/contas" || pathname.startsWith("/contas/"))
+      return await handleAccounts(request, env, fetchImpl, pathname.slice(7) || "/");
+    if (pathname.startsWith("/gh/")) return await handleProxy(request, env, fetchImpl, pathname.slice(3));
+    return await handleBlob(request, env, fetchImpl, pathname);
+  } catch (error) {
+    return reply(request, env, 502, { error: "erro_interno", message: String(error?.message ?? error) });
+  }
+}
+
+async function handleBlob(request, env, fetchImpl, pathname) {
+  const match = /^\/blob\/([0-9a-f]{64})$/.exec(pathname);
   if (!match) return reply(request, env, 404, { error: "não encontrado" });
   if (!["GET", "HEAD", "PUT"].includes(request.method))
     return reply(request, env, 405, { error: "método não suportado" });
@@ -99,7 +83,12 @@ export async function handle(request, env, fetchImpl = fetch) {
   if (!repos.includes(repo)) return reply(request, env, 403, { error: "repositório não permitido" });
   const token = /^Bearer (.+)$/.exec(request.headers.get("Authorization") ?? "")?.[1];
   if (!token) return reply(request, env, 401, { error: "falta o token" });
-  if (!(await allowed(token, repo, write, fetchImpl)))
+  if (token.startsWith(SESSION_PREFIX)) {
+    // Conta: só o repositório de dados das contas, e escrever só com o papel de editor.
+    const user = await sessionUser(env, token);
+    if (repo !== repos[0] || !(write ? canWrite(user) : canRead(user)))
+      return reply(request, env, 403, { error: "sem acesso ao repositório de dados" });
+  } else if (!(await allowed(token, repo, write, fetchImpl)))
     return reply(request, env, 403, { error: "sem acesso ao repositório de dados" });
 
   const key = keyFor(repos, repo, sha);

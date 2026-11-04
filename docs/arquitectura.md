@@ -24,6 +24,11 @@ Porque é assim:
   repositório de dados: legíveis, com diffs e fáceis de fundir. O SQLite é derivado e
   publica-se num ramo órfão de um só commit (`indices`), reescrito a cada execução, para
   não inchar o histórico.
+- **Contas sem servidor próprio:** um Worker do Cloudflare (o mesmo dos originais no R2)
+  guarda as contas numa D1 e fala com o GitHub por uma GitHub App instalada só no
+  repositório de dados. A interface usa a API do GitHub através dele, com a sessão da conta;
+  o Worker só deixa passar o que a interface usa e impõe o papel (leitor só lê). O
+  repositório continua a ser a fonte de verdade; o dono continua a entrar com o token.
 - **O "worker" é o GitHub Actions**, com `concurrency` para uma execução de cada vez.
   O pipeline é um ciclo de reconciliação idempotente: calcula o que falta a partir do
   estado. Por isso, uma execução interrompida ou repetida não estraga nada.

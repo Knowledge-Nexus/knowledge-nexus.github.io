@@ -95,7 +95,7 @@ function PublicLayout(props: { children: ReactNode }) {
           </p>
           <a
             className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-gold px-3 py-1.5 text-sm font-semibold text-navy hover:bg-gold-light"
-            href="#/entrar"
+            href="#/"
             title={t("public.enter")}
           >
             {t("public.enter_short")}
@@ -105,10 +105,7 @@ function PublicLayout(props: { children: ReactNode }) {
       <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <Brand size={30} dark />
-          <a
-            href="#/entrar"
-            className="rounded-full bg-gold px-3 py-1 text-xs font-semibold text-navy"
-          >
+          <a href="#/" className="rounded-full bg-gold px-3 py-1 text-xs font-semibold text-navy">
             {t("public.enter_short")}
           </a>
         </div>
@@ -125,6 +122,7 @@ export function Layout(props: { children: ReactNode }) {
   const { t } = useTranslation();
   const { meta, login, source, readOnly, visitor } = useApp();
   const removals = useRemovals();
+  const account = source instanceof GitHubDataSource ? source.account : undefined;
   if (visitor) return <PublicLayout>{props.children}</PublicLayout>;
   // Os que acabaste de remover já não contam, mesmo antes de o índice ser actualizado.
   const justRemoved = [...removals.hidden].filter((id) => {
@@ -200,7 +198,7 @@ export function Layout(props: { children: ReactNode }) {
               className="mt-1 truncate text-xs !text-white/50"
               title={`${source.repo.owner}/${source.repo.name}`}
             >
-              {login} · {source.repo.name}
+              {account ? account.user.name : login} · {source.repo.name}
             </p>
           </div>
         </div>
@@ -218,6 +216,7 @@ export function Layout(props: { children: ReactNode }) {
       </header>
       <Main>
         <GuestBanner />
+        <AccountWatcher />
         {props.children}
       </Main>
     </div>
@@ -259,6 +258,32 @@ function GuestBanner() {
       {until ? ` ${t("invite.until", { when: formatWhen(until) })}` : ""}.
     </p>
   );
+}
+
+/** Quem entrou com conta: de 2 em 2 minutos confirma que o dono não lhe tirou o acesso (o
+ * Worker já recusa os pedidos; isto só leva a pessoa de volta à entrada, com a razão). */
+function AccountWatcher() {
+  const { source, logout } = useApp();
+  const account = source instanceof GitHubDataSource ? source.account : undefined;
+  const access = useQuery({
+    queryKey: ["account-access", account?.user.id],
+    enabled: Boolean(account),
+    queryFn: () => (source as GitHubDataSource).accountAccess(),
+    refetchInterval: 120_000,
+  });
+  const now = access.data?.access;
+  const before = account?.user.access;
+  useEffect(() => {
+    if (!now || !before) return;
+    if (now === "none") {
+      setFlash("account_paused");
+      logout();
+    } else if (now !== before) {
+      // Mudou de papel (ex.: de leitor para editor): entra outra vez com o novo.
+      window.location.reload();
+    }
+  }, [now, before, logout]);
+  return null;
 }
 
 /** Área principal. A biblioteca usa a largura toda (estantes e cartões enchem o ecrã);

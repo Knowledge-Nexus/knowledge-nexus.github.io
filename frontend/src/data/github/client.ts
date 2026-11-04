@@ -53,7 +53,7 @@ export class GitHubClient {
   tokenExpiration: string | null = null;
 
   constructor(
-    private readonly token: string,
+    readonly token: string,
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
     private readonly base = "https://api.github.com",
     private readonly maxAttempts = 5,

@@ -1,19 +1,28 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { HashRouter, Link, Navigate, Route, Routes } from "react-router";
+import { HashRouter, Link, Navigate, Route, Routes, useParams } from "react-router";
 import { Layout } from "./components/Layout";
 import { buttonClass, Empty, ErrorBox, Spinner } from "./components/ui";
+import { AccountsApi } from "./data/accounts";
 import { DataProvider, useApp } from "./data/context";
 import { fetchPublicManifest, PublicDataSource } from "./data/public";
-import { clearSession, hasFlash, loadSession, saveSession, setFlash } from "./data/session";
+import {
+  clearSession,
+  hasFlash,
+  loadSession,
+  type StoredSession,
+  saveSession,
+  setFlash,
+} from "./data/session";
 import { DocumentPage } from "./features/document/DocumentPage";
+import { AccountWaiting, type Connected, connect } from "./features/entry/connect";
+import { type Waiting, WelcomePage } from "./features/entry/WelcomePage";
 import { HelpPage } from "./features/help/HelpPage";
 import { HomePage } from "./features/home/HomePage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { ReviewPage } from "./features/review/ReviewPage";
 import { SearchPage } from "./features/search/SearchPage";
-import { type Connected, ConnectPage, connect } from "./features/setup/ConnectPage";
 import { SettingsPage } from "./features/setup/SettingsPage";
 import { SetupPage } from "./features/setup/SetupPage";
 import { UploadPage } from "./features/upload/UploadPage";
@@ -57,6 +66,16 @@ function Shell(props: { connected: Connected; onLogout: () => void }) {
 }
 
 const noop = () => {};
+
+/** Sem sessão: a página de entrada em `/`; qualquer outra página leva lá. */
+function WelcomeOrHome(props: Parameters<typeof WelcomePage>[0]) {
+  return (
+    <Routes>
+      <Route index element={<WelcomePage {...props} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
 
 /** Página pública: o material que o dono marcou como público, só de leitura. */
 function PublicShell() {
@@ -105,23 +124,50 @@ function PublicShell() {
   );
 }
 
+/** Termina a sessão de uma conta no Worker (sem esperar: sair é sempre imediato aqui). */
+function signOutAccount(session: StoredSession | null) {
+  if (session?.account)
+    void new AccountsApi(session.account.api).signOut(session.token).catch(() => {});
+}
+
+/** As ligações que o dono envia: convite (`#/convite/KNC-…`) e repor (`#/repor/KNR-…`). */
+function WelcomeRoute(
+  props: Omit<Parameters<typeof WelcomePage>[0], "invite" | "reset"> & {
+    kind?: "invite" | "reset";
+  },
+) {
+  const { code } = useParams();
+  const { kind, ...rest } = props;
+  return (
+    <WelcomePage
+      {...rest}
+      {...(kind === "invite" && code ? { invite: code } : {})}
+      {...(kind === "reset" && code ? { reset: code } : {})}
+    />
+  );
+}
+
 export function App() {
   const { t } = useTranslation();
   const [connected, setConnected] = useState<Connected | null>(null);
+  const [waiting, setWaiting] = useState<Waiting | null>(null);
   const [restoring, setRestoring] = useState(() => loadSession() !== null);
   const [restoreError, setRestoreError] = useState<unknown>(null);
-  const [toEntry, setToEntry] = useState(false);
 
   useEffect(() => {
     const stored = loadSession();
     if (!stored) return;
     connect(stored)
       .then(setConnected, (error: unknown) => {
-        // Acesso temporário suspenso ou terminado pelo dono: a razão aparece na entrada.
-        if (error instanceof Error && error.message.startsWith("access_")) {
+        if (error instanceof AccountWaiting) {
+          // Conta ainda sem acesso: fica com sessão, a ver o material público.
+          setWaiting({ user: error.user, session: stored });
+        } else if (error instanceof Error && error.message === "account_signed_out") {
+          clearSession();
+        } else if (error instanceof Error && error.message.startsWith("access_")) {
+          // Acesso temporário suspenso ou terminado pelo dono: a razão aparece na entrada.
           clearSession();
           setFlash(error.message);
-          setToEntry(true);
         } else setRestoreError(error);
       })
       .finally(() => setRestoring(false));
@@ -130,14 +176,30 @@ export function App() {
   const onConnected = useCallback((value: Connected) => {
     saveSession(value.session);
     setConnected(value);
+    setWaiting(null);
     setRestoreError(null);
   }, []);
 
+  const onWaiting = useCallback((value: Waiting) => {
+    saveSession(value.session);
+    setWaiting(value);
+  }, []);
+
   const logout = useCallback(() => {
+    signOutAccount(loadSession());
     clearSession();
     queryClient.clear();
     setConnected(null);
+    setWaiting(null);
   }, []);
+
+  const welcome = {
+    onConnected,
+    waiting,
+    onWaiting,
+    onSignOut: logout,
+    restoreError,
+  };
 
   if (restoring) {
     return (
@@ -152,35 +214,33 @@ export function App() {
       <HashRouter>
         <Routes>
           <Route path="/publico/*" element={<PublicShell />} />
+          {/* Ligação antiga para entrar: abre o popup do administrador (ou o do código). */}
           <Route
             path="/entrar"
             element={
-              connected ? (
-                <Navigate to="/" replace />
-              ) : (
-                <>
-                  {restoreError ? (
-                    <div className="mx-auto max-w-lg p-4">
-                      <ErrorBox error={restoreError} />
-                    </div>
-                  ) : null}
-                  <ConnectPage onConnected={onConnected} />
-                </>
-              )
+              <Navigate to={connected ? "/" : hasFlash() ? "/" : "/?entrar=admin"} replace />
             }
           />
-          {/* Sem sessão, quem chega vê a biblioteca pública; para entrar: #/entrar. */}
+          <Route
+            path="/convite/:code"
+            element={
+              connected ? <Navigate to="/" replace /> : <WelcomeRoute {...welcome} kind="invite" />
+            }
+          />
+          <Route
+            path="/repor/:code"
+            element={
+              connected ? <Navigate to="/" replace /> : <WelcomeRoute {...welcome} kind="reset" />
+            }
+          />
+          {/* Sem sessão, quem chega vê a página de entrada (com o material público à vista). */}
           <Route
             path="*"
             element={
               connected ? (
                 <Shell connected={connected} onLogout={logout} />
               ) : (
-                // Saída forçada (acesso suspenso ou terminado): a razão aparece na entrada.
-                <Navigate
-                  to={restoreError || toEntry || hasFlash() ? "/entrar" : "/publico"}
-                  replace
-                />
+                <WelcomeOrHome {...welcome} />
               )
             }
           />

@@ -21,6 +21,7 @@ import {
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
 import { slugify } from "../lib/normalize";
+import type { AccountSession } from "./accounts";
 import { getCached, putCached } from "./cache";
 import { type GitHubClient, GitHubError, type RepoInfo, type WorkflowRun } from "./github/client";
 import { type Change, commitChanges, type RepoRef } from "./github/commit";
@@ -185,14 +186,27 @@ export class GitHubDataSource implements DataSource {
     readonly info?: RepoInfo,
     /** Quem entrou com um código de acesso temporário (vai nas mensagens dos commits). */
     readonly guest?: GuestInfo,
+    /** Quem entrou com uma conta (os pedidos passam pelo Worker, que impõe o papel). */
+    readonly account?: AccountSession,
   ) {}
 
   /**
-   * Entrou com um código «só ver e descarregar»: o token só tem leitura (o GitHub recusa as
-   * escritas) e a interface não mostra nada que mude o repositório.
+   * Entrou com um código «só ver e descarregar» (o token só tem leitura) ou com uma conta de
+   * leitor (o Worker recusa as escritas): a interface não mostra nada que mude o repositório.
    */
   get viewOnly(): boolean {
-    return this.guest?.scope === "read";
+    return this.guest?.scope === "read" || this.account?.user.access === "reader";
+  }
+
+  /** O dono, com o token dele do GitHub (nem código de acesso nem conta). */
+  get isOwner(): boolean {
+    return !this.guest && !this.account;
+  }
+
+  /** Para quem entrou com conta: como está agora (o dono pode ter mudado o papel). */
+  async accountAccess(): Promise<AccountSession["user"] | null> {
+    if (!this.account) return null;
+    return (await this.account.api.me(this.account.token)).user;
   }
 
   /** O registo dos acessos temporários (`acessos.yaml`); vazio se ainda não existir. */
@@ -248,6 +262,7 @@ export class GitHubDataSource implements DataSource {
     onProgress?: (done: number, total: number) => void,
   ): Promise<string> {
     if (this.viewOnly) return Promise.reject(new Error("acesso só para ver e descarregar"));
+    // Com conta, é o Worker que acrescenta quem fez o commit (não depende da interface).
     const signed = this.guest ? `${message}\n\n${guestTrailer(guestName(this.guest))}` : message;
     return commitChanges(this.client, this.repo, changes, signed, maxAttempts, onProgress);
   }
@@ -331,6 +346,7 @@ export class GitHubDataSource implements DataSource {
    * do dono, por isso fica numa pasta própria (nome + início do SHA-256 do token).
    */
   get annotationsDir(): string {
+    if (this.account) return `anotacoes/contas/${this.account.user.id}`;
     if (!this.guest) return `anotacoes/${this.login}`;
     const fingerprint = this.guest.token_sha256?.slice(0, 8);
     const name = slugify(this.guest.name, 30);
@@ -343,6 +359,9 @@ export class GitHubDataSource implements DataSource {
   }
 
   async annotations(docId: string): Promise<AnnotationFile | null> {
+    // Com conta, as marcas são da pessoa e ficam nas contas (não no repositório).
+    if (this.account)
+      return parseAnnotations(await this.account.api.marks(this.account.token, docId));
     if (this.viewOnly) return readLocalAnnotations(this.localAnnotationsKey(docId));
     try {
       return parseAnnotations(
@@ -360,6 +379,14 @@ export class GitHubDataSource implements DataSource {
   }
 
   async saveAnnotations(file: AnnotationFile): Promise<void> {
+    if (this.account) {
+      await this.account.api.saveMarks(
+        this.account.token,
+        file.document,
+        stringifyAnnotations(file),
+      );
+      return;
+    }
     if (this.viewOnly) {
       writeLocalAnnotations(this.localAnnotationsKey(file.document), file);
       return;

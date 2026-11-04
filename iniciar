@@ -24,6 +24,7 @@ if [ "${1:-}" = "verificar" ]; then
   uv run ruff check . && uv run mypy && uv run pytest -q
   uv run python tests/contrato/gerar_indice.py frontend/test-fixtures/contrato
   pnpm -C frontend lint && pnpm -C frontend typecheck && pnpm -C frontend test
+  node --test worker/test/*.test.mjs
   exit 0
 fi
 

@@ -11,6 +11,11 @@ export interface StoredSession {
   remember: boolean;
   /** Entrada com um código de acesso temporário (ver `lib/invite.ts`). */
   guest?: GuestInfo;
+  /**
+   * Entrada com uma conta (`data/accounts.ts`): `token` é a sessão da conta e os pedidos ao
+   * GitHub passam pelo Worker em `api`.
+   */
+  account?: { api: string };
 }
 
 export interface GuestInfo {

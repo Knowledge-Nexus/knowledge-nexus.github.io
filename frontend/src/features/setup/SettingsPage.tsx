@@ -7,6 +7,7 @@ import { useApp } from "../../data/context";
 import { GitHubDataSource } from "../../data/source";
 import { academicYears, formatWhen, useLabels } from "../../lib/labels";
 import { AccessManager } from "./AccessManager";
+import { AccountCard, AccountsManager } from "./AccountsManager";
 import { InviteCard } from "./InviteCard";
 
 export function SettingsPage() {
@@ -25,6 +26,9 @@ export function SettingsPage() {
   ).length;
   const expiration = source instanceof GitHubDataSource ? source.client.tokenExpiration : null;
   const guest = source instanceof GitHubDataSource ? source.guest : undefined;
+  const account = source instanceof GitHubDataSource ? source.account : undefined;
+  // O dono (com o token dele do GitHub): nem código de acesso nem conta.
+  const owner = source instanceof GitHubDataSource && source.isOwner;
 
   async function save() {
     setError(null);
@@ -56,7 +60,7 @@ export function SettingsPage() {
       <Card title={t("settings.repository")}>
         <p className="text-sm">
           {source.repo.owner}/{source.repo.name} ({source.repo.branch}) · {t("settings.user")}:{" "}
-          <strong>{login}</strong>
+          <strong>{account ? account.user.name : login}</strong>
         </p>
         {expiration && (
           <p className="text-xs text-muted">
@@ -72,10 +76,13 @@ export function SettingsPage() {
           </Button>
         </div>
       </Card>
-      {!guest && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
-      {!guest && source instanceof GitHubDataSource && <AccessManager source={source} />}
-      {/* «Só ver e descarregar»: nada do que se segue muda o material, mas grava escolhas. */}
-      {guest?.scope !== "read" && (
+      {account && <AccountCard account={account} />}
+      {owner && <AccountsManager token={source.client.token} />}
+      {owner && <InviteCard owner={source.repo.owner} name={source.repo.name} />}
+      {owner && <AccessManager source={source} />}
+      {/* «Só ver e descarregar» e contas: nada do que se segue é para eles (são escolhas do
+          dono: partilha e inscrições). */}
+      {guest?.scope !== "read" && !account && (
         <>
           <Card title={t("settings.sharing")}>
             <div className="space-y-2 text-sm">

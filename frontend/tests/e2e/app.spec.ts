@@ -3,6 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import YAML from "yaml";
 import { FakeGitHub } from "../../src/data/github/fake";
@@ -27,12 +28,78 @@ const CORS = {
   "access-control-expose-headers": "*",
 };
 
+// O Worker (originais no R2 e contas) é o verdadeiro, com uma D1 em memória (node:sqlite) e o
+// GitHub simulado por trás: as contas testam-se de ponta a ponta, sem rede.
+const WORKER_URL = "https://nexus-ficheiros.nightmareftw.workers.dev";
+const workerFile = (path: string) =>
+  pathToFileURL(resolve(import.meta.dirname, "../../../worker", path)).href;
+type WorkerHandle = (
+  request: Request,
+  env: Record<string, unknown>,
+  fetchImpl: (url: string, init?: RequestInit) => Promise<Response>,
+) => Promise<Response>;
+const workerEnvs = new WeakMap<FakeGitHub, Record<string, unknown>>();
+
+async function workerEnv(fake: FakeGitHub) {
+  const existing = workerEnvs.get(fake);
+  if (existing) return existing;
+  const { fakeD1 } = await import(workerFile("test/d1.mjs"));
+  const { resetGitHubCache } = await import(workerFile("src/github.js"));
+  resetGitHubCache();
+  const env = {
+    DB: fakeD1(),
+    DATA_REPOS: REPO,
+    ALLOWED_ORIGINS: "http://localhost:4173",
+    GITHUB_TOKEN: fake.token,
+    BUCKET: {
+      head: async () => null,
+      get: async () => null,
+      put: async () => {},
+      list: async () => ({ objects: [], truncated: false }),
+    },
+  };
+  workerEnvs.set(fake, env);
+  return env;
+}
+
+async function routeWorker(page: Page, fake: FakeGitHub) {
+  const { handle } = (await import(workerFile("src/index.js"))) as { handle: WorkerHandle };
+  const env = await workerEnv(fake);
+  await page.route(`${WORKER_URL}/**`, async (route) => {
+    const request = route.request();
+    const body = request.postDataBuffer();
+    const response = await handle(
+      new Request(request.url(), {
+        method: request.method(),
+        headers: request.headers(),
+        ...(body && !["GET", "HEAD"].includes(request.method())
+          ? { body: new Uint8Array(body) }
+          : {}),
+      }),
+      env,
+      (url, init) => fake.fetch(String(url), init),
+    );
+    await route.fulfill({
+      status: response.status,
+      headers: Object.fromEntries(response.headers),
+      body: Buffer.from(await response.arrayBuffer()),
+    });
+  });
+}
+
 async function withFakeGitHub(page: Page, options: { private?: boolean } = {}) {
   const fake = new FakeGitHub();
   fake.addRepo(REPO, decode(snapshot.main), {
     private: options.private ?? true,
     indices: decode(snapshot.indices),
   });
+  await routeGitHub(page, fake);
+  return fake;
+}
+
+/** O GitHub simulado e o Worker para uma página (outra pessoa, noutro browser). */
+async function routeGitHub(page: Page, fake: FakeGitHub) {
+  await routeWorker(page, fake);
   await page.route("https://api.github.com/**", async (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
@@ -51,7 +118,6 @@ async function withFakeGitHub(page: Page, options: { private?: boolean } = {}) {
       body: Buffer.from(await response.arrayBuffer()),
     });
   });
-  return fake;
 }
 
 async function login(page: Page, fake: FakeGitHub, options: { refused?: boolean } = {}) {
@@ -211,8 +277,15 @@ test("visitante vê só o material público, sem token", async ({ page }) => {
     if (!body) return route.fulfill({ status: 404, body: "" });
     await route.fulfill({ status: 200, body });
   });
-  // Sem sessão, a entrada é a biblioteca pública.
+  // Sem o Worker das contas: só «Tenho um código» e «Administrador» no canto.
+  await page.route(`${WORKER_URL}/**`, (route) => route.abort());
+  // Sem sessão, a entrada é a página de apresentação, com o material público à vista.
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: /O teu material de estudo/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Administrador" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tenho um código" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Criar conta" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Ver o material público" }).click();
   await expect(page).toHaveURL(/#\/publico$/);
   await expect(page.getByRole("heading", { name: "Material partilhado" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Entrar", exact: true }).first()).toBeVisible();
@@ -801,6 +874,88 @@ test.describe("PDF num ecrã de alta densidade", () => {
   });
 });
 
+test("contas: criar conta, o dono dá acesso, convite e suspensão", async ({ page, browser }) => {
+  const fake = await withFakeGitHub(page);
+  const env = await workerEnv(fake);
+  // Uma pessoa cria conta: fica à espera, a ver o material público.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  const signUp = page.getByRole("dialog", { name: "Criar conta" });
+  await signUp.getByLabel("Nome").fill("Rita");
+  await signUp.getByLabel("Email").fill("rita@exemplo.pt");
+  await signUp.getByLabel("Palavra-passe").fill("segredo-longo");
+  await signUp.getByRole("button", { name: "Criar conta" }).click();
+  await expect(page.getByText("Olá, Rita: a tua conta está criada.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver o material público" })).toBeVisible();
+
+  // O dono, noutro browser, dá-lhe «Ver e descarregar» e cria um convite com acesso total.
+  const ownerContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  await routeGitHub(owner, fake);
+  await login(owner, fake);
+  await owner.getByRole("link", { name: "Definições" }).first().click();
+  await owner
+    .getByRole("listitem", { name: "Rita" })
+    .getByRole("button", { name: "Dar «Ver e descarregar»" })
+    .click();
+  await expect(owner.getByRole("combobox", { name: "Acesso de Rita" })).toHaveValue("reader");
+  await owner.getByRole("combobox", { name: "Acesso", exact: true }).selectOption("editor");
+  await owner.getByLabel("Para quem (opcional)").fill("Joana");
+  await owner.getByRole("button", { name: "Criar convite" }).click();
+  const link = await owner.getByLabel("Ligação do convite").inputValue();
+  expect(link).toMatch(/#\/convite\/KNC-/);
+
+  // A Rita volta: entra na biblioteca, mas não deposita nem revê.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "principal" });
+  await expect(nav.getByRole("link", { name: "Depositar" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: /A rever/ })).toHaveCount(0);
+  await expect(page.getByText("Rita · estudo-dados")).toBeVisible();
+  await nav.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Análise Matemática I/ }).first()).toBeVisible();
+
+  // A Joana abre o convite, cria conta e entra logo com acesso total.
+  const joanaContext = await browser.newContext();
+  const joana = await joanaContext.newPage();
+  await routeGitHub(joana, fake);
+  await joana.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  const invited = joana.getByRole("dialog", { name: "Criar conta" });
+  await expect(invited.getByText("Este convite dá-te acesso: Acesso total")).toBeVisible();
+  await invited.getByLabel("Nome").fill("Joana");
+  await invited.getByLabel("Email").fill("joana@exemplo.pt");
+  await invited.getByLabel("Palavra-passe").fill("outro-segredo");
+  await invited.getByRole("button", { name: "Criar conta" }).click();
+  await expect(joana.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
+  // O que faz vai por um commit com o nome dela (escrito pelo Worker, não pela interface).
+  await joana
+    .getByRole("navigation", { name: "principal" })
+    .getByRole("link", { name: /A rever/ })
+    .click();
+  await joana.getByRole("button", { name: "grafos_ficha2.pdf" }).click();
+  await joana.getByRole("button", { name: "Remover este ficheiro" }).click();
+  await joana.getByRole("alertdialog").getByRole("button", { name: "Remover" }).click();
+  await expect(joana.getByText(/Removeste grafos_ficha2\.pdf/)).toBeVisible();
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.message).toContain("Feito por: Joana (conta joana@exemplo.pt)");
+
+  // Suspensa pelo dono, a Rita deixa de ver a biblioteca (o Worker recusa logo).
+  await owner.reload();
+  await owner
+    .getByRole("listitem", { name: "Rita" })
+    .getByRole("button", { name: "Suspender" })
+    .click();
+  await expect(
+    owner.getByRole("listitem", { name: "Rita" }).getByText("suspensa", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/suspendeu o teu acesso/)).toBeVisible();
+  const db = env.DB as { raw: { prepare: (sql: string) => { get: () => unknown } } };
+  expect(db.raw.prepare("SELECT count(*) AS n FROM users").get()).toEqual({ n: 2 });
+  await ownerContext.close();
+  await joanaContext.close();
+});
+
 test("acesso temporário: o dono cria um código e outra pessoa entra com ele", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
@@ -817,8 +972,8 @@ test("acesso temporário: o dono cria um código e outra pessoa entra com ele", 
 
   // Outra pessoa (sem sessão) entra com o código.
   await page.getByRole("button", { name: "Terminar sessão" }).first().click();
-  await page.goto("/#/entrar");
-  await page.getByLabel("Código de acesso").fill(code);
+  await page.goto("/#/?entrar=codigo");
+  await page.getByRole("dialog").getByLabel("Código de acesso").fill(code);
   await page.getByRole("button", { name: "Entrar com o código" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Acesso temporário de Ana" }),
@@ -861,8 +1016,8 @@ test("código «só ver e descarregar»: vê e descarrega tudo, não muda nada",
 
   // Rui entra com o código: vê tudo, nada para mudar.
   await page.getByRole("button", { name: "Terminar sessão" }).first().click();
-  await page.goto("/#/entrar");
-  await page.getByLabel("Código de acesso").fill(code);
+  await page.goto("/#/?entrar=codigo");
+  await page.getByRole("dialog").getByLabel("Código de acesso").fill(code);
   await page.getByRole("button", { name: "Entrar com o código" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Acesso só para ver e descarregar de Rui" }),
@@ -956,8 +1111,8 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
 
   // Com o acesso suspenso, o código não entra.
   await page.getByRole("button", { name: "Terminar sessão" }).first().click();
-  await page.goto("/#/entrar");
-  await page.getByLabel("Código de acesso").fill(code);
+  await page.goto("/#/?entrar=codigo");
+  await page.getByRole("dialog").getByLabel("Código de acesso").fill(code);
   await page.getByRole("button", { name: "Entrar com o código" }).click();
   await expect(page.getByText(/O teu acesso foi suspenso/)).toBeVisible();
 
@@ -970,8 +1125,8 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
     .click();
   await expect(page.getByRole("listitem", { name: "Ana" }).getByText("activo")).toBeVisible();
   await page.getByRole("button", { name: "Terminar sessão" }).first().click();
-  await page.goto("/#/entrar");
-  await page.getByLabel("Código de acesso").fill(code);
+  await page.goto("/#/?entrar=codigo");
+  await page.getByRole("dialog").getByLabel("Código de acesso").fill(code);
   await page.getByRole("button", { name: "Entrar com o código" }).click();
   // Entrou com o código antigo, mas vê o nome novo.
   await expect(
