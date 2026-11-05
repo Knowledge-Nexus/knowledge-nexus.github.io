@@ -191,6 +191,17 @@ def app_has_update(checkout: Path) -> bool:
     return remote_has_news(git, "origin", branch)
 
 
+# Sem rede (no WSL, quase sempre o DNS depois de suspender o PC ou mudar de rede): o git não
+# chega ao GitHub. Diz-se uma vez o que fazer, em vez de repetir o erro do git a cada ciclo.
+_OFFLINE_MARKS = ("Could not resolve host", "Temporary failure in name resolution",
+                  "Failed to connect to", "Network is unreachable")
+OFFLINE_REMINDER_EVERY = 10
+
+
+def is_offline(exc: GitError) -> bool:
+    return any(mark in str(exc) for mark in _OFFLINE_MARKS)
+
+
 def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
           sleep: Callable[[float], None] = time.sleep,
           has_update: Callable[[], bool] | None = None) -> bool:
@@ -202,16 +213,31 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
     every = max(1, UPDATE_EVERY // max(interval, 1))
     force = True
     cycle = 0
+    offline = 0
     public = PublicState()
     while True:
         try:
             serve_once(root, force=force, sleep=sleep)
             force = False
+            if offline:
+                log.info("ligação ao GitHub de volta")
+                offline = 0
             publish_public_if_due(root, public)
         except RemoteBusy as exc:
             log.info("%s", exc)
         except GitError as exc:
-            log.error("falhou, tenta de novo no próximo ciclo: %s", exc)
+            if not is_offline(exc):
+                log.error("falhou, tenta de novo no próximo ciclo: %s", exc)
+            elif offline == 0:
+                log.error(
+                    "sem ligação ao GitHub: este computador não encontra o github.com (DNS ou "
+                    "rede). No WSL: no PowerShell do Windows, corre `wsl --shutdown` e abre o "
+                    ".bat de novo; para não voltar a acontecer, docs/configuracao.md, 4.1. "
+                    "Continua a tentar de %d em %d s.", interval, interval)
+            elif offline % OFFLINE_REMINDER_EVERY == 0:
+                log.warning("ainda sem ligação ao GitHub (%d tentativas)", offline + 1)
+            if is_offline(exc):
+                offline += 1
         except Exception:
             log.exception("erro inesperado, tenta de novo no próximo ciclo")
         if once:

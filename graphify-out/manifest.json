@@ -432,9 +432,9 @@
     "semantic_hash": "20b644a52fa77045746a5eaf4c6c6003"
   },
   "backend/nexus/serve.py": {
-    "mtime": 1793823700.9221663,
-    "seen": 1793831800.0123072,
-    "ast_hash": "748d1b658d23fe28baa58bf95e9848e1",
+    "mtime": 1793894018.9661956,
+    "seen": 1793894118.7734807,
+    "ast_hash": "0e6bcb85db18fa26fb60bc04117963f9",
     "semantic_hash": ""
   },
   "backend/nexus/sharing.py": {
@@ -1182,10 +1182,10 @@
     "semantic_hash": "4697f889881af98d69981db85dd1b909"
   },
   "tests/backend/test_serve.py": {
-    "mtime": 1793816250.6923635,
-    "seen": 1793819413.8467662,
-    "ast_hash": "69e078b6978bca65db4c596cc7258aa4",
-    "semantic_hash": "69e078b6978bca65db4c596cc7258aa4"
+    "mtime": 1793894018.966912,
+    "seen": 1793894118.7736192,
+    "ast_hash": "723cc3aa769544688e9a294e4c0e765e",
+    "semantic_hash": ""
   },
   "tests/backend/test_unpack.py": {
     "mtime": 1793653744.8555527,

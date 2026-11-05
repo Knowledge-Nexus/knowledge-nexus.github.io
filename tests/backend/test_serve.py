@@ -193,6 +193,35 @@ def test_busy_remote_is_not_an_error(tmp_path: Path, monkeypatch, caplog) -> Non
     assert [r.levelno for r in caplog.records if "continua a mudar" in r.message] == [logging.INFO]
 
 
+def test_without_network_it_says_once_what_to_do(tmp_path: Path, monkeypatch, caplog) -> None:
+    import logging
+
+    from nexus import serve as serve_module
+    from nexus.datarepo.git import GitError
+
+    calls = {"n": 0}
+
+    def offline(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= 12:
+            raise GitError("git fetch -q origin main falhou (128): fatal: unable to access "
+                           "'https://github.com/x/y.git/': Could not resolve host: github.com")
+
+    monkeypatch.setattr(serve_module, "serve_once", offline)
+    monkeypatch.setattr(serve_module, "publish_public_if_due", lambda *a, **k: None)
+    with caplog.at_level(logging.INFO, logger="nexus.serve"):
+        assert serve(tmp_path, interval=600, sleep=lambda s: None,
+                     has_update=lambda: calls["n"] >= 13)
+    messages = [(r.levelno, r.message) for r in caplog.records]
+    assert [m for lvl, m in messages if lvl == logging.ERROR] == [
+        m for lvl, m in messages if "sem ligação ao GitHub" in m and lvl == logging.ERROR]
+    assert len([m for lvl, m in messages if lvl == logging.ERROR]) == 1
+    assert "wsl --shutdown" in messages[0][1]
+    assert [m for lvl, m in messages if lvl == logging.WARNING] == [
+        "ainda sem ligação ao GitHub (11 tentativas)"]
+    assert (logging.INFO, "ligação ao GitHub de volta") in messages
+
+
 def test_serve_migrates_and_processes_in_batches(git_root: Path, monkeypatch) -> None:
     """Sem o Actions, o servir faz o que ele fazia: migra o formato dos ficheiros e trata um
     depósito grande aos bocados (o que já está feito aparece logo na biblioteca)."""
