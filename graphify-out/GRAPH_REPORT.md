@@ -1,17 +1,17 @@
-# Graph Report - knowledge-nexus.github.io  (2026-11-05)
+# Graph Report - knowledge-nexus.github.io  (2026-11-15)
 
 ## Corpus Check
-- 235 files · ~168,430 words
+- 236 files · ~169,146 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 12 file(s) not represented in the graph (top: (none) 6, .example 1, .mako 1)
 
 ## Summary
-- 3166 nodes · 9835 edges · 113 communities (95 shown, 18 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 982 edges (avg confidence: 0.89)
+- 3174 nodes · 9849 edges · 109 communities (96 shown, 13 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 986 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `550c1ebf`
+- Built from commit: `b68f5df9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -21,26 +21,26 @@
 - Propostas de catálogo e texto
 - Estantes, cursos e configuração
 - _repo
-- nexus/questions.py
+- Record
 - nexus vigiar e API GitHub
 - r2.py
 - Reconciliação do pipeline
-- GitHubDataSource
-- builder.py
-- Vocabularies
+- ErrorBox
+- ocr.py
+- raspberry-pi/instalar.sh
 - Modo de leitura e ícones
 - Remover e «A rever»
 - Página de entrada
 - Gravar marcas de leitura
 - DataRepo
-- main
-- BulkReview.tsx
-- Record
+- scaffold/__init__.py
+- types.ts
+- write_extraction
 - classification
 - source.ts
 - Testes da classificação
 - Reason
-- dump_yaml
+- BundleEditor.tsx
 - Fontes de dados e cache
 - Abrir arquivos (unpack)
 - document_types
@@ -51,13 +51,13 @@
 - Contas no Worker
 - API das contas (interface)
 - Cliente da API GitHub
-- Visibility.tsx
+- pipeline.yml
 - Catálogo de exemplo
 - Layout
 - Índice e tipos da interface
 - Workflow de CI
 - Credencial GitHub do Worker
-- DataRepo
+- gerar_repo.py
 - proxy.js
 - extract_file
 - read_yaml
@@ -65,14 +65,14 @@
 - Projectos de código
 - HttpError
 - Regras de partilha e visibilidade (documento, tipo, cadeira, privado)
-- RunReport
+- nexus.yml
 - Configuração do Biome
 - Repositório de dados (privado)
 - bundles.py
 - Gestão dos acessos
 - Depositar ficheiros
 - test_serve.py
-- domain/questions.py
+- remove_unit
 - Dependências de desenvolvimento
 - config.py
 - Utilitários e cofre de códigos
@@ -81,13 +81,13 @@
 - app-ref
 - Git
 - raspberry-pi/instalar.sh
-- _write_entity
+- vigiar-deposito.sh
 - Cursos e ligações
-- test_index_publish.py
+- builder.py
 - Skills de revisão e catálogo
 - Modo de leitura
 - Privacidade e CSP
-- ReaderPage
+- with
 - Skill processar depósito
 - shutil
 - FakeGitHub
@@ -96,31 +96,27 @@
 - _Corpus
 - index.js
 - catalog_io.py
-- GitRepoBlobStore
+- pipeline
 - Workflow Pages
 - Estrutura do repositório de dados
-- ErrorBox
+- useApp
 - Skills do Claude Code no repositório de dados
 - env
 - SKILL.md
-- nexus.yml
+- reclassificar
 - Scripts da interface
 - app.spec.ts
 - Migração das contas (D1)
 - Migração de formatos
 - nexus.yaml do template
-- DataRepoError
+- steps
 - Configuração Vite
 - screenshots.spec.ts
-- migrations.py
-- session.ts
 - scaffold
 - conftest.py
 - Migração dos códigos (D1)
 - Projecto Python
-- run.py
-- public.py
-- index.html (entrada da interface)
+- store.py
 - Contas no Worker do Cloudflare (D1)
 
 ## God Nodes (most connected - your core abstractions)
@@ -136,16 +132,16 @@
 10. `deposit()` - 48 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Versão do extractor (provoca nova extracção)` --references--> `expected_extractor()`  [INFERRED]
-  CLAUDE.md → backend/nexus/pipeline/extract/__init__.py
 - `A IA é discreta (certeza em palavras, sugestão automática)` --references--> `ConfidenceBadge()`  [INFERRED]
   CLAUDE.md → frontend/src/components/ui.tsx
-- `acessos.yaml (acessos temporários sem tokens)` --references--> `only_personal()`  [INFERRED]
-  docs/repo-dados.md → backend/nexus/serve.py
-- `Segredo NEXUS_PUBLICO_TOKEN` --references--> `publish_public_if_due()`  [INFERRED]
-  docs/configuracao.md → backend/nexus/serve.py
-- `Extracção (texto/<sha>/meta.json)` --references--> `ExtractionMeta`  [INFERRED]
-  docs/modelo-dados.md → backend/nexus/domain/extraction.py
+- `Versão do extractor (provoca nova extracção)` --references--> `expected_extractor()`  [INFERRED]
+  CLAUDE.md → backend/nexus/pipeline/extract/__init__.py
+- `Vocabulários` --references--> `Vocabularies`  [INFERRED]
+  docs/modelo-dados.md → backend/nexus/domain/vocab.py
+- `Regras de partilha e visibilidade (documento, tipo, cadeira, privado)` --references--> `Sharing`  [INFERRED]
+  docs/modelo-dados.md → backend/nexus/domain/users.py
+- `Blob` --references--> `BlobRef`  [INFERRED]
+  docs/modelo-dados.md → backend/nexus/domain/documents.py
 
 ## Import Cycles
 - None detected.
@@ -158,7 +154,7 @@
 - **Etapas do pipeline nexus processar** — docs_arquitectura_pipeline_processar, docs_arquitectura_etapa_pedidos_catalogo, docs_arquitectura_etapa_recepcao, docs_arquitectura_etapa_reconciliacao, docs_arquitectura_publicacao [EXTRACTED 1.00]
 - **Dados pessoais guardados na Cloudflare D1** — frontend_public_privacidade_account_data, frontend_public_privacidade_session_identifier, frontend_public_privacidade_reading_marks, frontend_public_privacidade_cloudflare_d1_storage [EXTRACTED 1.00]
 
-## Communities (113 total, 18 thin omitted)
+## Communities (109 total, 13 thin omitted)
 
 ### Community 0 - "Testes do pipeline"
 Cohesion: 0.11
@@ -166,47 +162,47 @@ Nodes (51): pasta_exemplo(), pdf_nativo(), projecto_codigo(), deposit(), docs(),
 
 ### Community 1 - "LibraryPage.tsx"
 Cohesion: 0.08
-Nodes (47): Página da cadeira (UnitDetail), Nome dado pelo dono (classification.title), FileBadge(), fileFormat(), FORMATS, EditButton(), useApp(), ClassificationFields() (+39 more)
+Nodes (46): Página da cadeira (UnitDetail), Nome dado pelo dono (classification.title), IconGlobe(), IconLock(), Badge(), Choice, ConfirmPublic(), DocChoice (+38 more)
 
 ### Community 2 - "Propostas de catálogo e texto"
 Cohesion: 0.06
-Nodes (37): Catalog, roman(), sequel_after(), series_number(), acceptable(), _clean(), detect(), add() (+29 more)
+Nodes (39): Catalog, contains_unit_phrase(), _numbers_after(), roman(), sequel_after(), series_number(), acceptable(), _clean() (+31 more)
 
 ### Community 3 - "Estantes, cursos e configuração"
 Cohesion: 0.08
-Nodes (58): Biblioteca em estantes curso e ano, Editar no sítio (lápis, method: user), Sugestões ao registar (lista de referência pt.json), SuggestInput(), Notice(), unitColor(), CatalogBundle, CourseRow (+50 more)
+Nodes (56): Biblioteca em estantes curso e ano, Sugestões ao registar (lista de referência pt.json), SuggestInput(), Notice(), unitColor(), CatalogBundle, CourseRow, CourseCreator() (+48 more)
 
 ### Community 4 - "_repo"
-Cohesion: 0.09
-Nodes (36): catalogo_aceitar(), catalogo_exportar(), catalogo_importar(), catalogo_propostas(), catalogo_rejeitar(), documento_mostrar(), documento_texto(), exportar_arvore() (+28 more)
+Cohesion: 0.08
+Nodes (37): catalogo_aceitar(), catalogo_exportar(), catalogo_importar(), catalogo_propostas(), catalogo_rejeitar(), documento_mostrar(), documento_texto(), exportar_arvore() (+29 more)
 
-### Community 5 - "nexus/questions.py"
-Cohesion: 0.13
-Nodes (20): QuestionSet, _blocks(), build(), _check_numbering(), describe(), _document(), exclusion(), _folded() (+12 more)
+### Community 5 - "Record"
+Cohesion: 0.05
+Nodes (39): fixed(), now(), Assessment, UnitEdition, Record, ManifestFile, ManifestIgnored, Generated (+31 more)
 
 ### Community 6 - "nexus vigiar e API GitHub"
-Cohesion: 0.06
-Nodes (17): GitHub, GitHubApiError, Repo, Api, batch_id(), candidate_files(), _move(), Pending (+9 more)
+Cohesion: 0.05
+Nodes (23): deep_merge(), _defaults(), load_settings(), GitHub, GitHubApiError, Repo, Api, batch_id() (+15 more)
 
 ### Community 7 - "r2.py"
 Cohesion: 0.07
 Nodes (17): migrate_originals(), MigrationReport, _originals(), _sha256(), HybridBlobStore, QuotaExceeded, R2BlobStore, _s3_client() (+9 more)
 
 ### Community 8 - "Reconciliação do pipeline"
-Cohesion: 0.07
-Nodes (16): Document, Status, slugify(), _question_rows(), member_name(), filed_name(), original_stem(), unique_name() (+8 more)
+Cohesion: 0.05
+Nodes (24): Document, HistoryEntry, CatalogProposal, Evidence, slugify(), member_name(), filed_name(), original_stem() (+16 more)
 
-### Community 9 - "GitHubDataSource"
-Cohesion: 0.12
-Nodes (8): manifest.json (built_from, built_at, SHA-256), readCurrent(), guestName(), GitHubDataSource, nowIso(), pad(), yamlUpdate(), IndexManifest
+### Community 9 - "ErrorBox"
+Cohesion: 0.18
+Nodes (25): Button(), Card(), ErrorBox(), siteLink(), WaitingPanel(), UnitEditor(), remove(), save() (+17 more)
 
-### Community 10 - "builder.py"
-Cohesion: 0.10
-Nodes (16): Topic, effective_visibility(), is_public(), type_key(), Visibility, _v1_visibility_inherits(), BuildResult, _dump() (+8 more)
+### Community 10 - "ocr.py"
+Cohesion: 0.23
+Nodes (7): MissingToolError, require(), which(), _has_osd(), ocr_image(), OcrResult, _parse_tsv()
 
-### Community 11 - "Vocabularies"
-Cohesion: 0.14
-Nodes (5): Classification, Term, Vocabularies, inherit(), weak()
+### Community 11 - "raspberry-pi/instalar.sh"
+Cohesion: 0.37
+Nodes (11): as_nexus(), ask(), info(), install_all(), say(), set_env(), instalar.sh script, uninstall() (+3 more)
 
 ### Community 12 - "Modo de leitura e ícones"
 Cohesion: 0.12
@@ -214,47 +210,55 @@ Nodes (42): IconArchive(), IconBookOpen(), IconChevronLeft(), IconChevronRight()
 
 ### Community 13 - "Remover e «A rever»"
 Cohesion: 0.10
-Nodes (42): IconTrash(), downloadOriginal(), labelOf(), Removal, RemoveButton(), remove(), RemoveDialog(), remove() (+34 more)
+Nodes (43): IconTrash(), downloadOriginal(), labelOf(), Removal, RemoveButton(), remove(), RemoveDialog(), remove() (+35 more)
 
 ### Community 14 - "Página de entrada"
-Cohesion: 0.17
-Nodes (29): Página de apresentação e popups de entrada, BrandBanner(), IconGoogle(), IconShield(), IconTicket(), IconUser(), IconUserPlus(), Modal() (+21 more)
+Cohesion: 0.09
+Nodes (49): Identidade visual (pergaminho, azul-marinho e dourado), Página de apresentação e popups de entrada, App(), signOutAccount(), WelcomeOrHome(), WelcomeRoute(), BRAND, BrandBanner() (+41 more)
 
 ### Community 15 - "Gravar marcas de leitura"
-Cohesion: 0.11
-Nodes (34): draftKey(), dropDraft(), marksKey(), readDraft(), SAVE_DELAY_MS, SaveState, scope(), useMarkEditor() (+26 more)
+Cohesion: 0.09
+Nodes (43): MarksLayer(), StrokeShape(), ReaderPage(), finish(), onPointerDown(), onPointerMove(), draftKey(), dropDraft() (+35 more)
 
 ### Community 16 - "DataRepo"
-Cohesion: 0.11
-Nodes (17): blocks(), exam(), make_exam(), refused(), _rows(), test_a_missing_question_or_text_between_blocks_is_refused(), test_a_question_rewritten_by_the_ai_is_refused(), test_a_question_using_an_excluded_case_is_not_shown_either() (+9 more)
+Cohesion: 0.17
+Nodes (21): DataRepo, Group, blocks(), exam(), make_exam(), refused(), _rows(), test_a_missing_question_or_text_between_blocks_is_refused() (+13 more)
 
-### Community 18 - "BulkReview.tsx"
-Cohesion: 0.11
-Nodes (37): BundleEditor(), save(), shortPath(), IconStack(), ButtonVariant, certaintyLevel(), ConfidenceBadge(), methodKind() (+29 more)
+### Community 17 - "scaffold/__init__.py"
+Cohesion: 0.21
+Nodes (4): config_dir(), _render(), scaffold(), ScaffoldReport
 
-### Community 19 - "Record"
-Cohesion: 0.12
-Nodes (9): Assessment, Record, Removal, Enrollments, Group, GroupMember, Preferences, Sharing (+1 more)
+### Community 18 - "types.ts"
+Cohesion: 0.06
+Nodes (61): Editar no sítio (lápis, method: user), Montagem da aplicação (#root e /src/main.tsx), ButtonVariant, certaintyLevel(), ConfidenceBadge(), EditButton(), methodKind(), ReasonList() (+53 more)
+
+### Community 19 - "write_extraction"
+Cohesion: 0.18
+Nodes (5): write_text_if_changed(), PageMeta, write_extraction(), simhash(), test_write_extraction_layout()
 
 ### Community 20 - "classification"
-Cohesion: 0.05
-Nodes (35): _text_only(), CLASSIFIER_VERSION (reclassificação), Opção file_uncertain_type (tipo por confirmar), Versão do extractor (provoca nova extracção), classification, academic_year_start_month, auto_file_threshold, body_pages (+27 more)
+Cohesion: 0.06
+Nodes (32): _text_only(), CLASSIFIER_VERSION (reclassificação), Opção file_uncertain_type (tipo por confirmar), Versão do extractor (provoca nova extracção), classification, academic_year_start_month, auto_file_threshold, body_pages (+24 more)
 
 ### Community 21 - "source.ts"
-Cohesion: 0.08
-Nodes (28): AccountError, AccountInvite, ACCOUNTS_URL, AccountsConfig, AccountSession, FetchLike, AppData, RepoInfo (+20 more)
+Cohesion: 0.07
+Nodes (29): AccountSession, AppData, RepoInfo, Change, RepoRef, GuestInfo, guestName(), APP_REPOSITORY (+21 more)
 
 ### Community 22 - "Testes da classificação"
-Cohesion: 0.13
-Nodes (26): _classifier(), _custom(), _doc(), test_acronym_must_be_written_as_acronym(), test_ambiguous_goes_to_review_with_alternatives(), test_assessment_date_variant_and_ordinal(), test_enrolled_units_are_preferred(), test_exam_statement_is_confident() (+18 more)
+Cohesion: 0.11
+Nodes (29): _classifier(), _custom(), _doc(), _signal(), test_acronym_must_be_written_as_acronym(), test_ambiguous_goes_to_review_with_alternatives(), test_assessment_date_variant_and_ordinal(), test_enrolled_units_are_preferred() (+21 more)
 
 ### Community 23 - "Reason"
-Cohesion: 0.10
-Nodes (29): Alternative, FieldValue, Reason, contains_phrase(), contains_unit_phrase(), User, Classifier, pick() (+21 more)
+Cohesion: 0.08
+Nodes (29): Alternative, Classification, FieldValue, Reason, contains_phrase(), inherit(), Classifier, pick() (+21 more)
+
+### Community 24 - "BundleEditor.tsx"
+Cohesion: 0.33
+Nodes (9): BundleEditor(), save(), shortPath(), FileBadge(), fileFormat(), FORMATS, IconStack(), BundleMembers() (+1 more)
 
 ### Community 25 - "Fontes de dados e cache"
-Cohesion: 0.07
-Nodes (16): Abertura de PDFs por partes (PDFDataRangeTransport), clearCache(), Entry, getCached(), openDb(), putCached(), WorkflowRun, fetchPublicManifest() (+8 more)
+Cohesion: 0.06
+Nodes (21): manifest.json (built_from, built_at, SHA-256), clearCache(), Entry, getCached(), openDb(), putCached(), WorkflowRun, fetchPublicManifest() (+13 more)
 
 ### Community 26 - "Abrir arquivos (unpack)"
 Cohesion: 0.13
@@ -262,19 +266,19 @@ Nodes (26): ArchiveSettings, ArchiveToolMissing, _Budget, _collect_staged(), _co
 
 ### Community 27 - "document_types"
 Cohesion: 0.06
-Nodes (39): Vocabulário do repositório de dados substitui o da aplicação, assessment_types, keywords, labels, patterns, slug, document_types, excluded_by (+31 more)
+Nodes (42): Vocabulário do repositório de dados substitui o da aplicação, assessment_types, keywords, labels, patterns, slug, document_types, excluded_by (+34 more)
 
 ### Community 28 - "Recepção do depósito"
-Cohesion: 0.08
-Nodes (16): uuid7(), BlobRef, BundleRef, DocumentKind, HistoryEntry, Review, Source, sha256_file() (+8 more)
+Cohesion: 0.12
+Nodes (13): uuid7(), BlobRef, Review, Source, mime_of(), sha256_file(), DepositItem, default_cache_dir() (+5 more)
 
 ### Community 29 - "test_domain.py"
-Cohesion: 0.17
-Nodes (13): CatalogError, _check_slug(), import_bundle(), load_catalog(), remove_course(), test_catalog_import_is_idempotent(), test_catalog_import_rejects_bad_slug(), test_catalog_import_rejects_unknown_unit_reference() (+5 more)
+Cohesion: 0.23
+Nodes (8): load_catalog(), test_catalog_import_is_idempotent(), test_catalog_import_rejects_unknown_unit_reference(), test_catalog_request_adds_aliases_without_losing_existing(), test_catalog_request_keeps_fields_it_does_not_mention(), test_normalize_unifies_spellings(), test_slugify(), test_uuid7_is_version_7_and_sortable()
 
 ### Community 30 - "Visor de documentos e PDF"
-Cohesion: 0.12
-Nodes (29): DocumentPreview(), hasOriginalView(), IMAGE_EXTS, OriginalPane(), useBinary(), Markdown(), pageUnitsHeight(), closeOnRemoval() (+21 more)
+Cohesion: 0.09
+Nodes (25): Abertura de PDFs por partes (PDFDataRangeTransport), Drag, useDragScroll(), pageUnitsHeight(), closeOnRemoval(), openPdf(), OutlineEntry, pageSize() (+17 more)
 
 ### Community 31 - "package.json"
 Cohesion: 0.07
@@ -286,23 +290,23 @@ Nodes (22): applyInvite(), cleanEmail(), cleanPassword(), clientIp(), createSess
 
 ### Community 33 - "API das contas (interface)"
 Cohesion: 0.09
-Nodes (17): AccountsApi, submit(), submit(), accessesKey(), AccessManager(), change(), remember(), registerAccess() (+9 more)
+Nodes (8): AccountError, AccountInvite, ACCOUNTS_URL, AccountsApi, AccountsConfig, FetchLike, STORAGE_URL, AccountRole
 
 ### Community 34 - "Cliente da API GitHub"
-Cohesion: 0.10
-Nodes (18): AccountUser, encodePath(), FetchLike, GitHubClient, GitHubError, toBase64(), TreeEntry, buildTree() (+10 more)
+Cohesion: 0.11
+Nodes (10): encodePath(), GitHubClient, GitHubError, toBase64(), TreeEntry, buildTree(), commitChanges(), encoder (+2 more)
 
-### Community 35 - "Visibility.tsx"
-Cohesion: 0.21
-Nodes (17): IconArrowRight(), IconGlobe(), IconLock(), Choice, ConfirmPublic(), DocChoice, DocumentVisibility(), choose() (+9 more)
+### Community 35 - "pipeline.yml"
+Cohesion: 0.20
+Nodes (9): .github/workflows/nexus.yml do repositório de dados, jobs, processar, name, permissions, actions, contents, runs-on (+1 more)
 
 ### Community 36 - "Catálogo de exemplo"
 Cohesion: 0.06
 Nodes (33): degree, name, slug, units, academic_year, assessment_method, assessments, lecturers (+25 more)
 
 ### Community 38 - "Índice e tipos da interface"
-Cohesion: 0.05
-Nodes (50): Procedimento para mudar o esquema do índice, ACTIVE, AppContext, useSearchIndex(), dir, hasIndex, vectors, Bind (+42 more)
+Cohesion: 0.06
+Nodes (31): Procedimento para mudar o esquema do índice, dir, hasIndex, vectors, Bind, OoDb, ReadonlyDb, sqlite() (+23 more)
 
 ### Community 39 - "Workflow de CI"
 Cohesion: 0.08
@@ -312,41 +316,41 @@ Nodes (31): runs-on, steps, runs-on, steps, name, runs-on, steps, jobs (+23 more
 Cohesion: 0.10
 Nodes (20): adminCache, appJwt(), der(), derLength(), HEADERS, importAppKey(), installation, ownerCache (+12 more)
 
-### Community 41 - "DataRepo"
-Cohesion: 0.09
-Nodes (22): DataRepo, read_yaml(), CatalogProposal, export_tree(), ExportReport, build_indices(), near_duplicate_pairs(), _required_confidence() (+14 more)
+### Community 41 - "gerar_repo.py"
+Cohesion: 0.18
+Nodes (3): _auth_env(), build(), _files()
 
 ### Community 42 - "proxy.js"
 Cohesion: 0.16
 Nodes (26): canRead(), canWrite(), effectiveRole(), requireAdmin(), requireUser(), sessionUser(), adminLogin(), dataRepo() (+18 more)
 
 ### Community 43 - "extract_file"
-Cohesion: 0.11
-Nodes (21): docx_com_equacao(), _font(), imagem_texto(), notebook(), pdf_bytes(), pdf_digitalizado(), pptx_slides(), xlsx_notas() (+13 more)
+Cohesion: 0.12
+Nodes (18): docx_com_equacao(), _font(), imagem_texto(), notebook(), pdf_bytes(), pdf_digitalizado(), pptx_slides(), xlsx_notas() (+10 more)
 
 ### Community 44 - "read_yaml"
-Cohesion: 0.13
-Nodes (20): write_yaml_if_changed(), parse_visibility(), set_document_visibility(), set_type_visibility(), set_unit_visibility(), SharingError, GitHub Actions como worker (concurrency), _configure() (+12 more)
+Cohesion: 0.08
+Nodes (33): dump_yaml(), model_to_data(), read_yaml(), write_json_if_changed(), write_yaml_if_changed(), User, effective_visibility(), is_public() (+25 more)
 
 ### Community 45 - "Layout e ajuda"
-Cohesion: 0.20
-Nodes (20): Identidade visual (pergaminho, azul-marinho e dourado), BRAND, Brand(), BrandIcon(), DefaultMark(), IconBooks(), IconCheckList(), IconHelp() (+12 more)
+Cohesion: 0.19
+Nodes (21): Brand(), IconBooks(), IconCheckList(), IconHelp(), IconHome(), IconInbox(), IconSearch(), IconSettings() (+13 more)
 
 ### Community 46 - "Projectos de código"
-Cohesion: 0.09
-Nodes (26): CodeProjectSettings, Manifest, ManifestFile, ManifestIgnored, choose_lead(), key(), build_bundle(), _code_ratio() (+18 more)
+Cohesion: 0.10
+Nodes (23): CodeProjectSettings, Manifest, choose_lead(), key(), build_bundle(), _code_ratio(), _dirs_of(), files_in() (+15 more)
 
 ### Community 47 - "HttpError"
 Cohesion: 0.23
 Nodes (17): admin(), cleanName(), cleanRole(), cleanUntil(), createUser(), managerLimits(), newId(), encoder (+9 more)
 
 ### Community 48 - "Regras de partilha e visibilidade (documento, tipo, cadeira, privado)"
-Cohesion: 0.09
-Nodes (10): upgrade(), upgrade(), upgrade(), upgrade(), upgrade(), SearchBackend, Fase 5: abertura a outros utilizadores, Esquema relacional de partida para a fase 5 (+2 more)
+Cohesion: 0.07
+Nodes (13): upgrade(), upgrade(), upgrade(), upgrade(), upgrade(), SearchBackend, BlobStore, Fase 5: abertura a outros utilizadores (+5 more)
 
-### Community 49 - "RunReport"
-Cohesion: 0.33
-Nodes (4): RunReport, commit_message(), ProcessResult, fake_process()
+### Community 49 - "nexus.yml"
+Cohesion: 0.22
+Nodes (8): concurrency, cancel-in-progress, group, jobs, name, permissions, actions, contents
 
 ### Community 50 - "Configuração do Biome"
 Cohesion: 0.08
@@ -354,35 +358,35 @@ Nodes (24): noAutofocus, noLabelWithoutControl, css, parser, files, includes, fo
 
 ### Community 51 - "Repositório de dados (privado)"
 Cohesion: 0.05
-Nodes (35): Depósito (envio sem organizar), Detecção de cópias ao depositar (ownedSha), Envio em partes de ficheiros grandes (> 10 MB), Knowledge Nexus (plataforma de estudo), Lotes zip para muitos ficheiros (>= 20), Repositório da aplicação (público, GitHub Pages), CSP estrita e noindex, Etapa 2: recepção (deduplicar, desempacotar, extrair) (+27 more)
+Nodes (38): missing_credentials(), Depósito (envio sem organizar), Detecção de cópias ao depositar (ownedSha), Knowledge Nexus (plataforma de estudo), Serviço knowledge-nexus no Raspberry Pi, Repositório da aplicação (público, GitHub Pages), GitHub Actions como worker (concurrency), CSP estrita e noindex (+30 more)
 
 ### Community 52 - "bundles.py"
-Cohesion: 0.13
-Nodes (11): bundle_id(), folder_name(), folder_of(), FolderGroup, project_folders(), _qualifies(), group_folder(), Layout (+3 more)
+Cohesion: 0.09
+Nodes (20): ClassificationSettings, ExtractionMeta, fix_spacing_accents(), strip_accents(), bundle_id(), folder_name(), folder_of(), FolderGroup (+12 more)
 
 ### Community 53 - "Gestão dos acessos"
-Cohesion: 0.09
-Nodes (39): Acesso temporário (códigos KN1), Gestão dos acessos (acessos.yaml e cofre de códigos), Dar acesso temporário (acesso total ou só ver e descarregar), acessos.yaml (acessos temporários sem tokens), GuestInfo, AccessRow(), addDays(), rename() (+31 more)
+Cohesion: 0.08
+Nodes (55): Acesso temporário (códigos KN1), Gestão dos acessos (acessos.yaml e cofre de códigos), Dar acesso temporário (acesso total ou só ver e descarregar), acessos.yaml (acessos temporários sem tokens), submit(), submit(), accessesKey(), AccessManager() (+47 more)
 
 ### Community 54 - "Depositar ficheiros"
-Cohesion: 0.14
-Nodes (22): UploadEntry, Known, prepareUpload(), Row, State, add(), onDrop(), send() (+14 more)
+Cohesion: 0.15
+Nodes (21): UploadEntry, Known, prepareUpload(), Row, State, add(), onDrop(), send() (+13 more)
 
 ### Community 55 - "test_serve.py"
-Cohesion: 0.08
-Nodes (21): app_checkout(), PublicState, serve(), _git(), _QuietGit, test_app_update_is_seen_only_when_pull_is_safe(), test_busy_remote_is_not_an_error(), busy() (+13 more)
+Cohesion: 0.07
+Nodes (22): PublicResult, app_checkout(), PublicState, publish_public_if_due(), serve(), _git(), _QuietGit, test_app_update_is_seen_only_when_pull_is_safe() (+14 more)
 
-### Community 56 - "domain/questions.py"
-Cohesion: 0.15
-Nodes (6): Generated, SourceRef, Question, QuestionContext, QuestionReview, Proveniência (SourceRef e Generated)
+### Community 56 - "remove_unit"
+Cohesion: 0.29
+Nodes (4): remove_course(), remove_unit(), write_unit(), Criar e remover cursos (courses_remove)
 
 ### Community 57 - "Dependências de desenvolvimento"
 Cohesion: 0.09
 Nodes (22): devDependencies, @biomejs/biome@^2.5.14, jsdom@^30.1.1, tailwindcss@^4.3.3, @testing-library/jest-dom@^7.0.1, @testing-library/react@^16.3.3, @testing-library/user-event@^14.6.7, @types/node@^26.6.3 (+14 more)
 
 ### Community 58 - "config.py"
-Cohesion: 0.20
-Nodes (13): DedupSettings, deep_merge(), _defaults(), LimitSettings, load_settings(), PublishingSettings, _Section, Settings (+5 more)
+Cohesion: 0.36
+Nodes (6): DedupSettings, LimitSettings, PublishingSettings, _Section, Settings, SourceWeights
 
 ### Community 59 - "Utilitários e cofre de códigos"
 Cohesion: 0.30
@@ -401,24 +405,24 @@ Cohesion: 0.20
 Nodes (10): default, description, type, app-ref, reclassify, on, workflow_call, default (+2 more)
 
 ### Community 63 - "Git"
-Cohesion: 0.10
-Nodes (13): Git, indices_up_to_date(), process_and_publish(), publish_index_branch(), _remote_indices_source(), app_has_update(), only_personal(), public_key() (+5 more)
+Cohesion: 0.06
+Nodes (26): Git, GitError, RemoteBusy, RunReport, _check_target(), github_slug(), publish_public(), PublishError (+18 more)
 
 ### Community 64 - "raspberry-pi/instalar.sh"
-Cohesion: 0.06
-Nodes (42): Serviço knowledge-nexus no Raspberry Pi, archives, max_depth, max_entries, max_ratio, max_total_bytes, software_min_entries, software_other_ratio (+34 more)
+Cohesion: 0.07
+Nodes (27): archives, max_depth, max_entries, max_ratio, max_total_bytes, software_min_entries, software_other_ratio, code_projects (+19 more)
 
-### Community 65 - "_write_entity"
-Cohesion: 0.38
-Nodes (4): _given(), ImportReport, _merge(), _write_entity()
+### Community 65 - "vigiar-deposito.sh"
+Cohesion: 0.29
+Nodes (7): Correcção do DNS do WSL («Could not resolve host»), Variável NEXUS_PROCESSAMENTO=local (desligar o Actions), Onde corre o processamento (Actions ou computador), vigiar-deposito.bat (qualquer PC e pasta), git_app(), vigiar-deposito.sh script, UV_PROJECT_ENVIRONMENT
 
 ### Community 66 - "Cursos e ligações"
 Cohesion: 0.14
-Nodes (9): Course, CurricularUnit, unit_key(), UnitEdition, Cursos com cadeiras de outras instituições, Calendário e plano de estudo, Curso, Edição da cadeira (+1 more)
+Nodes (9): Course, CourseUnitLink, CurricularUnit, unit_key(), Cursos com cadeiras de outras instituições, Calendário e plano de estudo, Curso, Edição da cadeira (+1 more)
 
-### Community 67 - "test_index_publish.py"
-Cohesion: 0.14
-Nodes (17): build_match(), create_search_db(), PageRow, SearchFilters, SearchHit, Pesquisa FTS5 (texto original e normalizado), pesquisa.db.gz (FTS5 pages_fts), git() (+9 more)
+### Community 67 - "builder.py"
+Cohesion: 0.06
+Nodes (35): Topic, build_indices(), BuildResult, _dump(), _file_info(), _flatten_topics(), near_duplicate_pairs(), _question_rows() (+27 more)
 
 ### Community 68 - "Skills de revisão e catálogo"
 Cohesion: 0.19
@@ -429,19 +433,19 @@ Cohesion: 0.18
 Nodes (16): Modo de leitura (Reader), Marcas de leitura, MarkColor, PAGE_UNITS, StrokeSize, DEFAULT_PREFS, Fit, lastPage() (+8 more)
 
 ### Community 70 - "Privacidade e CSP"
-Cohesion: 0.36
-Nodes (8): Página de privacidade, Dados da conta (nome, email, datas, nível; palavra-passe só como resumo PBKDF2), Base de dados Cloudflare D1 (contas, sessões, marcas de leitura), Entrar com Google (nome, email confirmado, identificador da conta), Marcas de leitura (marcador, sublinhado, caneta), Sessão (identificador aleatório no browser; servidor guarda só um resumo), Tokens de cor da interface (paper, sheet, ink, pen, navy, gold, line), Pedidos do utilizador (mudar nome e palavra-passe; apagar a conta pelo dono)
+Cohesion: 0.17
+Nodes (13): index.html (entrada da interface), Ícones da marca (/brand/icon-32, icon-64, icon-192), Worker nexus-ficheiros.nightmareftw.workers.dev, CSP da interface (connect-src api.github.com e Worker nexus-ficheiros; wasm-unsafe-eval), Página de privacidade, Dados da conta (nome, email, datas, nível; palavra-passe só como resumo PBKDF2), Base de dados Cloudflare D1 (contas, sessões, marcas de leitura), Entrar com Google (nome, email confirmado, identificador da conta) (+5 more)
 
-### Community 71 - "ReaderPage"
-Cohesion: 0.22
-Nodes (14): MarksLayer(), StrokeShape(), ReaderPage(), finish(), onPointerDown(), onPointerMove(), newStrokeId(), rotatedBox() (+6 more)
+### Community 71 - "with"
+Cohesion: 0.25
+Nodes (8): with, fetch-depth, filter, key, path, restore-keys, sparse-checkout, sparse-checkout-cone-mode
 
 ### Community 72 - "Skill processar depósito"
 Cohesion: 0.16
 Nodes (12): Skill /processar-deposito, nexus verificar, Resumo do resultado em pt-PT (novos, deduplicados, arrumados, A rever, propostas, erros), Ferramentas de sistema (Tesseract com por, Pandoc, LibreOffice), CLAUDE.md do repositório de dados (template), deposito/<login>/ (entrada) e _erros/ (falhas com .log), CLI nexus, Português europeu, grafia pré-Acordo (+4 more)
 
 ### Community 73 - "shutil"
-Cohesion: 0.26
+Cohesion: 0.27
 Nodes (6): _assemble(), expand_lotes(), _extract(), LoteError, LoteReport, _safe_member()
 
 ### Community 74 - "FakeGitHub"
@@ -449,20 +453,24 @@ Cohesion: 0.22
 Nodes (7): b64decode(), decoder, encoder, FakeGitHub, FakeRepo, json(), setup()
 
 ### Community 75 - "extract/__init__.py"
-Cohesion: 0.11
-Nodes (33): ExtractionSettings, clean_text(), ExtractionError, ExtractionResult, looks_mathematical(), MissingToolError, PageText, require() (+25 more)
+Cohesion: 0.14
+Nodes (26): ExtractionSettings, clean_text(), ExtractionError, ExtractionResult, looks_mathematical(), PageText, archive_listing(), code_project_text() (+18 more)
 
 ### Community 76 - "normalize"
-Cohesion: 0.10
-Nodes (21): ClassificationSettings, ExtractionMeta, fix_spacing_accents(), normalize(), _numbers_after(), strip_accents(), _unify_spelling(), material_folder() (+13 more)
+Cohesion: 0.18
+Nodes (10): normalize(), _unify_spelling(), Term, Vocabularies, material_folder(), check(), unit_features(), compile_terms() (+2 more)
 
 ### Community 78 - "index.js"
 Cohesion: 0.25
 Nodes (14): handleAccounts(), SESSION_PREFIX, withCors(), allowed(), authCache, handle(), handleBlob(), keyFor() (+6 more)
 
 ### Community 79 - "catalog_io.py"
-Cohesion: 0.17
-Nodes (13): export_bundle(), remove_unit(), write_unit(), model_to_data(), CatalogBundle, CourseUnitLink, Institution, InstitutionBundle (+5 more)
+Cohesion: 0.16
+Nodes (16): CatalogError, _check_slug(), export_bundle(), _given(), import_bundle(), ImportReport, _merge(), _write_entity() (+8 more)
+
+### Community 80 - "pipeline"
+Cohesion: 0.29
+Nodes (7): pipeline, if, secrets, uses, with, app-ref, reclassify
 
 ### Community 81 - "Workflow Pages"
 Cohesion: 0.06
@@ -472,24 +480,24 @@ Nodes (34): Publicar a interface (Pages com GitHub Actions), runs-on, steps, con
 Cohesion: 0.43
 Nodes (7): nexus processar --json, Estrutura do repositório de dados, documentos/<id>.yaml (cópia lógica por utilizador), Ramo indices (meta.db e pesquisa.db.gz, derivados), revisao/propostas/ (propostas de catálogo), texto/<sha256>/ (páginas em Markdown + LaTeX, meta.json), Workflow nexus (processa o depósito a cada envio)
 
-### Community 83 - "ErrorBox"
-Cohesion: 0.09
-Nodes (57): Home(), PublicShell(), queryClient, Shell(), TextPane(), IconDownload(), Badge(), Button() (+49 more)
+### Community 83 - "useApp"
+Cohesion: 0.13
+Nodes (41): Home(), PublicShell(), queryClient, Shell(), DocumentPreview(), hasOriginalView(), IMAGE_EXTS, OriginalPane() (+33 more)
 
 ### Community 85 - "env"
-Cohesion: 0.07
-Nodes (28): GH_TOKEN, GIT_AUTHOR_EMAIL, GIT_AUTHOR_NAME, GIT_COMMITTER_EMAIL, GIT_COMMITTER_NAME, NEXUS_PUBLICO_TOKEN, NEXUS_R2_ACCESS_KEY_ID, NEXUS_R2_ENDPOINT (+20 more)
+Cohesion: 0.20
+Nodes (10): GH_TOKEN, GIT_AUTHOR_EMAIL, GIT_AUTHOR_NAME, GIT_COMMITTER_EMAIL, GIT_COMMITTER_NAME, NEXUS_PUBLICO_TOKEN, NEXUS_R2_ACCESS_KEY_ID, NEXUS_R2_ENDPOINT (+2 more)
 
-### Community 88 - "nexus.yml"
-Cohesion: 0.06
-Nodes (32): concurrency, cancel-in-progress, group, reclassificar, jobs, pipeline, name, on (+24 more)
+### Community 88 - "reclassificar"
+Cohesion: 0.20
+Nodes (10): reclassificar, on, push, workflow_dispatch, branches, paths, default, description (+2 more)
 
 ### Community 89 - "Scripts da interface"
 Cohesion: 0.22
 Nodes (9): scripts, build, dev, e2e, format, lint, preview, test (+1 more)
 
 ### Community 90 - "app.spec.ts"
-Cohesion: 0.23
+Cohesion: 0.21
 Nodes (10): CORS, decode(), routeGitHub(), routeWorker(), snapshot, withFakeGitHub(), workerEnv(), workerEnvs (+2 more)
 
 ### Community 91 - "Migração das contas (D1)"
@@ -497,12 +505,16 @@ Cohesion: 0.33
 Nodes (8): attempts, attempts_key, invites, marks, sessions, sessions_user, tickets, users
 
 ### Community 92 - "Migração de formatos"
-Cohesion: 0.12
-Nodes (10): current_version(), migrate(), _set_format_version(), _v2_duplicate_of(), _v3_bundles(), _v4_bundle_lead_choice(), _v5_removed(), Procedimento para mudar FORMAT_VERSION do repositório de dados (+2 more)
+Cohesion: 0.13
+Nodes (11): current_version(), migrate(), _set_format_version(), _v1_visibility_inherits(), _v2_duplicate_of(), _v3_bundles(), _v4_bundle_lead_choice(), _v5_removed() (+3 more)
 
 ### Community 93 - "nexus.yaml do template"
 Cohesion: 0.25
 Nodes (7): app, ref, repository, classification, auto_file_threshold, format_version, owner
+
+### Community 94 - "steps"
+Cohesion: 0.33
+Nodes (6): steps, id, if, name, run, uses
 
 ### Community 95 - "Configuração Vite"
 Cohesion: 0.25
@@ -512,53 +524,41 @@ Nodes (7): @tailwindcss/vite@^4.3.3, vite@^8.3.1, @vitejs/plugin-react@^6.1.1, d
 Cohesion: 0.18
 Nodes (5): @playwright/test@^1.63.0, snapshot, @playwright/test, fakeD1(), migrations
 
-### Community 106 - "session.ts"
-Cohesion: 0.24
-Nodes (9): App(), signOutAccount(), WelcomeOrHome(), WelcomeRoute(), clearSession(), hasFlash(), loadSession(), read() (+1 more)
-
 ### Community 107 - "scaffold"
-Cohesion: 0.24
-Nodes (9): Fase 1 (concluída), Fase 2: enriquecimento, transcrição e banco de perguntas, Fase 3: pesquisa semântica, flashcards FSRS e simulados, Flashcard (estado FSRS), Pergunta (banco de perguntas), Simulado, Tentativa (o modo tutor conta as dicas), Utilizador (+1 more)
+Cohesion: 0.28
+Nodes (8): Fase 1 (concluída), Fase 2: enriquecimento, transcrição e banco de perguntas, Fase 3: pesquisa semântica, flashcards FSRS e simulados, Flashcard (estado FSRS), Pergunta (banco de perguntas), Simulado, Tentativa (o modo tutor conta as dicas), gerado/<sha256>/ (material gerado, fase 2)
 
 ### Community 109 - "conftest.py"
-Cohesion: 0.14
-Nodes (13): Check, _libreoffice_works(), run_checks(), _tesseract_langs(), _version(), catalog_root(), data_root(), fixed_clock() (+5 more)
-
-### Community 121 - "run.py"
-Cohesion: 0.07
-Nodes (16): fixed(), now(), config_dir(), _Dumper, _str_representer(), write_json_if_changed(), write_text_if_changed(), PageMeta (+8 more)
-
-### Community 122 - "public.py"
 Cohesion: 0.10
-Nodes (14): GitError, RemoteBusy, _auth_env(), build_public_site(), _check_target(), _digest(), github_slug(), PublicResult (+6 more)
+Nodes (14): Check, _libreoffice_works(), run_checks(), _tesseract_langs(), _version(), data_root(), fixed_clock(), git_root() (+6 more)
 
-### Community 126 - "index.html (entrada da interface)"
-Cohesion: 0.25
-Nodes (6): index.html (entrada da interface), Ícones da marca (/brand/icon-32, icon-64, icon-192), Worker nexus-ficheiros.nightmareftw.workers.dev, CSP da interface (connect-src api.github.com e Worker nexus-ficheiros; wasm-unsafe-eval), Montagem da aplicação (#root e /src/main.tsx), CSP restrita da página de privacidade (default-src none)
+### Community 121 - "store.py"
+Cohesion: 0.10
+Nodes (11): StorageSettings, _Dumper, _str_representer(), BundleRef, DocumentKind, Removal, Status, export_tree() (+3 more)
 
 ### Community 127 - "Contas no Worker do Cloudflare (D1)"
 Cohesion: 0.33
 Nodes (7): Contas no Worker do Cloudflare (D1), Níveis de conta (none, viewer, reader, contributor, organizer, editor), Originais no Cloudflare R2 (opcional), Ligar as contas (D1, GitHub App, segredos do Worker), Entrar com Google (OAuth), GitHub App do Worker (Knowledge Nexus contas), Só por convite (SIGNUP = invite)
 
 ## Knowledge Gaps
-- **12 isolated node(s):** `UV_PROJECT_ENVIRONMENT`, `nexus`, `Correcção do DNS do WSL («Could not resolve host»)`, `Chave de deploy com escrita para o repositório de dados`, `Excepção: material marcado Público (nexus visibilidade, nexus publicar, publishing.public_repo)` (+7 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 838 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **12 isolated node(s):** `nexus`, `UV_PROJECT_ENVIRONMENT`, `Excepção: material marcado Público (nexus visibilidade, nexus publicar, publishing.public_repo)`, `Grafo do projecto (graphify)`, `Chave de deploy com escrita para o repositório de dados` (+7 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 844 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Contas no Worker do Cloudflare (D1)` connect `Contas no Worker do Cloudflare (D1)` to `Contas no Worker`, `Cliente da API GitHub`, `Credencial GitHub do Worker`, `proxy.js`, `Repositório de dados (privado)`, `source.ts`, `Gestão dos acessos`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+- **Why does `normalize()` connect `normalize` to `Propostas de catálogo e texto`, `builder.py`, `Estantes, cursos e configuração`, `Reconciliação do pipeline`, `Projectos de código`, `write_extraction`, `bundles.py`, `classification`, `Testes da classificação`, `Reason`, `test_domain.py`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Are the 69 inferred relationships involving `DataRepo` (e.g. with `Settings` and `Layout`) actually correct?**
   _`DataRepo` has 69 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `UV_PROJECT_ENVIRONMENT`, `nexus`, `Correcção do DNS do WSL («Could not resolve host»)` to the rest of the system?**
+- **What connects `nexus`, `UV_PROJECT_ENVIRONMENT`, `Excepção: material marcado Público (nexus visibilidade, nexus publicar, publishing.public_repo)` to the rest of the system?**
   _12 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Testes do pipeline` be split into smaller, more focused modules?**
   _Cohesion score 0.10675990675990676 - nodes in this community are weakly interconnected._
-- **Why does `Visão geral «só GitHub»` connect `Repositório de dados (privado)` to `_repo`, `builder.py`, `read_yaml`, `Skills do Claude Code no repositório de dados`, `Contas no Worker do Cloudflare (D1)`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
+- **Why does `normalize()` connect `Estantes, cursos e configuração` to `BundleEditor.tsx`, `normalize`, `classification`, `Índice e tipos da interface`?**
+  _High betweenness centrality (0.067) - this node is a cross-community bridge._
 - **Are the 38 inferred relationships involving `Pipeline` (e.g. with `DataRepo` and `BlobRef`) actually correct?**
   _`Pipeline` has 38 INFERRED edges - model-reasoned connections that need verification._
 - **Should `LibraryPage.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.07540983606557378 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07966101694915254 - nodes in this community are weakly interconnected._

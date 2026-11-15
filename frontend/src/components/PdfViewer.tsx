@@ -1,9 +1,11 @@
 // Visualizador pdf.js da página do documento e de «A rever»: a página pedida, com rotação,
-// zoom e as marcas de leitura da pessoa (só a ver; editam-se no modo de leitura).
+// zoom (com o rato, arrasta-se para mover a página) e as marcas de leitura da pessoa (só a
+// ver; editam-se no modo de leitura).
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PageMarks } from "../lib/annotations";
+import { useDragScroll } from "./dragScroll";
 import { MarksLayer, pageUnitsHeight } from "./MarksLayer";
 import { type PdfDocument, pageSize, renderPage } from "./pdf";
 import { Button, ErrorBox } from "./ui";
@@ -28,6 +30,7 @@ export function PdfViewer(props: {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const page = Math.min(Math.max(1, props.page), pdf.numPages);
+  useDragScroll(viewport, true);
 
   useEffect(() => {
     const element = viewport.current;

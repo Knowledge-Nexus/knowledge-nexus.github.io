@@ -251,7 +251,10 @@ Dependências de sistema (Ubuntu/WSL2):
     só o documento sobre fundo preto (`bg-night`), uma página ou livro aberto (capa sozinha,
     depois pares; `spreadPages`), ajustar à página/largura, zoom, rodar, tom (papel, sépia,
     noite), texto da página, índice do PDF, ecrã inteiro, teclado (setas, Esc, L/M/S/C/B,
-    Ctrl+Z) e deslizar do dedo. As barras escondem-se ao fim de uns segundos a ler.
+    Ctrl+Z) e deslizar do dedo. As barras escondem-se ao fim de uns segundos a ler. Com zoom,
+    arrasta-se a página com o rato ou a caneta (`components/dragScroll.ts`, `useDragScroll`):
+    no leitor só com a ferramenta «Ler» (as outras marcam) e também na pré-visualização
+    (`PdfViewer`); no ecrã táctil, o dedo já desloca.
   - **Marcas de leitura** (`lib/annotations.ts`, `features/document/useMarks.ts`,
     `components/MarksLayer.tsx`): marcador e sublinhado (segmento recto, endireitado na
     horizontal; com Shift, à mão livre), caneta, borracha, desfazer/refazer, limpar a página,

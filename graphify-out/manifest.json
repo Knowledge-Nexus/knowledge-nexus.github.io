@@ -570,10 +570,10 @@
     "semantic_hash": "c467f13e32e095a7f0aba68844e05346"
   },
   "frontend/src/components/PdfViewer.tsx": {
-    "mtime": 1793796686.2013884,
-    "seen": 1793819413.84666,
-    "ast_hash": "895e6ce78453ca05e89f49b216237a5e",
-    "semantic_hash": "895e6ce78453ca05e89f49b216237a5e"
+    "mtime": 1794776155.6292796,
+    "seen": 1794776359.0455801,
+    "ast_hash": "bc86e986bcf81c6687aa980774197925",
+    "semantic_hash": ""
   },
   "frontend/src/components/SuggestInput.tsx": {
     "mtime": 1793653744.8422189,
@@ -726,10 +726,10 @@
     "semantic_hash": ""
   },
   "frontend/src/features/document/Reader.tsx": {
-    "mtime": 1793796686.9150994,
-    "seen": 1793819413.846685,
-    "ast_hash": "aa75a391fe5f167a046d74031452b21f",
-    "semantic_hash": "aa75a391fe5f167a046d74031452b21f"
+    "mtime": 1794776159.0004787,
+    "seen": 1794776359.0456357,
+    "ast_hash": "6ee8e789230343c03d8f445bef945453",
+    "semantic_hash": ""
   },
   "frontend/src/features/document/useMarks.ts": {
     "mtime": 1793653940.7480245,
@@ -888,9 +888,9 @@
     "semantic_hash": "81448f5e0a2891aef2e9a6f9d59f73f6"
   },
   "frontend/src/i18n/pt-PT.json": {
-    "mtime": 1793824423.6130872,
-    "seen": 1793831800.012399,
-    "ast_hash": "773762b4b07849fa73f074facf819b48",
+    "mtime": 1794776268.9850466,
+    "seen": 1794776359.0456698,
+    "ast_hash": "09cef141cf74a90306d8e3da3cb7175b",
     "semantic_hash": ""
   },
   "frontend/src/lib/access.test.ts": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": "3709e3aa95abf0544678f0f2d9b46702"
   },
   "frontend/tests/e2e/app.spec.ts": {
-    "mtime": 1793831625.197344,
-    "seen": 1793831800.0124323,
-    "ast_hash": "0efc0a6f4ac7ddd060bcdba4a5aefb31",
+    "mtime": 1794776236.3892317,
+    "seen": 1794776359.0456972,
+    "ast_hash": "fb8ecba3aaa57a29d55a752dce502cf0",
     "semantic_hash": ""
   },
   "frontend/tests/e2e/screenshots.spec.ts": {
@@ -1296,9 +1296,9 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1793831653.511903,
-    "seen": 1793831800.01248,
-    "ast_hash": "a3bb7b1bb63a9394a16b7d32d5240583",
+    "mtime": 1794776268.9855328,
+    "seen": 1794776359.0457346,
+    "ast_hash": "ccb88dc12d3105b744caa1699f78f17b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1425,6 +1425,12 @@
     "mtime": 1793824424.224367,
     "seen": 1793831800.012381,
     "ast_hash": "61a51d4081bfd7324d74eda42704c728",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/dragScroll.ts": {
+    "mtime": 1794776149.866138,
+    "seen": 1794776359.045585,
+    "ast_hash": "847448b84dea48dcc38f0f512a719c3c",
     "semantic_hash": ""
   },
   "frontend/pnpm-lock.yaml": {

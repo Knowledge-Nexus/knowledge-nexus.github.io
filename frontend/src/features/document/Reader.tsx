@@ -16,6 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { hasOriginalView, IMAGE_EXTS, useBinary } from "../../components/DocumentViewer";
+import { useDragScroll } from "../../components/dragScroll";
 import {
   IconBookOpen,
   IconChevronLeft,
@@ -650,6 +651,8 @@ function ReaderView(props: {
   ];
   const drawingTool =
     activeTool === "highlight" || activeTool === "underline" || activeTool === "pen";
+  // Com zoom, a ferramenta «Ler» arrasta a página com o rato (as outras marcam).
+  useDragScroll(stage, activeTool === "read" && !textView && Boolean(source));
   const chrome = `transition-opacity duration-300 ${hideChrome ? "pointer-events-none opacity-0" : "opacity-100"}`;
 
   return (

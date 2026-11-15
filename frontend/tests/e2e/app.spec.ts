@@ -931,6 +931,61 @@ test("modo de leitura: as marcas são só de quem as faz e o original fica igual
   });
 });
 
+/** Arrasta com o rato a partir do centro de `area` e devolve [scrollLeft, scrollTop] antes e
+ * depois. */
+async function dragInside(page: Page, area: Locator) {
+  const scroll = () => area.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+  const before = await scroll();
+  const box = (await area.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 120, y - 80, { steps: 6 });
+  await page.mouse.up();
+  return [before, await scroll()] as const;
+}
+
+test("com zoom, arrastar com o rato move a página (pré-visualização e leitor)", async ({
+  page,
+}) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  const pdf = Object.entries(snapshot.main)
+    .filter(([p]) => p.startsWith("documentos/"))
+    .map(([, b64]) => YAML.parse(Buffer.from(b64, "base64").toString("utf-8")))
+    .find((d) => d.blob.ext === "pdf" && !d.removed && !d.duplicate_of && d.filed_name);
+  await page.goto(`/#/documento/${pdf.id}`);
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible();
+  const viewport = canvas.locator("xpath=ancestor::div[contains(@class,'overflow-auto')][1]");
+  // Sem zoom, a página cabe: arrastar não faz nada.
+  let [before, after] = await dragInside(page, viewport);
+  expect(after).toEqual(before);
+  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Aumentar" }).click();
+  await expect.poll(() => viewport.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  [before, after] = await dragInside(page, viewport);
+  expect(after[0]).toBeGreaterThan(before[0]!);
+  expect(after[1]).toBeGreaterThan(before[1]!);
+
+  // No modo de leitura, com a ferramenta «Ler» (a mão).
+  await page.getByRole("button", { name: "Ler", exact: true }).click();
+  const reader = page.getByRole("dialog", { name: "Modo de leitura" });
+  await expect(reader.locator("[data-page='1'] canvas")).toBeVisible();
+  for (let i = 0; i < 4; i++) await reader.getByRole("button", { name: "Aumentar" }).click();
+  const stage = reader
+    .locator("[data-page='1']")
+    .locator("xpath=ancestor::div[contains(@class,'overflow-auto')][1]");
+  // Num ecrã largo, a página ainda cabe na largura e passa da altura: move-se na vertical.
+  await expect.poll(() => stage.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  [before, after] = await dragInside(page, stage);
+  expect(after[1]).toBeGreaterThan(before[1]!);
+  // Com a caneta, arrastar desenha: a página não se move.
+  await reader.getByRole("button", { name: /^Caneta/ }).click();
+  [before, after] = await dragInside(page, stage);
+  expect(after).toEqual(before);
+});
+
 test("lápis na biblioteca: o nome de um curso e de uma cadeira", async ({ page }) => {
   const fake = await withFakeGitHub(page);
   await login(page, fake);
