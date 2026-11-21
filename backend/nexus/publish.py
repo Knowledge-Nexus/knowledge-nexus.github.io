@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import tempfile
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -61,13 +62,15 @@ def indices_up_to_date(root: Path, remote: str = "origin") -> bool:
     return git.is_repo() and _remote_indices_source(git, remote) == git.head()
 
 
-def publish_index_branch(root: Path, push: bool = True, remote: str = "origin") -> str | None:
-    """Reconstrói e publica os índices do estado actual do repositório."""
+def publish_index_branch(root: Path, push: bool = True, remote: str = "origin",
+                         deferred: Mapping[str, tuple[str, str]] | None = None) -> str | None:
+    """Reconstrói e publica os índices do estado actual do repositório. `deferred`: o que a
+    execução deixou no depósito e porquê (vai para o manifest)."""
     git = Git(root)
     use_git = git.is_repo()
     head = git.head() if use_git else None
     with tempfile.TemporaryDirectory(prefix="nexus-indices-") as tmp:
-        build_indices(DataRepo(root), Path(tmp), built_from=head)
+        build_indices(DataRepo(root), Path(tmp), built_from=head, deferred=deferred)
         if not use_git:
             return None
         return git.publish_directory(
@@ -134,5 +137,6 @@ def process_and_publish(root: Path, push: bool = True, reclassify: bool = False,
                 _remote_indices_source(git, remote) == head:
             result.notes.append("índices já actualizados")
             return result
-        result.indices_commit = publish_index_branch(root, push=push, remote=remote)
+        result.indices_commit = publish_index_branch(root, push=push, remote=remote,
+                                                     deferred=result.report.deferred)
     return result

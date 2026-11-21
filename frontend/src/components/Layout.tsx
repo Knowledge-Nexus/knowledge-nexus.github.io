@@ -5,6 +5,7 @@ import { NavLink, useLocation } from "react-router";
 import { useApp } from "../data/context";
 import { guestName, setFlash } from "../data/session";
 import { GitHubDataSource } from "../data/source";
+import { Notifications } from "../features/status/Notifications";
 import { PipelineStatus } from "../features/status/PipelineStatus";
 import { formatWhen } from "../lib/labels";
 import { writes } from "../lib/ranks";
@@ -189,7 +190,10 @@ export function Layout(props: { children: ReactNode }) {
           <NavItem to="/definicoes" icon={<IconSettings />} label={t("nav.settings")} />
           <div className="rounded-xl border border-gold/30 bg-white/5 px-3 py-2.5 text-white/80 [&_p]:text-white/80">
             {writes(can) ? (
-              <PipelineStatus />
+              <div className="flex items-center justify-between gap-2">
+                <PipelineStatus />
+                <Notifications />
+              </div>
             ) : (
               <p className="flex items-center gap-1.5 text-xs font-medium !text-gold-light">
                 <IconEye size={14} />{" "}
@@ -208,7 +212,12 @@ export function Layout(props: { children: ReactNode }) {
       <header className="leather sticky top-0 z-10 border-b border-gold/40 lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 [&_p]:text-white/80">
           <Brand size={30} dark />
-          {writes(can) && <PipelineStatus compact />}
+          {writes(can) && (
+            <div className="flex items-center gap-2">
+              <PipelineStatus compact />
+              <Notifications />
+            </div>
+          )}
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2" aria-label="principal (móvel)">
           {items(true)}

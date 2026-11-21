@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { gunzipSync } from "fflate";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { queuedItems } from "../lib/processing";
 import { type Capabilities, FULL, READ_AND_DOWNLOAD, writes } from "../lib/ranks";
 import type { WorkflowRun } from "./github/client";
 import type { DataSource } from "./source";
@@ -32,6 +33,13 @@ interface AppData {
   runs: WorkflowRun[];
   activeRun: WorkflowRun | undefined;
   pending: number;
+  /**
+   * Há trabalho por fazer que os índices ainda não reflectem: alterações recentes no
+   * repositório (as marcas de leitura não contam) ou itens do depósito ainda por tratar.
+   */
+  processing: boolean;
+  /** Desde quando (ms) não se vê progresso enquanto há trabalho; null sem trabalho. */
+  processingSince: number | null;
   notifyCommit: () => void;
   refresh: () => void;
   logout: () => void;
@@ -46,6 +54,8 @@ export function useApp(): AppData {
 }
 
 const ACTIVE = new Set(["queued", "in_progress", "waiting", "requested", "pending"]);
+/** De quanto em quanto tempo se compara o último commit com o dos índices. */
+export const LAG_INTERVAL_MS = 20_000;
 
 export function DataProvider(props: {
   source: DataSource;
@@ -78,16 +88,39 @@ export function DataProvider(props: {
   const runs = runsQuery.data ?? [];
   const activeRun = runs.find((r) => ACTIVE.has(r.status));
 
+  const [lastProcessing, setLastProcessing] = useState(false);
   const manifestQuery = useQuery({
     queryKey: ["manifest", source.repo],
     queryFn: () => source.manifest(),
-    refetchInterval: activeRun || pendingSince ? 10000 : 120000,
+    refetchInterval: activeRun || pendingSince || lastProcessing ? 10000 : 120000,
   });
   const manifest = manifestQuery.data;
   const metaSha = manifest?.files["meta.db"]?.sha256;
 
   if (pendingSince && manifest && Date.parse(manifest.built_at) > pendingSince) {
     setPendingSince(null);
+  }
+
+  // O último commit comparado com o dos índices (o processamento local não aparece no
+  // Actions): com o mesmo commit, cada verificação é um pedido pequeno.
+  const builtFrom = manifest?.built_from ?? null;
+  const lagQuery = useQuery({
+    queryKey: ["lag", source.repo, builtFrom],
+    queryFn: () => source.lag!(builtFrom!),
+    enabled: Boolean(source.lag && builtFrom) && !visitor && writes(can),
+    refetchInterval: LAG_INTERVAL_MS,
+    // Ao voltar ao separador o estado é logo o actual (em segundo plano não se verifica).
+    refetchOnWindowFocus: true,
+  });
+  const processing = Boolean(lagQuery.data?.pending) || queuedItems(manifest?.deposit) > 0;
+  if (processing !== lastProcessing) setLastProcessing(processing);
+
+  // Progresso: o processamento começou ou os índices mudaram desde então.
+  const [progress, setProgress] = useState<{ since: number; builtAt: string } | null>(null);
+  const builtAt = manifest?.built_at ?? "";
+  if (!processing && progress) setProgress(null);
+  if (processing && (!progress || progress.builtAt !== builtAt)) {
+    setProgress({ since: Date.now(), builtAt });
   }
 
   const metaQuery = useQuery({
@@ -111,11 +144,13 @@ export function DataProvider(props: {
   const notifyCommit = useCallback(() => {
     setPendingSince(Date.now() - 5000);
     void queryClient.invalidateQueries({ queryKey: ["runs"] });
+    void queryClient.invalidateQueries({ queryKey: ["lag"] });
   }, [queryClient]);
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["manifest"] });
     void queryClient.invalidateQueries({ queryKey: ["runs"] });
+    void queryClient.invalidateQueries({ queryKey: ["lag"] });
   }, [queryClient]);
 
   const value = useMemo<AppData>(
@@ -135,6 +170,8 @@ export function DataProvider(props: {
       runs,
       activeRun,
       pending: pendingSince ? 1 : 0,
+      processing,
+      processingSince: progress?.since ?? null,
       notifyCommit,
       refresh,
       logout: props.onLogout,
@@ -155,6 +192,8 @@ export function DataProvider(props: {
       runs,
       activeRun,
       pendingSince,
+      processing,
+      progress,
       notifyCommit,
       refresh,
       props.onLogout,

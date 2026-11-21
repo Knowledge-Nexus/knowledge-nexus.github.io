@@ -259,6 +259,37 @@ export interface IndexManifest {
   /** As partes da pesquisa (esquema de pesquisa 2), por ordem. */
   search?: { version: number; shards: string[] };
   files: Record<string, { size: number; sha256: string }>;
+  /** O que ficou por tratar no depósito (só nos índices privados; `index/deposit.py`). */
+  deposit?: DepositState;
+}
+
+/** Porque é que um item ficou no depósito: sem onde guardar o original, falta uma ferramenta
+ * no computador que processa, envio incompleto, ou um lote que não abre. */
+export type DepositStuckKind = "storage" | "tool" | "parts" | "error";
+
+export interface DepositState {
+  /** Os que continuam no depósito; com `kind`, estão parados (os primeiros da lista). */
+  waiting: {
+    label: string;
+    login: string;
+    name: string;
+    kind?: DepositStuckKind;
+    reason?: string;
+  }[];
+  waiting_total: number;
+  stuck_total: number;
+  /** Os que foram para `_erros/` (com o `.log`). */
+  failed: {
+    label: string;
+    login: string;
+    name: string;
+    error: string;
+    at: string | null;
+    log: string;
+  }[];
+  failed_total: number;
+  /** Pedidos da interface (catálogo) que não se aplicaram. */
+  catalog_failed: { name: string; error: string; log: string }[];
 }
 
 // Estrutura de uma cadeira no formato de importação `nexus-catalogo`.

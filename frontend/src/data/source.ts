@@ -21,6 +21,7 @@ import {
 import { sha256Hex } from "../lib/files";
 import { guestTrailer } from "../lib/invite";
 import { slugify } from "../lib/normalize";
+import { needsProcessing } from "../lib/processing";
 import { type Capabilities, FULL, READ_AND_DOWNLOAD, rankCapabilities, writes } from "../lib/ranks";
 import type { AccountSession } from "./accounts";
 import { getCached, putCached } from "./cache";
@@ -160,8 +161,21 @@ export interface DataSource {
   ): Promise<string>;
   catalogRequest(bundle: CatalogBundle, message: string): Promise<string>;
   runs(): Promise<WorkflowRun[]>;
+  /**
+   * Há alterações que os índices (construídos a partir de `builtFrom`) ainda não têm? Só
+   * contam as que o processamento trata (não as marcas de leitura nem os acessos). null se
+   * não for possível saber (ex.: o commit dos índices já não existe).
+   */
+  lag?(builtFrom: string): Promise<IndexLag | null>;
   structureReady(): Promise<boolean>;
   scaffold(): Promise<string>;
+}
+
+export interface IndexLag {
+  /** O último commit do ramo dos dados. */
+  head: string;
+  /** Há alterações por processar entre os índices e esse commit. */
+  pending: boolean;
 }
 
 export function nowIso(): string {
@@ -518,6 +532,34 @@ export class GitHubDataSource implements DataSource {
 
   runs(): Promise<WorkflowRun[]> {
     return this.client.runs(this.repo.owner, this.repo.name, 5);
+  }
+
+  // A comparação de dois commits nunca muda: guarda-se a resposta (com o último commit
+  // igual, cada verificação custa um só pedido, o do ramo).
+  private readonly lagByPair = new Map<string, boolean | null>();
+
+  async lag(builtFrom: string): Promise<IndexLag | null> {
+    const { owner, name, branch } = this.repo;
+    const head = await this.client.headSha(owner, name, branch);
+    if (head === builtFrom) return { head, pending: false };
+    const key = `${builtFrom}...${head}`;
+    if (!this.lagByPair.has(key)) {
+      let pending: boolean | null;
+      try {
+        const diff = await this.client.compare(owner, name, builtFrom, head);
+        pending =
+          diff.status !== "identical" &&
+          diff.status !== "behind" &&
+          (diff.truncated || needsProcessing(diff.files));
+      } catch (error) {
+        // 404: o commit dos índices já não existe; 403: um Worker antigo sem a comparação.
+        if (!(error instanceof GitHubError) || error.status >= 500) throw error;
+        pending = null;
+      }
+      this.lagByPair.set(key, pending);
+    }
+    const pending = this.lagByPair.get(key);
+    return pending === null || pending === undefined ? null : { head, pending };
   }
 
   async structureReady(): Promise<boolean> {

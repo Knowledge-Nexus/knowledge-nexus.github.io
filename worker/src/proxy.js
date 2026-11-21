@@ -17,6 +17,8 @@ const READ = [
   /^\/git\/ref\/heads\/[^/]+$/,
   new RegExp(`^/git/commits/${SHA}$`),
   new RegExp(`^/git/trees/${SHA}$`),
+  // O que mudou desde os índices (estado do processamento no canto da interface).
+  new RegExp(`^/compare/${SHA}\\.\\.\\.${SHA}$`),
   /^\/actions\/runs$/,
 ];
 const WRITE = [

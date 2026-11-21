@@ -265,3 +265,57 @@ describe("commits enquanto o ramo avança", () => {
     }
   });
 });
+
+describe("estado do processamento (o que os índices ainda não têm)", () => {
+  it("só as alterações que o processamento trata contam; as marcas de leitura não", async () => {
+    const { fake, source } = setup();
+    const client = new GitHubClient(fake.token, fake.fetch);
+    const built = await client.headSha("aluna", "estudo-dados", "main");
+    expect(await source.lag(built)).toEqual({ head: built, pending: false });
+
+    fake.externalPush(REPO, { "anotacoes/aluna/d1.json": "{}", "acessos.yaml": "codes: []\n" });
+    const marks = await source.lag(built);
+    expect(marks?.pending).toBe(false);
+    expect(marks?.head).not.toBe(built);
+
+    // Um depósito (pela interface, por outro browser, pelo Git) é trabalho por fazer.
+    fake.externalPush(REPO, { "deposito/aluna/20261121T100000Z-abcd/ficha.pdf": "%PDF" });
+    expect((await source.lag(built))?.pending).toBe(true);
+
+    // Os índices construídos a partir do último commit: em dia outra vez.
+    const head = await client.headSha("aluna", "estudo-dados", "main");
+    expect(await source.lag(head)).toEqual({ head, pending: false });
+  });
+
+  it("com o commit dos índices desconhecido, não se sabe (null) e não se repete o pedido", async () => {
+    const { fake, source } = setup();
+    let compares = 0;
+    const counting = new GitHubDataSource(
+      new GitHubClient(fake.token, async (input, init) => {
+        if (String(input).includes("/compare/")) compares += 1;
+        return fake.fetch(String(input), init);
+      }),
+      source.repo,
+      "aluna",
+    );
+    expect(await counting.lag("f".repeat(40))).toBeNull();
+    expect(await counting.lag("f".repeat(40))).toBeNull();
+    expect(compares).toBe(1);
+  });
+
+  it("os caminhos são os do workflow do repositório de dados", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { PIPELINE_PATHS } = await import("../lib/processing");
+    const workflow = YAML.parse(
+      readFileSync(
+        new URL(
+          "../../../backend/nexus/scaffold/template/.github/workflows/nexus.yml",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as { on: { push: { paths: string[] } } };
+    const fromWorkflow = workflow.on.push.paths.map((p) => p.replace(/\*\*$/, ""));
+    expect([...PIPELINE_PATHS].sort()).toEqual([...fromWorkflow].sort());
+  });
+});

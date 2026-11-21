@@ -59,7 +59,8 @@ convenções ou comandos.
   commits (`wait_until_quiet`: quem arruma na interface grava vários seguidos); um envio
   recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
   Commits só com marcas de leitura (`anotacoes/`) ou `acessos.yaml` não são processados
-  (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline).
+  (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline, que
+  incluem `gerado/`; a interface usa os mesmos em `lib/processing.ts`, e um teste confirma).
   Verifica de 30 em 30 s (`DEFAULT_INTERVAL`): `remote_has_news` pergunta primeiro o último
   commit com `git ls-remote` e só faz fetch quando mudou.
   Faz o mesmo que o Actions: `migrate()` antes de processar, depósitos aos bocados
@@ -102,6 +103,17 @@ convenções ou comandos.
   `features/entry/` (página de entrada com popups, `connect.ts`), `AccountsManager` nas
   Definições. Os códigos `KN1-…` continuam iguais. Testes: `node --test worker/test/*.test.mjs`
   (D1 em `node:sqlite`) e o E2E corre o Worker verdadeiro (`routeWorker`).
+- **Estado do processamento (canto inferior esquerdo, `features/status/PipelineStatus.tsx`):**
+  além dos runs do Actions, a interface compara de 20 em 20 s (e ao voltar ao separador) o
+  último commit com o `built_from` dos índices (`GitHubDataSource.lag`: API de comparação,
+  resposta guardada por par de commits; o Worker deixa passar `/compare/A...B`). Com
+  alterações que o processamento trata, ou itens do depósito por tratar (`deposit` no
+  manifest), mostra «A processar…» e lê o manifest de 10 em 10 s; 20 min sem progresso dá o
+  aviso «Há alterações à espera de processamento» (`STALLED_AFTER_MS`).
+- **Notificações (só o dono, `can.configure`; `features/status/Notifications.tsx`):** o sino
+  ao lado do estado mostra, pelo nome, os ficheiros que não foi possível guardar (`_erros/`),
+  os que estão parados no depósito (e porquê) e os pedidos de catálogo recusados, a partir
+  do `deposit` do manifest (`nexus/index/deposit.py`; `RunReport.deferred` dá as razões).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:

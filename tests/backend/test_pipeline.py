@@ -884,3 +884,50 @@ def test_removed_document_leaves_library_review_and_search(catalog_root: Path,
     [again] = docs(catalog_root)
     assert again["id"] == doc["id"] and "removed" not in again
     assert again["review"]["status"] == "open"
+
+
+def test_manifest_lists_what_stayed_in_the_deposit(catalog_root: Path, tmp_path: Path,
+                                                   monkeypatch) -> None:
+    """O manifest dos índices privados diz o que ficou no depósito (e porquê), o que foi para
+    `_erros/` e os pedidos de catálogo que falharam: a interface mostra-os ao dono. Os
+    índices públicos não levam nada disto."""
+    import json
+
+    from nexus.publish import publish_index_branch
+
+    broken = deposit(catalog_root, "partido.pdf")
+    broken.write_bytes(b"%PDF-1.4 isto nao e um pdf")
+    gerar.imagem_texto(deposit(catalog_root, "foto.png"), gerar.APONTAMENTOS_FG)
+    requests = catalog_root / "catalogo" / "_importar"
+    requests.mkdir(parents=True)
+    (requests / "mau.yaml").write_text("format: outra-coisa\ninstitutions: [{slug: x}]\n")
+    monkeypatch.setenv("PATH", "/nonexistent")
+    report = run(catalog_root).report
+    monkeypatch.undo()
+
+    out = tmp_path / "idx"
+    build_indices(DataRepo(catalog_root), out, deferred=report.deferred)
+    state = json.loads((out / "manifest.json").read_text())["deposit"]
+    batch = "20251001T100000Z-abcd"
+    assert state["waiting"] == [{
+        "label": f"{OWNER}/{batch}/foto.png", "login": OWNER, "name": "foto.png",
+        "kind": "tool", "reason": state["waiting"][0]["reason"],
+    }]
+    assert "tesseract" in state["waiting"][0]["reason"]
+    assert state["waiting_total"] == 1 and state["stuck_total"] == 1
+    [failed] = state["failed"]
+    assert failed["name"] == "partido.pdf" and failed["login"] == OWNER
+    assert failed["label"] == f"{OWNER}/{batch}/partido.pdf"
+    assert "PDF ilegível" in failed["error"] and "\n" not in failed["error"]
+    assert failed["log"] == f"deposito/{OWNER}/_erros/{batch}/partido.pdf.log"
+    assert state["failed_total"] == 1
+    assert [c["name"] for c in state["catalog_failed"]] == ["mau.yaml"]
+
+    # Sem o relatório (índices construídos sem processar), o que lá está aparece sem razão.
+    build_indices(DataRepo(catalog_root), out)
+    state = json.loads((out / "manifest.json").read_text())["deposit"]
+    assert "kind" not in state["waiting"][0] and state["stuck_total"] == 0
+
+    build_indices(DataRepo(catalog_root), tmp_path / "pub", public=True)
+    assert "deposit" not in json.loads((tmp_path / "pub" / "manifest.json").read_text())
+    assert publish_index_branch(catalog_root, push=False) is None  # sem git: só constrói

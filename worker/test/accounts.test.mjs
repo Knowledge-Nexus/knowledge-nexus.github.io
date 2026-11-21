@@ -269,6 +269,12 @@ test("leitor lê pelo proxy e não escreve; editor escreve e o commit leva o nom
   assert.equal(file.status, 200);
   assert.equal(gh.calls.at(-1).auth, `Bearer ${WORKER_TOKEN}`);
   assert.equal(gh.calls.at(-1).path, `/repos/${REPO}/contents/documentos/a.yaml?ref=main`);
+  // O estado do processamento compara o commit dos índices com o último.
+  const compare = await call("GET", `/gh/repos/${REPO}/compare/${"a".repeat(40)}...${HEAD}?per_page=1`, {
+    token,
+  });
+  assert.notEqual(compare.status, 403);
+  assert.equal(gh.calls.at(-1).path, `/repos/${REPO}/compare/${"a".repeat(40)}...${HEAD}?per_page=1`);
   const blob = await call("POST", `/gh/repos/${REPO}/git/blobs`, { token, body: { content: "" } });
   assert.equal(blob.status, 403);
   assert.equal(blob.data.message, "so_leitura");
@@ -389,6 +395,7 @@ test("o proxy só deixa passar o repositório de dados e os pedidos da interface
     ["DELETE", `/gh/repos/${REPO}`],
     ["PATCH", `/gh/repos/${REPO}`],
     ["GET", `/gh/repos/${REPO}/collaborators`],
+    ["GET", `/gh/repos/${REPO}/compare/main...main/../../outro`],
     ["PUT", `/gh/repos/${REPO}/collaborators/intruso`],
     ["GET", "/gh/user/repos"],
   ]) {

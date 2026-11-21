@@ -31,6 +31,15 @@ export interface WorkflowRun {
   name?: string;
 }
 
+/** O GitHub lista no máximo 300 ficheiros numa comparação. */
+export const COMPARE_MAX_FILES = 300;
+
+export interface Comparison {
+  status: string;
+  files: string[];
+  truncated: boolean;
+}
+
 export interface TreeEntry {
   path: string;
   mode: "100644" | "100755" | "040000";
@@ -214,6 +223,20 @@ export class GitHubClient {
       `/repos/${owner}/${name}/git/ref/heads/${encodeURIComponent(branch)}`,
     );
     return ref.object.sha;
+  }
+
+  /**
+   * Os ficheiros que mudaram de `base` para `head` (o GitHub dá no máximo 300; `truncated`
+   * diz se havia mais). `status`: `ahead`, `identical`, `behind` ou `diverged`.
+   */
+  async compare(owner: string, name: string, base: string, head: string): Promise<Comparison> {
+    // `per_page=1`: só interessa a lista dos ficheiros (vem sempre na primeira página).
+    const data = await this.json<{ status: string; files?: { filename: string }[] }>(
+      "GET",
+      `/repos/${owner}/${name}/compare/${base}...${head}?per_page=1`,
+    );
+    const files = (data.files ?? []).map((f) => f.filename);
+    return { status: data.status, files, truncated: files.length >= COMPARE_MAX_FILES };
   }
 
   async commitTree(owner: string, name: string, sha: string): Promise<string> {

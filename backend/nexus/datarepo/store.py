@@ -43,6 +43,16 @@ class DataRepo:
         return data if isinstance(data, dict) else {}
 
     @property
+    def default_owner(self) -> str:
+        """Dono do que está solto no depósito (fora de uma pasta de utilizador)."""
+        owner = self.raw_settings.get("owner")
+        if owner:
+            return str(owner)
+        if len(self.users) == 1:
+            return next(iter(self.users))
+        return "local"
+
+    @property
     def format_version(self) -> int:
         return int(self.raw_settings.get("format_version", FORMAT_VERSION))
 

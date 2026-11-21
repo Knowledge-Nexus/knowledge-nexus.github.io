@@ -177,7 +177,12 @@
     "failure": "Houve um problema a processar",
     "open_run": "detalhes",
     "indices": "Tudo em dia · {{when}}",
-    "no_indices": "Biblioteca ainda vazia"
+    "no_indices": "Biblioteca ainda vazia",
+    "processing": "A processar alterações recentes…",
+    "processing_items_one": "A arrumar · falta {{count}} ficheiro",
+    "processing_items_other": "A arrumar · faltam {{count}} ficheiros",
+    "stalled": "Há alterações à espera de processamento",
+    "stalled_hint": "Não há progresso há mais de 20 minutos. Confirma que o processamento está ligado (o nexus servir no teu computador ou o Actions)."
   },
   "library": {
     "title": "Biblioteca",
@@ -942,5 +947,28 @@
     "to_verify_item_other": "{{count}} por verificar",
     "confirm_all_one": "Confirmar a única por verificar",
     "confirm_all_other": "Confirmar todas ({{count}})"
+  },
+  "notifications": {
+    "open": "Notificações",
+    "open_count_one": "Notificações: {{count}} problema",
+    "open_count_other": "Notificações: {{count}} problemas",
+    "title": "Notificações",
+    "none": "Nada a assinalar: todos os ficheiros foram guardados.",
+    "from": "enviado por {{login}}",
+    "more_one": "e mais {{count}}.",
+    "more_other": "e mais {{count}}.",
+    "failed_title": "Não foi possível guardar",
+    "failed_hint": "Estes ficheiros deram erro ao ser tratados e ficaram em deposito/<login>/_erros/, com o registo do erro. O original não se perdeu; para tentar de novo, volta a depositá-lo.",
+    "stuck_title": "À espera no depósito",
+    "stuck_hint": "Ainda não foi possível guardá-los: ficam no depósito e são tratados sozinhos quando o problema se resolver.",
+    "catalog_title": "Alterações que não se aplicaram",
+    "catalog_hint": "Pedidos feitos na interface (cursos, cadeiras, instituições) que o processamento recusou. Ficaram em catalogo/_importar/_erros/.",
+    "catalog_item": "Alteração de {{when}}",
+    "kind": {
+      "storage": "Sem onde guardar o original (o armazenamento não está disponível: faltam as credenciais do R2 ou a quota acabou)",
+      "tool": "Falta uma ferramenta no computador que processa (por exemplo, o OCR)",
+      "parts": "Envio incompleto: ainda faltam partes do ficheiro",
+      "error": "O lote enviado não abre"
+    }
   }
 }

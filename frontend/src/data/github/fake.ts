@@ -84,7 +84,8 @@ export class FakeGitHub {
     const sha = this.sha("c");
     const tree = this.sha("t");
     this.trees.set(tree, { base: null, entries: [] });
-    this.commitTrees.set(sha, { tree, parent: null, snapshot: { ...files } });
+    const parent = this.heads.get(`${fullName}#${branch}`) ?? null;
+    this.commitTrees.set(sha, { tree, parent, snapshot: { ...files } });
     this.views.set(tree, { files: { ...files }, prefix: "" });
     this.heads.set(`${fullName}#${branch}`, sha);
     return sha;
@@ -173,8 +174,30 @@ export class FakeGitHub {
           })
         : json(404, { message: "Not Found" });
     }
-    // Comparação de um commit com o pai (o Worker das contas verifica cada commit assim).
     const compare = /^\/compare\/([0-9a-z]+)\.\.\.([0-9a-z]+)$/.exec(rest);
+    // Dois commits já no ramo (o estado do processamento compara o dos índices com o último):
+    // os ficheiros diferentes, e `ahead` se o primeiro é antepassado do segundo.
+    if (compare && method === "GET" && this.commitTrees.get(compare[2]!)?.snapshot) {
+      const base = this.commitTrees.get(compare[1]!)?.snapshot;
+      const head = this.commitTrees.get(compare[2]!)!.snapshot!;
+      if (!base) return json(404, { message: "Not Found" });
+      let status = compare[1] === compare[2] ? "identical" : "diverged";
+      for (let at = this.commitTrees.get(compare[2]!)?.parent; at && status === "diverged"; ) {
+        if (at === compare[1]) status = "ahead";
+        at = this.commitTrees.get(at)?.parent;
+      }
+      const same = (a?: Uint8Array, b?: Uint8Array) =>
+        a !== undefined &&
+        b !== undefined &&
+        a.length === b.length &&
+        a.every((x, i) => x === b[i]);
+      const paths = [...new Set([...Object.keys(base), ...Object.keys(head)])].sort();
+      const files = paths
+        .filter((path) => !same(base[path], head[path]))
+        .map((filename) => ({ filename, status: !head[filename] ? "removed" : "modified" }));
+      return json(200, { status, files });
+    }
+    // Comparação de um commit com o pai (o Worker das contas verifica cada commit assim).
     if (compare && method === "GET") {
       const base = this.commitTrees.get(compare[1]!)?.snapshot;
       const head = this.commitTrees.get(compare[2]!);

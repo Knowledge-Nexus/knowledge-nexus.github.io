@@ -115,3 +115,9 @@ proposals: {accept: [unit-teoria-dos-grafos-imaginarios]}
   partes, abre-as no browser e junta os resultados como o motor (`merge_hits`).
 - **`manifest.json`** guarda `built_from` (o commit de `main`), `built_at`, `search.shards`
   (as partes, por ordem) e o SHA-256 de cada ficheiro. É com ele que a interface decide se precisa de descarregar de novo.
+  Nos índices privados leva ainda `deposit` (`nexus/index/deposit.py`): o que ficou no
+  depósito depois de processar (`waiting`; com `kind` e `reason` os que estão parados:
+  `storage` sem onde guardar o original, `tool` falta uma ferramenta, `parts` envio incompleto,
+  `error` lote que não abre), o que foi para `_erros/` (`failed`, com o erro do `.log`, sem os
+  caminhos do computador que processou) e os pedidos de catálogo recusados (`catalog_failed`).
+  Listam-se no máximo 100 de cada, com os totais. Os índices públicos não o têm.

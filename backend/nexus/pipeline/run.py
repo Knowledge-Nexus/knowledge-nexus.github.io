@@ -27,7 +27,7 @@ from pathlib import Path
 
 from nexus import clock
 from nexus.datarepo.catalog_io import import_bundle, remove_course, remove_unit
-from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX
+from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX, PARTS_SUFFIX
 from nexus.datarepo.store import DataRepo
 from nexus.datarepo.yamlio import read_yaml, write_text_if_changed, write_yaml_if_changed
 from nexus.domain.common import uuid7
@@ -118,6 +118,14 @@ class RunReport:
     processed_items: int = 0
     processed_labels: list[str] = field(default_factory=list)
     remaining_items: bool = False
+    # Itens que ficaram no depósito, pelo rótulo (`DepositItem.label`): (tipo, razão). Tipos:
+    # `storage` (sem onde guardar o original), `tool` (falta uma ferramenta), `parts` (envio
+    # ainda incompleto) e `error` (lote que não abre). Vão para o manifest dos índices.
+    deferred: dict[str, tuple[str, str]] = field(default_factory=dict)
+
+    def defer(self, label: str, kind: str, reason: str) -> None:
+        self.skipped.append((label, reason))
+        self.deferred[label] = (kind, reason)
 
     def summary(self) -> list[str]:
         lines = [
@@ -180,12 +188,7 @@ class Pipeline:
 
     @property
     def default_owner(self) -> str:
-        owner = self.repo.raw_settings.get("owner")
-        if owner:
-            return str(owner)
-        if len(self.repo.users) == 1:
-            return next(iter(self.repo.users))
-        return "local"
+        return self.repo.default_owner
 
     # --- ciclo principal ------------------------------------------------------------
 
@@ -197,8 +200,11 @@ class Pipeline:
             lotes = expand_lotes(self.layout.deposit_root, self.workdir,
                                  self.settings.archives, self.settings.limits.max_file_bytes)
             self.report.warnings += [f"lote aberto: {x}" for x in lotes.expanded]
-            self.report.skipped += [(x, "lote ainda incompleto") for x in lotes.pending]
+            for x in lotes.pending:
+                self.report.defer(x.removesuffix(PARTS_SUFFIX), "parts", "lote ainda incompleto")
             self.report.errors += [(f"deposito/{x}", e) for x, e in lotes.errors]
+            for x, e in lotes.errors:
+                self.report.deferred[x.removesuffix(PARTS_SUFFIX)] = ("error", e)
             scan = scan_deposit(self.layout.deposit_root, set(self.repo.users),
                                 self.default_owner, self.settings.code_projects)
             self._catalog_requests()
@@ -327,7 +333,7 @@ class Pipeline:
         # depósito, sem gastar tempo a extrair o texto. Uma referência (`*.ref.yaml`) não grava.
         reason = self.blobs.unavailable() if item.kind != "ref" else None
         if reason:
-            self.report.skipped.append((item.label, reason))
+            self.report.defer(item.label, "storage", reason)
             if not self._storage_warned:
                 log.warning("%s", reason)
                 self._storage_warned = True
@@ -345,7 +351,9 @@ class Pipeline:
             self._apply(staging)
         except (MissingToolError, ArchiveToolMissing, PartsIncomplete,
                 StorageUnavailable) as exc:
-            self.report.skipped.append((item.label, str(exc)))
+            kind = ("storage" if isinstance(exc, StorageUnavailable)
+                    else "parts" if isinstance(exc, PartsIncomplete) else "tool")
+            self.report.defer(item.label, kind, str(exc))
             log.warning("adiado %s: %s", item.label, exc)
         except Exception as exc:
             log.exception("falhou %s", item.label)

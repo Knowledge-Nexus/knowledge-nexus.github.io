@@ -1464,3 +1464,50 @@ test("gerir os acessos: suspender, reactivar e terminar um código", async ({ pa
   await page.reload();
   await expect(page.getByText(/O teu acesso terminou/)).toBeVisible();
 });
+
+test("o canto mostra o processamento em tempo real e o sino os ficheiros que falharam", async ({
+  page,
+}) => {
+  const fake = await withFakeGitHub(page);
+  const auth = { headers: { Authorization: `Bearer ${fake.token}` } };
+  const head = async () => {
+    const ref = await fake.fetch(`https://api.github.com/repos/${REPO}/git/ref/heads/main`, auth);
+    return ((await ref.json()) as { object: { sha: string } }).object.sha;
+  };
+  // Os índices do último commit (como depois de o motor processar).
+  const indices = fake.repos.get(REPO)!.branches.indices!;
+  const publishIndices = async (builtAt: string) => {
+    const manifest = JSON.parse(Buffer.from(indices["manifest.json"]!).toString("utf-8"));
+    manifest.built_from = await head();
+    manifest.built_at = builtAt;
+    indices["manifest.json"] = Buffer.from(JSON.stringify(manifest));
+  };
+  await publishIndices("2025-10-01T12:00:00+00:00");
+  await login(page, fake);
+  const status = page.locator("aside").getByTestId("pipeline-status");
+  await expect(status).toContainText("Tudo em dia");
+
+  // Ao voltar ao separador, o estado é verificado logo.
+  const focus = () => page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+  // As marcas de leitura não são trabalho para o processamento.
+  fake.externalPush(REPO, { "anotacoes/aluna/x.json": "{}" });
+  const compared = page.waitForRequest((r) => r.url().includes("/compare/"));
+  await focus();
+  await compared;
+  await expect(status).toContainText("Tudo em dia");
+
+  // Um depósito feito noutro lado (outro browser, o Git): «a processar» até haver índices novos.
+  fake.externalPush(REPO, { "deposito/aluna/20251001T130000Z-abcd/ficha.txt": "ficha" });
+  await focus();
+  await expect(status).toContainText("A processar alterações recentes");
+  await publishIndices("2025-10-01T13:05:00+00:00");
+  await expect(status).toContainText("Tudo em dia", { timeout: 20_000 });
+
+  // O sino (só do dono): o ficheiro estragado da amostra, pelo nome.
+  const bell = page.getByRole("button", { name: "Notificações: 1 problema" });
+  await bell.click();
+  const dialog = page.getByRole("dialog", { name: "Notificações" });
+  await expect(dialog.getByRole("heading", { name: "Não foi possível guardar" })).toBeVisible();
+  await expect(dialog).toContainText("partido.pdf");
+  await expect(dialog).toContainText("PDF ilegível");
+});

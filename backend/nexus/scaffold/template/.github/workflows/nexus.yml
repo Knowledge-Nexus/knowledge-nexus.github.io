@@ -11,6 +11,7 @@ on:
       - "catalogo/**"
       - "utilizadores/**"
       - "revisao/**"
+      - "gerado/**"
       - "nexus.yaml"
   workflow_dispatch:
     inputs:

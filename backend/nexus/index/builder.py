@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from nexus.domain.documents import Document, DocumentKind
 from nexus.domain.visibility import effective_visibility
 from nexus.domain.vocab import VOCAB_KINDS
 from nexus.index import schema
+from nexus.index.deposit import deposit_status
 from nexus.index.search import SEARCH_SCHEMA_VERSION, PageRow, write_search_shards
 from nexus.pipeline.hashing import hamming
 
@@ -143,10 +145,13 @@ def _question_rows(repo: DataRepo, documents: list[Document],
 
 
 def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
-                  public: bool = False) -> BuildResult:
+                  public: bool = False,
+                  deferred: Mapping[str, tuple[str, str]] | None = None) -> BuildResult:
     """Constrói os índices. Com `public=True`, só entra o que o dono marcou como público,
     sem nada pessoal (notas, caminhos de origem, histórico, revisões, propostas) e de forma
-    determinística (a data vai só no `manifest.json`), para a publicação ser idempotente."""
+    determinística (a data vai só no `manifest.json`), para a publicação ser idempotente.
+    `deferred`: os itens que a execução deixou no depósito e porquê (`RunReport.deferred`),
+    para o estado do depósito no manifest (só nos índices privados)."""
     out.mkdir(parents=True, exist_ok=True)
     catalog = repo.catalog
     vocab = repo.vocabularies
@@ -350,5 +355,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
         "files": {META_DB: _file_info(meta_path),
                   **{name: _file_info(out / name) for name in shards}},
     }
+    if not public:
+        manifest["deposit"] = deposit_status(repo, deferred)
     (out / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return BuildResult(out, len(doc_rows), len(page_rows), len(pairs))

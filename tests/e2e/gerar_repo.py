@@ -52,7 +52,9 @@ def build(out: Path) -> None:
                          "Rascunho antigo sem interesse. Notas soltas que já não servem.")
         gerar.pdf_nativo(root / "deposito" / OWNER / "exemplo" / "AM1" / "Exame_Normal_2023-24.pdf",
                          gerar.EXAME_NORMAL_AM1)
-        Pipeline(DataRepo(root)).run()
+        # Um ficheiro estragado: vai para `_erros/` e aparece nas notificações do dono.
+        (root / "deposito" / OWNER / "partido.pdf").write_bytes(b"%PDF-1.4 isto nao e um pdf")
+        report = Pipeline(DataRepo(root)).run()
         # Um ficheiro que a aluna pôs no caixote do lixo («Removidos» em «A rever»).
         [old] = [d for d in DataRepo(root).documents.values()
                  if any(s.path.endswith("rascunho_velho.pdf") for s in d.sources)]
@@ -68,7 +70,7 @@ def build(out: Path) -> None:
             for label, text in gerar.PERGUNTAS_EXAME_NORMAL_AM1]})
         set_unit_visibility(DataRepo(root), OWNER, "ufe/am1", "public")
         indices = Path(tmp) / "indices"
-        build_indices(DataRepo(root), indices, built_from="e2e")
+        build_indices(DataRepo(root), indices, built_from="e2e", deferred=report.deferred)
         public = Path(tmp) / "publico"
         build_public_site(DataRepo(root), public)
         data = {"owner": OWNER, "main": _files(root), "indices": _files(indices),
