@@ -146,12 +146,14 @@ def _question_rows(repo: DataRepo, documents: list[Document],
 
 def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                   public: bool = False,
-                  deferred: Mapping[str, tuple[str, str]] | None = None) -> BuildResult:
+                  deferred: Mapping[str, tuple[str, str]] | None = None,
+                  search_cache: Path | None = None) -> BuildResult:
     """Constrói os índices. Com `public=True`, só entra o que o dono marcou como público,
     sem nada pessoal (notas, caminhos de origem, histórico, revisões, propostas) e de forma
     determinística (a data vai só no `manifest.json`), para a publicação ser idempotente.
     `deferred`: os itens que a execução deixou no depósito e porquê (`RunReport.deferred`),
-    para o estado do depósito no manifest (só nos índices privados)."""
+    para o estado do depósito no manifest (só nos índices privados). `search_cache`: pasta
+    onde ficam as partes da pesquisa já construídas, para reutilizar as que não mudaram."""
     out.mkdir(parents=True, exist_ok=True)
     catalog = repo.catalog
     vocab = repo.vocabularies
@@ -344,7 +346,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
     shards = write_search_shards(out, page_rows, {
         "search_schema_version": str(SEARCH_SCHEMA_VERSION),
         "scope": "public" if public else "private",
-    })
+    }, cache=search_cache)
     manifest = {
         "schema_version": schema.SCHEMA_VERSION,
         "search_schema_version": SEARCH_SCHEMA_VERSION,

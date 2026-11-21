@@ -144,7 +144,7 @@ verify() {
   say "O que o Knowledge Nexus vai usar"
   info "utilizador próprio «$USER_NAME»: $APP_DIR (aplicação) e $DATA_DIR (repositório de dados)"
   info "OCR com $OCR_WORKERS página(s) de cada vez, prioridade baixa (nice 15, disco em «idle»)"
-  info "rede: uma pergunta pequena ao GitHub a cada 30 s; downloads só ao instalar e ao processar"
+  info "rede: uma pergunta pequena ao GitHub a cada 10 s; downloads só ao instalar e ao processar"
   info "não abre portas nem mexe no Node, no npm, no cron ou noutras pastas"
 }
 

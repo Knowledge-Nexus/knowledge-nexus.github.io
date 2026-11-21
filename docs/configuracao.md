@@ -90,7 +90,7 @@ increased").
 
 - **No teu computador (recomendado para depósitos grandes):** `nexus servir` vigia o
   repositório de dados e processa cada envio da interface (no Windows, `vigiar-deposito.bat`;
-  num Raspberry Pi, como serviço: ver 4.4). Vê de 30 em 30 segundos se há novidades; cada
+  num Raspberry Pi, como serviço: ver 4.4). Vê de 10 em 10 segundos se há novidades; cada
   verificação é só uma pergunta pequena ao GitHub (o último commit do ramo), e só traz as
   alterações quando há alguma.
   Faz tudo o que o Actions fazia: actualiza o formato dos ficheiros quando a aplicação o
@@ -98,7 +98,7 @@ increased").
   aparecer logo na biblioteca), publica os índices e o material público (com
   `NEXUS_PUBLICO_TOKEN`, ver 3; no máximo de 5 em 5 minutos e só quando alguma coisa mudou).
   Os commits que ele envia levam `[skip ci]`, por isso não põem o Actions a repetir o trabalho.
-  Quando há alterações da interface, espera que fiquem uns 20 segundos sem mudanças (arrastar
+  Quando há alterações da interface, espera que fiquem uns 10 segundos sem mudanças (arrastar
   várias cadeiras seguidas são vários commits) e processa-as de uma vez. Se mesmo assim o
   repositório mudar durante o processamento, junta as alterações e processa de novo; nada se
   perde. A cada 10 minutos vê se há uma versão nova da aplicação; se houver, o `.bat` actualiza-a e
@@ -113,7 +113,7 @@ increased").
   `~/.bashrc` (secções 3 e 4.2). Com outra distribuição do WSL: `set NEXUS_WSL=<nome>`.
 - **«Could not resolve host: github.com»:** o Ubuntu do WSL ficou sem DNS (acontece depois de
   suspender o PC, mudar de rede ou ligar uma VPN). O `.bat` avisa ao arrancar e continua a
-  tentar de 30 em 30 s. Para resolver já: no PowerShell do Windows, `wsl --shutdown`, e abre
+  tentar de 10 em 10 s. Para resolver já: no PowerShell do Windows, `wsl --shutdown`, e abre
   o `.bat` de novo. Para não voltar a acontecer, fixa o DNS no Ubuntu:
   ```bash
   printf '[network]\ngenerateResolvConf = false\n' | sudo tee -a /etc/wsl.conf

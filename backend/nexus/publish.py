@@ -13,7 +13,7 @@ from typing import Any
 from nexus.datarepo.git import Git, GitError, RemoteBusy
 from nexus.datarepo.store import DataRepo
 from nexus.index.builder import MANIFEST, build_indices
-from nexus.pipeline.run import Pipeline, RunReport
+from nexus.pipeline.run import Pipeline, RunReport, default_cache_dir
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,12 @@ def indices_up_to_date(root: Path, remote: str = "origin") -> bool:
     return git.is_repo() and _remote_indices_source(git, remote) == git.head()
 
 
+def search_cache_dir() -> Path:
+    """As partes da pesquisa já construídas (junto da cache de extracção, que o Actions
+    também guarda entre execuções)."""
+    return default_cache_dir() / "pesquisa"
+
+
 def publish_index_branch(root: Path, push: bool = True, remote: str = "origin",
                          deferred: Mapping[str, tuple[str, str]] | None = None) -> str | None:
     """Reconstrói e publica os índices do estado actual do repositório. `deferred`: o que a
@@ -70,7 +76,8 @@ def publish_index_branch(root: Path, push: bool = True, remote: str = "origin",
     use_git = git.is_repo()
     head = git.head() if use_git else None
     with tempfile.TemporaryDirectory(prefix="nexus-indices-") as tmp:
-        build_indices(DataRepo(root), Path(tmp), built_from=head, deferred=deferred)
+        build_indices(DataRepo(root), Path(tmp), built_from=head, deferred=deferred,
+                      search_cache=search_cache_dir())
         if not use_git:
             return None
         return git.publish_directory(

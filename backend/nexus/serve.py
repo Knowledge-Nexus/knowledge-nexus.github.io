@@ -28,14 +28,17 @@ log = logging.getLogger(__name__)
 # `git pull` e volta a arrancar (antes, o processo continuava com o código antigo até alguém
 # o reiniciar à mão).
 UPDATE_EXIT = 75
-# De quanto em quanto tempo (segundos) se vê se a interface gravou algo (era 60; com o
-# `ls-remote` cada verificação é um pedido pequeno, por isso pode ser mais frequente).
-DEFAULT_INTERVAL = 30
+# De quanto em quanto tempo (segundos) se vê se a interface gravou algo (era 60, depois 30;
+# com o `ls-remote` cada verificação é um pedido de poucos bytes, por isso pode ser frequente:
+# um envio começa a ser tratado, em média, 5 s depois em vez de 15 s).
+DEFAULT_INTERVAL = 10
 # De quanto em quanto tempo (segundos) se vê se a aplicação tem uma versão nova.
 UPDATE_EVERY = 600
 # Quem arruma na interface grava vários commits seguidos (ex.: arrastar cadeiras): espera-se
-# que o remoto fique este tempo sem mudanças antes de processar, até ao máximo indicado.
-QUIET_SECONDS = 20
+# que o remoto fique este tempo sem mudanças antes de processar, até ao máximo indicado. Se
+# ainda assim chegar outro commit a meio, nada se perde: o envio é recusado e processa-se de
+# novo sobre o remoto (e a interface volta a aplicar as suas alterações sobre o último commit).
+QUIET_SECONDS = 10
 QUIET_MAX_WAIT = 180
 # O que a interface grava e o pipeline não usa (as marcas de leitura de cada pessoa e o
 # registo dos acessos temporários): commits só com isto não precisam de processamento.
@@ -196,6 +199,8 @@ def app_has_update(checkout: Path) -> bool:
 _OFFLINE_MARKS = ("Could not resolve host", "Temporary failure in name resolution",
                   "Failed to connect to", "Network is unreachable")
 OFFLINE_REMINDER_EVERY = 10
+# ... mas nunca mais do que um lembrete de 5 em 5 minutos.
+OFFLINE_REMINDER_SECONDS = 300
 
 
 def is_offline(exc: GitError) -> bool:
@@ -211,6 +216,7 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
         checkout = app_checkout()
         has_update = (lambda: app_has_update(checkout)) if checkout else (lambda: False)
     every = max(1, UPDATE_EVERY // max(interval, 1))
+    remind = max(OFFLINE_REMINDER_EVERY, OFFLINE_REMINDER_SECONDS // max(interval, 1))
     force = True
     cycle = 0
     offline = 0
@@ -234,7 +240,7 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
                     "rede). No WSL: no PowerShell do Windows, corre `wsl --shutdown` e abre o "
                     ".bat de novo; para não voltar a acontecer, docs/configuracao.md, 4.1. "
                     "Continua a tentar de %d em %d s.", interval, interval)
-            elif offline % OFFLINE_REMINDER_EVERY == 0:
+            elif offline % remind == 0:
                 log.warning("ainda sem ligação ao GitHub (%d tentativas)", offline + 1)
             if is_offline(exc):
                 offline += 1

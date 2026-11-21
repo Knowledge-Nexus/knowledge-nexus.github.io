@@ -24,9 +24,9 @@
     "semantic_hash": "39b9549f97fc3fb68653523f6b71d5a0"
   },
   "backend/nexus/cli.py": {
-    "mtime": 1795297006.1158545,
-    "seen": 1795297407.4827416,
-    "ast_hash": "49c43bd67fe63f9ed99f0d0b419bb093",
+    "mtime": 1795299244.6933541,
+    "seen": 1795299312.6518967,
+    "ast_hash": "f08df1c55197298a7d496839026be227",
     "semantic_hash": ""
   },
   "backend/nexus/clock.py": {
@@ -216,9 +216,9 @@
     "semantic_hash": "05008fca3adfe1bab7dc5ee146bae52e"
   },
   "backend/nexus/index/builder.py": {
-    "mtime": 1795298106.8488746,
-    "seen": 1795298749.2119734,
-    "ast_hash": "7cc3832f24ef2e3c8d7a06f1ae6faa90",
+    "mtime": 1795299082.398769,
+    "seen": 1795299312.6519868,
+    "ast_hash": "cc84f1f169975fb844a157e338b231ce",
     "semantic_hash": ""
   },
   "backend/nexus/index/migrations.py": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "backend/nexus/index/search.py": {
-    "mtime": 1795296996.8708303,
-    "seen": 1795297407.4827907,
-    "ast_hash": "31979438da38545ff2c56a74b0a2b713",
+    "mtime": 1795299071.6376207,
+    "seen": 1795299312.6519985,
+    "ast_hash": "a8c162b2fe2d064841cc2b3e74dafab4",
     "semantic_hash": ""
   },
   "backend/nexus/pipeline/__init__.py": {
@@ -390,9 +390,9 @@
     "semantic_hash": "18466df982720e71f01b3fc04e9fb7fc"
   },
   "backend/nexus/publish.py": {
-    "mtime": 1795298113.2833493,
-    "seen": 1795298749.212012,
-    "ast_hash": "26bad33c48e8a6a93fdc8b0fa675fd0c",
+    "mtime": 1795299082.399128,
+    "seen": 1795299312.652062,
+    "ast_hash": "0547a0138168e59bc03c0609abc3c9d1",
     "semantic_hash": ""
   },
   "backend/nexus/review.py": {
@@ -432,9 +432,9 @@
     "semantic_hash": "20b644a52fa77045746a5eaf4c6c6003"
   },
   "backend/nexus/serve.py": {
-    "mtime": 1793894018.9661956,
-    "seen": 1793894118.7734807,
-    "ast_hash": "0e6bcb85db18fa26fb60bc04117963f9",
+    "mtime": 1795299244.6929803,
+    "seen": 1795299312.6520805,
+    "ast_hash": "808b2154df1a3ee2395cd778daafc92c",
     "semantic_hash": ""
   },
   "backend/nexus/sharing.py": {
@@ -1104,16 +1104,16 @@
     "semantic_hash": "f5ab0c8b8913a11740b78f8bc8927597"
   },
   "scripts/raspberry-pi/instalar.sh": {
-    "mtime": 1793653940.7602694,
-    "seen": 1793819413.846754,
-    "ast_hash": "3c02c2dc15b8357eef37dccdd8fe8368",
-    "semantic_hash": "3c02c2dc15b8357eef37dccdd8fe8368"
+    "mtime": 1795299244.6937923,
+    "seen": 1795299312.6523814,
+    "ast_hash": "f756ccdc9e23c406ecc67c1812f8fed0",
+    "semantic_hash": ""
   },
   "scripts/vigiar-deposito.sh": {
-    "mtime": 1793818141.320476,
-    "seen": 1793819413.846755,
-    "ast_hash": "c75bba094df2d7eb63ca6d96fe6809ab",
-    "semantic_hash": "c75bba094df2d7eb63ca6d96fe6809ab"
+    "mtime": 1795299244.6935816,
+    "seen": 1795299312.6523838,
+    "ast_hash": "78220be4ec5b4b69da4e7cb30512b154",
+    "semantic_hash": ""
   },
   "tests/amostras/__init__.py": {
     "mtime": 1793653744.8549728,
@@ -1158,9 +1158,9 @@
     "semantic_hash": "ee703296f74dfecd4b402e0c03a93699"
   },
   "tests/backend/test_index_publish.py": {
-    "mtime": 1795297109.297151,
-    "seen": 1795297407.4829774,
-    "ast_hash": "89dc20377340833456e5aa81408fd211",
+    "mtime": 1795299101.3512151,
+    "seen": 1795299312.6524036,
+    "ast_hash": "78954b525284330908d2d4b008a13f3c",
     "semantic_hash": ""
   },
   "tests/backend/test_pipeline.py": {
@@ -1296,9 +1296,9 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1795298737.148048,
-    "seen": 1795298749.2122157,
-    "ast_hash": "21d775877c897d932951164808ac01a6",
+    "mtime": 1795299253.0845046,
+    "seen": 1795299312.652465,
+    "ast_hash": "92eea608e3e462384e2f2dc82ab465d7",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1350,9 +1350,9 @@
     "semantic_hash": ""
   },
   "docs/configuracao.md": {
-    "mtime": 1793822923.8650143,
-    "seen": 1793822941.614654,
-    "ast_hash": "c421938bfa293fe33acf681bbe62e258",
+    "mtime": 1795299244.6944466,
+    "seen": 1795299312.6524892,
+    "ast_hash": "1fc085ce88d4caaa7be87440a6d3e0f5",
     "semantic_hash": ""
   },
   "docs/decisoes.md": {
@@ -1368,9 +1368,9 @@
     "semantic_hash": ""
   },
   "docs/repo-dados.md": {
-    "mtime": 1795298737.1473987,
-    "seen": 1795298749.212232,
-    "ast_hash": "7b9f48fa2b1b7ebecf6d67e28127fc63",
+    "mtime": 1795299253.0848312,
+    "seen": 1795299312.652496,
+    "ast_hash": "08a992a10d151674decfacb908587b8b",
     "semantic_hash": ""
   },
   "frontend/index.html": {

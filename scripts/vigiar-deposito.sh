@@ -88,7 +88,7 @@ if ! getent hosts github.com >/dev/null 2>&1; then
   echo "Aviso: o Ubuntu não encontra o github.com (o DNS do WSL falhou)."
   echo "  Para resolver já: no PowerShell do Windows, corre  wsl --shutdown  e abre o .bat de novo."
   echo "  Para não voltar a acontecer: docs/configuracao.md, 4.1 («Could not resolve host»)."
-  echo "  Entretanto continua a tentar de 30 em 30 s."
+  echo "  Entretanto continua a tentar de 10 em 10 s."
   echo
 fi
 

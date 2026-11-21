@@ -112,7 +112,11 @@ proposals: {accept: [unit-teoria-dos-grafos-imaginarios]}
   parte cujas páginas não mudaram fica igual byte a byte, não volta a ser enviada para o
   GitHub nem descarregada pelo browser. Se uma parte passar dos 90 MB comprimida, o número
   de partes dobra (o GitHub recusa ficheiros acima de 100 MB). A interface descarrega as
-  partes, abre-as no browser e junta os resultados como o motor (`merge_hits`).
+  partes, abre-as no browser e junta os resultados como o motor (`merge_hits`). O motor guarda
+  as partes que constrói na sua cache (`~/.cache/nexus/pesquisa/`, que o Actions também guarda
+  entre execuções) e, na vez seguinte, copia as que têm o mesmo conteúdo em vez de as refazer
+  (normalizar o texto e criar o índice é o mais demorado: com 19 500 páginas, 23 s para tudo,
+  2 s quando muda um documento); as que não se usam há duas semanas saem da cache.
 - **`manifest.json`** guarda `built_from` (o commit de `main`), `built_at`, `search.shards`
   (as partes, por ordem) e o SHA-256 de cada ficheiro. É com ele que a interface decide se precisa de descarregar de novo.
   Nos índices privados leva ainda `deposit` (`nexus/index/deposit.py`): o que ficou no

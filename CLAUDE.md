@@ -27,7 +27,9 @@ convenções ou comandos.
     e a pesquisa em partes (`pesquisa-00…0f.db.gz`, por SHA-256 do documento, cada uma muito
     abaixo dos 100 MB do GitHub; texto guardado uma vez em `pages`, índice FTS5 com conteúdo
     externo; sem datas, por isso uma parte que não mudou não volta a ser enviada nem
-    descarregada; `write_search_shards` dobra as partes se uma passar dos 90 MB).
+    descarregada; `write_search_shards` dobra as partes se uma passar dos 90 MB e, com a
+    cache do motor (`<cache>/pesquisa/`, chave `shard_key`: as páginas, o código e o SQLite),
+    copia as partes que não mudaram em vez de as refazer).
   - **Escrita:** commits (depósito, correcções e pedidos de catálogo).
   - **Ficheiros grandes (> 10 MB):** a API recusa blobs grandes, por isso a interface e o
     `nexus vigiar` enviam-nos em partes (`*.nexus-part-NNNN` + `*.nexus-parts.yaml`) e o
@@ -55,13 +57,13 @@ convenções ou comandos.
   do comando antes do tempo) (qualquer PC e pasta; uma cópia solta usa `~/nexus`): dados em `NEXUS_DADOS`,
   `~/dados` ou `../estudo-dados` (senão oferece clonar), ambiente uv em
   `~/.cache/knowledge-nexus/venv` (`uv run --frozen`), `core.autocrlf` e `safe.directory` numa
-  pasta do Windows; `.gitattributes` mantém os `.sh` em LF. Antes de processar, espera que o remoto fique 20 s sem
+  pasta do Windows; `.gitattributes` mantém os `.sh` em LF. Antes de processar, espera que o remoto fique 10 s sem
   commits (`wait_until_quiet`: quem arruma na interface grava vários seguidos); um envio
   recusado porque o remoto mudou entretanto não é erro (`RemoteBusy`, uma linha no registo).
   Commits só com marcas de leitura (`anotacoes/`) ou `acessos.yaml` não são processados
   (`only_personal`); o workflow também não corre por eles (só os `paths` do pipeline, que
   incluem `gerado/`; a interface usa os mesmos em `lib/processing.ts`, e um teste confirma).
-  Verifica de 30 em 30 s (`DEFAULT_INTERVAL`): `remote_has_news` pergunta primeiro o último
+  Verifica de 10 em 10 s (`DEFAULT_INTERVAL`): `remote_has_news` pergunta primeiro o último
   commit com `git ls-remote` e só faz fetch quando mudou.
   Faz o mesmo que o Actions: `migrate()` antes de processar, depósitos aos bocados
   (`BATCH_ITEMS` = 10 por commit) e o material público (`publish_public_if_due`: só quando
@@ -189,7 +191,7 @@ docs/              arquitectura, modelo de dados, repositório de dados, decisõ
 | Ferramentas de sistema | `uv run nexus verificar` |
 | Repositório de dados novo | `uv run nexus scaffold <pasta> --dono <login>` |
 | Pipeline local | `uv run nexus processar --repo <pasta> [--sem-push]` |
-| Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 30]` |
+| Processar sozinho (sem Actions) | `uv run nexus servir --repo <pasta> [--intervalo 10]` |
 | Processar num Raspberry Pi | `bash scripts/raspberry-pi/instalar.sh [--verificar]` (como root) |
 | Publicar índices (só se desactualizados) | `uv run nexus publicar-indices --repo <pasta> [--forcar]` |
 | Pesquisa local | `uv run nexus pesquisar "consulta" --repo <pasta>` |

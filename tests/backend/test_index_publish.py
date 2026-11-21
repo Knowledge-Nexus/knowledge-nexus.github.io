@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 import sqlite3
 import subprocess
+import time
 from pathlib import Path
 
 from conftest import OWNER, deposit
@@ -224,3 +226,38 @@ def test_search_shards_are_stable_and_split_when_too_big(tmp_path: Path, monkeyp
     (third / "manifest.json").write_text(json.dumps({"search": {"shards": more}}))
     hits = SqliteFtsSearch.from_dir(third).search("sucessao", OWNER, limit=100)
     assert sorted(h.doc_id for h in hits) == sorted(r.doc_id for r in pair)
+
+
+def test_unchanged_search_shards_are_reused_from_the_cache(tmp_path: Path, monkeypatch) -> None:
+    """Com a cache, só se constrói de novo a parte que mudou; o resultado é igual, byte a byte,
+    ao de construir tudo (a cache não muda os índices, só poupa tempo)."""
+    from nexus.index import search as search_module
+    from nexus.index.search import write_search_shards
+
+    rows = [_row(f"{i:x}" * 64, f"Página sobre o assunto número {i}") for i in range(16)]
+    meta = {"search_schema_version": "2", "scope": "private"}
+    built: list[int] = []
+    real = search_module.create_search_db
+    monkeypatch.setattr(search_module, "create_search_db",
+                        lambda path, bucket, m: (built.append(len(bucket)), real(path, bucket, m)))
+    cache = tmp_path / "cache"
+    outs = [tmp_path / name for name in ("a", "b", "c")]
+    for out in outs:
+        out.mkdir()
+    names = write_search_shards(outs[0], rows, meta, cache=cache)
+    assert len(built) == 16 and len(list(cache.glob("*.db.gz"))) == 16
+
+    built.clear()
+    changed = [*rows, _row(rows[3].sha256, "Mais uma página do mesmo documento", 2)]
+    assert write_search_shards(outs[1], changed, meta, cache=cache) == names
+    assert built == [2], "só a parte do documento que mudou"
+    write_search_shards(outs[2], changed, meta)  # sem cache: tudo de novo
+    for name in names:
+        assert (outs[1] / name).read_bytes() == (outs[2] / name).read_bytes()
+
+    # As partes que não se usam há mais de duas semanas saem da cache.
+    old = time.time() - search_module.SHARD_CACHE_MAX_AGE - 60
+    for path in cache.glob("*.db.gz"):
+        os.utime(path, (old, old))
+    write_search_shards(outs[1], changed, meta, cache=cache)
+    assert len(list(cache.glob("*.db.gz"))) == 16

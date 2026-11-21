@@ -12,15 +12,22 @@ forma. Na fase 5 troca-se por full-text do PostgreSQL + pgvector implementando `
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import gzip
+import hashlib
 import json
+import os
 import shutil
 import sqlite3
+import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from nexus.domain import text as text_module
 from nexus.domain.text import normalize
 
 SEARCH_SCHEMA_VERSION = 2
@@ -34,6 +41,9 @@ MAX_SHARDS = 256
 # O GitHub recusa ficheiros acima de 100 MB: com uma parte acima disto, dobra-se o número de
 # partes.
 MAX_SHARD_BYTES = 90 * 1024 * 1024
+# Partes guardadas para reutilizar (`write_search_shards(cache=…)`) que não se usam há mais
+# de duas semanas saem da cache.
+SHARD_CACHE_MAX_AGE = 14 * 24 * 3600
 
 CREATE_PAGES = """
 CREATE TABLE pages (
@@ -153,11 +163,51 @@ def _gzip(source: Path, target: Path) -> None:
             compressed.write(chunk)
 
 
-def write_search_shards(out: Path, rows: list[PageRow], meta: dict[str, str]) -> list[str]:
+@functools.cache
+def _code_fingerprint() -> bytes:
+    """O código de que uma parte depende (esta construção e a normalização do texto) e a
+    versão do SQLite: se algum mudar, as partes guardadas deixam de servir."""
+    digest = hashlib.sha256(sqlite3.sqlite_version.encode())
+    for module in (sys.modules[__name__], text_module):
+        digest.update(Path(str(module.__file__)).read_bytes())
+    return digest.digest()
+
+
+def shard_key(rows: list[PageRow], meta: dict[str, str]) -> str:
+    """Identifica o conteúdo de uma parte: as mesmas páginas e o mesmo código dão a mesma
+    parte, byte a byte (a construção é determinística), por isso pode ser reutilizada."""
+    digest = hashlib.sha256(_code_fingerprint())
+    digest.update(json.dumps(sorted(meta.items()), ensure_ascii=False).encode())
+    for r in rows:
+        digest.update(json.dumps(
+            [r.text, r.doc_id, r.sha256, r.page, r.owner, r.visibility, r.unit, r.course,
+             r.document_type, r.academic_year, r.title], ensure_ascii=False).encode())
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _prune_cache(cache: Path, keep: set[str], now: float) -> None:
+    for path in cache.glob(f"*{SHARD_SUFFIX}"):
+        if path.name.removesuffix(SHARD_SUFFIX) in keep:
+            continue
+        with contextlib.suppress(OSError):
+            if now - path.stat().st_mtime > SHARD_CACHE_MAX_AGE:
+                path.unlink()
+
+
+def write_search_shards(out: Path, rows: list[PageRow], meta: dict[str, str],
+                        cache: Path | None = None) -> list[str]:
     """Escreve as partes da pesquisa em `out` e devolve os nomes, por ordem. Começa em 16
-    partes e dobra enquanto alguma passar de `MAX_SHARD_BYTES` (comprimida)."""
+    partes e dobra enquanto alguma passar de `MAX_SHARD_BYTES` (comprimida).
+
+    Com `cache`, uma parte já construída com o mesmo conteúdo (`shard_key`) é copiada em vez
+    de ser refeita: normalizar o texto e criar o índice FTS é o mais demorado, e depois de um
+    depósito pequeno quase todas as partes ficam iguais."""
     ordered = sorted(rows, key=lambda r: (r.sha256, r.doc_id, r.page))
     shards = DEFAULT_SHARDS
+    if cache is not None:
+        cache.mkdir(parents=True, exist_ok=True)
+    used: set[str] = set()
     while True:
         names = [shard_name(i) for i in range(shards)]
         buckets: list[list[PageRow]] = [[] for _ in range(shards)]
@@ -165,9 +215,27 @@ def write_search_shards(out: Path, rows: list[PageRow], meta: dict[str, str]) ->
             buckets[shard_of(row.sha256, shards)].append(row)
         raw = out / ".pesquisa.db"
         for index, bucket in enumerate(buckets):
-            create_search_db(raw, bucket, {**meta, "shard": str(index), "shards": str(shards)})
-            _gzip(raw, out / names[index])
+            shard_meta = {**meta, "shard": str(index), "shards": str(shards)}
+            target = out / names[index]
+            cached = None
+            if cache is not None:
+                key = shard_key(bucket, shard_meta)
+                used.add(key)
+                cached = cache / f"{key}{SHARD_SUFFIX}"
+                if cached.is_file():
+                    shutil.copyfile(cached, target)
+                    with contextlib.suppress(OSError):
+                        os.utime(cached)  # usada agora: não sai da cache
+                    continue
+            create_search_db(raw, bucket, shard_meta)
+            _gzip(raw, target)
+            if cached is not None:
+                partial = cached.with_name(f".{cached.name}.{os.getpid()}")
+                shutil.copyfile(target, partial)
+                partial.replace(cached)
         raw.unlink(missing_ok=True)
+        if cache is not None:
+            _prune_cache(cache, used, time.time())
         biggest = max((out / name).stat().st_size for name in names)
         if biggest <= MAX_SHARD_BYTES:
             return names
