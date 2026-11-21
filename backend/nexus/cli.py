@@ -248,7 +248,7 @@ def indexar(
     saida: Annotated[Path, typer.Option(help="Pasta onde gravar os índices.")] =
     Path(".nexus-cache/indices"),
 ) -> None:
-    """Constrói meta.db e pesquisa.db.gz sem publicar (útil para depurar)."""
+    """Constrói meta.db e as partes da pesquisa sem publicar (útil para depurar)."""
     from nexus.datarepo.git import Git
     from nexus.index.builder import build_indices
 
@@ -307,14 +307,14 @@ def pesquisar(
     """Pesquisa no texto integral (sobre índices construídos localmente)."""
     import tempfile
 
-    from nexus.index.builder import SEARCH_DB, build_indices
+    from nexus.index.builder import build_indices
     from nexus.index.search import HIGHLIGHT_END, HIGHLIGHT_START, SearchFilters, SqliteFtsSearch
 
     data = _repo(repo)
     viewer = utilizador or str(data.raw_settings.get("owner", ""))
     with tempfile.TemporaryDirectory() as tmp:
         build_indices(data, Path(tmp))
-        hits = SqliteFtsSearch(Path(tmp) / SEARCH_DB).search(
+        hits = SqliteFtsSearch.from_dir(Path(tmp)).search(
             consulta, viewer, SearchFilters(unit=uc, document_type=tipo, academic_year=ano))
     for hit in hits:
         snippet = hit.snippet.replace(HIGHLIGHT_START, "[").replace(HIGHLIGHT_END, "]")

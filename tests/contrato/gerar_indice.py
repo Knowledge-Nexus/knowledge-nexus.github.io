@@ -2,7 +2,7 @@
 
 Uso: uv run python tests/contrato/gerar_indice.py <pasta-de-saida>
 
-Escreve meta.db, pesquisa.db.gz, manifest.json e esperado.json (resultados de referência
+Escreve meta.db, as partes da pesquisa, manifest.json e esperado.json (resultados de referência
 calculados em Python) para o frontend verificar que lê o mesmo esquema e obtém os mesmos
 resultados de pesquisa (frontend/src/data/sqlite/contract.test.ts).
 """
@@ -23,7 +23,7 @@ from nexus import clock, questions  # noqa: E402
 from nexus.datarepo.catalog_io import import_bundle  # noqa: E402
 from nexus.datarepo.store import DataRepo  # noqa: E402
 from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed  # noqa: E402
-from nexus.index.builder import SEARCH_DB, build_indices  # noqa: E402
+from nexus.index.builder import build_indices  # noqa: E402
 from nexus.index.search import SqliteFtsSearch  # noqa: E402
 from nexus.pipeline.run import Pipeline  # noqa: E402
 from nexus.scaffold import scaffold  # noqa: E402
@@ -61,7 +61,7 @@ def build(out: Path) -> None:
         repo = DataRepo(root)
         build_indices(repo, out, built_from="contrato")
         kept = [d for d in repo.documents.values() if d.removed is None]
-        search = SqliteFtsSearch(out / SEARCH_DB)
+        search = SqliteFtsSearch.from_dir(out)
         expected = {
             "owner": OWNER,
             "documents": sorted(d.id for d in kept),

@@ -23,7 +23,11 @@ convenções ou comandos.
   reescrito a cada vez; sem nada pessoal. Código: `nexus/public.py`, `domain/visibility.py`.
 - **A interface fala directamente com a API do GitHub**, com um token fine-grained que fica
   só no browser.
-  - **Leitura:** índices SQLite do ramo `indices`, lidos com SQLite em WebAssembly.
+  - **Leitura:** índices SQLite do ramo `indices`, lidos com SQLite em WebAssembly: `meta.db`
+    e a pesquisa em partes (`pesquisa-00…0f.db.gz`, por SHA-256 do documento, cada uma muito
+    abaixo dos 100 MB do GitHub; texto guardado uma vez em `pages`, índice FTS5 com conteúdo
+    externo; sem datas, por isso uma parte que não mudou não volta a ser enviada nem
+    descarregada; `write_search_shards` dobra as partes se uma passar dos 90 MB).
   - **Escrita:** commits (depósito, correcções e pedidos de catálogo).
   - **Ficheiros grandes (> 10 MB):** a API recusa blobs grandes, por isso a interface e o
     `nexus vigiar` enviam-nos em partes (`*.nexus-part-NNNN` + `*.nexus-parts.yaml`) e o

@@ -398,10 +398,7 @@ def test_software_archive_is_kept_whole(catalog_root: Path) -> None:
 
 
 def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path: Path) -> None:
-    import gzip
-    import sqlite3
-
-    from nexus.index.builder import SEARCH_DB
+    from conftest import search_doc_ids
 
     # O mesmo exame guardado duas vezes (metadados diferentes → bytes diferentes) e uma
     # versão com uma linha a mais (é outra versão: fica).
@@ -421,10 +418,7 @@ def test_same_text_in_different_files_is_kept_once(catalog_root: Path, tmp_path:
     assert copy.filed_name is None and not copy.needs_review
 
     build_indices(repo, tmp_path)
-    raw_search = tmp_path / "pesquisa.db"
-    raw_search.write_bytes(gzip.decompress((tmp_path / SEARCH_DB).read_bytes()))
-    ids = {r[0] for r in sqlite3.connect(raw_search).execute(
-        "SELECT DISTINCT doc_id FROM pages_fts")}
+    ids = search_doc_ids(tmp_path)
     assert copy.id not in ids and first.id in ids
 
     # "Não são iguais": volta a ser um documento separado, e fica assim.

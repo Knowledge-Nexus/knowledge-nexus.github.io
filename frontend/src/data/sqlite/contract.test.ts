@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { normalize } from "../../lib/normalize";
 import { ReadonlyDb } from "./db";
 import { MetaIndex, MIN_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION } from "./queries";
-import { SearchIndex } from "./search";
+import { SearchIndex, searchFiles } from "./search";
 
 const dir = resolve(__dirname, "../../../test-fixtures/contrato");
 const vectors = resolve(__dirname, "../../../../tests/contrato/normalizacao.json");
@@ -94,8 +94,16 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
   });
 
   it("pesquisa como o Python", async () => {
+    const manifest = JSON.parse(readFileSync(resolve(dir, "manifest.json"), "utf-8")) as {
+      files: Record<string, unknown>;
+      search?: { shards: string[] };
+    };
+    const files = searchFiles(manifest.files, manifest.search?.shards);
+    expect(files.length).toBe(16);
     const search = new SearchIndex(
-      await ReadonlyDb.open(gunzipSync(readFileSync(resolve(dir, "pesquisa.db.gz")))),
+      await Promise.all(
+        files.map(async (name) => ReadonlyDb.open(gunzipSync(readFileSync(resolve(dir, name))))),
+      ),
     );
     for (const [query, hits] of Object.entries(expected!.search)) {
       const got = search.search(query, expected!.owner).map((h) => [h.doc_id, h.page]);

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import gzip
 import json
 import sqlite3
 import subprocess
 from pathlib import Path
 
 import pytest
-from conftest import OWNER, deposit
+from conftest import OWNER, deposit, search_doc_ids
 from typer.testing import CliRunner
 
 from amostras import gerar
@@ -20,7 +19,7 @@ from nexus.datarepo.store import DataRepo
 from nexus.datarepo.yamlio import read_yaml, write_yaml_if_changed
 from nexus.domain.visibility import effective_visibility
 from nexus.formats import migrate
-from nexus.index.builder import META_DB, SEARCH_DB
+from nexus.index.builder import META_DB
 from nexus.pipeline.run import Pipeline
 from nexus.public import PublishError, build_public_site, publish_public
 from nexus.sharing import set_document_visibility, set_unit_visibility
@@ -82,10 +81,7 @@ def test_public_site_only_has_public_material_and_nothing_personal(
     assert (site / "texto" / sha / "paginas" / "0001.md").exists()
     alga_sha = repo.documents[_doc_of(repo, "ufe/alga")].blob.sha256
     assert not list((site / "originais").glob(f"*/{alga_sha}*"))
-    raw_search = tmp_path / "pesquisa.db"
-    raw_search.write_bytes(gzip.decompress((site / SEARCH_DB).read_bytes()))
-    search = sqlite3.connect(raw_search)
-    assert {r[0] for r in search.execute("SELECT DISTINCT doc_id FROM pages_fts")} == {am1}
+    assert search_doc_ids(site) == {am1}
     manifest = json.loads((site / "manifest.json").read_text())
     assert manifest["scope"] == "public" and manifest["content_digest"] == digest
 

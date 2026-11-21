@@ -1,8 +1,7 @@
-"""Constrói os índices derivados (`meta.db`, `pesquisa.db.gz`, `manifest.json`)."""
+"""Constrói os índices derivados (`meta.db`, as partes `pesquisa-*.db.gz`, `manifest.json`)."""
 
 from __future__ import annotations
 
-import gzip
 import hashlib
 import json
 from dataclasses import dataclass
@@ -18,12 +17,10 @@ from nexus.domain.documents import Document, DocumentKind
 from nexus.domain.visibility import effective_visibility
 from nexus.domain.vocab import VOCAB_KINDS
 from nexus.index import schema
-from nexus.index.search import SEARCH_SCHEMA_VERSION, PageRow, create_search_db
+from nexus.index.search import SEARCH_SCHEMA_VERSION, PageRow, write_search_shards
 from nexus.pipeline.hashing import hamming
 
 META_DB = "meta.db"
-SEARCH_DB = "pesquisa.db.gz"
-_SEARCH_DB_RAW = "pesquisa.db"
 MANIFEST = "manifest.json"
 
 
@@ -337,21 +334,21 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
                 for p in repo.proposals.values()])
     engine.dispose()
 
-    raw_search_path = out / _SEARCH_DB_RAW
-    create_search_db(raw_search_path, page_rows, meta_values)
-    search_path = out / SEARCH_DB
-    with (raw_search_path.open("rb") as source, search_path.open("wb") as target,
-          gzip.GzipFile(filename="", mode="wb", fileobj=target, mtime=0) as compressed):
-        while chunk := source.read(1024 * 1024):
-            compressed.write(chunk)
-    raw_search_path.unlink()
+    # Nas partes da pesquisa só vai o que não muda de uma execução para a outra (sem datas):
+    # uma parte cujas páginas não mudaram fica igual e não volta a ser enviada nem descarregada.
+    shards = write_search_shards(out, page_rows, {
+        "search_schema_version": str(SEARCH_SCHEMA_VERSION),
+        "scope": "public" if public else "private",
+    })
     manifest = {
         "schema_version": schema.SCHEMA_VERSION,
         "search_schema_version": SEARCH_SCHEMA_VERSION,
         "built_at": built_at,
         "built_from": None if public else built_from,
         "scope": "public" if public else "private",
-        "files": {META_DB: _file_info(meta_path), SEARCH_DB: _file_info(search_path)},
+        "search": {"version": SEARCH_SCHEMA_VERSION, "shards": shards},
+        "files": {META_DB: _file_info(meta_path),
+                  **{name: _file_info(out / name) for name in shards}},
     }
     (out / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return BuildResult(out, len(doc_rows), len(page_rows), len(pairs))

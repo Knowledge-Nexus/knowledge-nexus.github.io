@@ -26,7 +26,7 @@ Contém material de estudo com direitos de autor de __OWNER__. O código do moto
   `nexus perguntas propor`, que confirma o texto no ficheiro)
 - `catalogo/` instituições, cursos, cadeiras, vocabulários
 - `revisao/propostas/` propostas de catálogo
-- ramo `indices`: meta.db e pesquisa.db.gz (derivados)
+- ramo `indices`: meta.db e a pesquisa em partes, pesquisa-*.db.gz (derivados)
 
 ## Skills
 - `/processar-deposito`: corre o pipeline localmente e publica

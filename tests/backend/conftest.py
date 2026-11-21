@@ -82,3 +82,24 @@ def deposit(root: Path, rel: str, owner: str = OWNER, batch: str = "20251001T100
 
 def repo(root: Path) -> DataRepo:
     return DataRepo(root)
+
+
+def search_doc_ids(directory: Path) -> set[str]:
+    """Os documentos que entram na pesquisa publicada em `directory` (todas as partes)."""
+    import gzip
+    import json
+    import sqlite3
+    import tempfile
+
+    from nexus.index.search import shard_files
+
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    ids: set[str] = set()
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in shard_files(manifest):
+            raw = Path(tmp) / "parte.db"
+            raw.write_bytes(gzip.decompress((directory / name).read_bytes()))
+            con = sqlite3.connect(raw)
+            ids |= {row[0] for row in con.execute("SELECT DISTINCT doc_id FROM pages")}
+            con.close()
+    return ids

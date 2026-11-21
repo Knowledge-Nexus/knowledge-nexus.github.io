@@ -215,5 +215,5 @@ questions = Table(
     PrimaryKeyConstraint("sha256", "id"),
 )
 
-# pesquisa.db (FTS5), publicada comprimida como pesquisa.db.gz, é criada com SQL próprio
+# A pesquisa (FTS5), publicada em partes `pesquisa-*.db.gz`, é criada com SQL próprio
 # do SQLite: ver nexus/index/search.py.

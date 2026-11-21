@@ -8,7 +8,7 @@ import type { WorkflowRun } from "./github/client";
 import type { DataSource } from "./source";
 import { ReadonlyDb } from "./sqlite/db";
 import { MetaIndex, MIN_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION } from "./sqlite/queries";
-import { SearchIndex } from "./sqlite/search";
+import { SearchIndex, searchFiles } from "./sqlite/search";
 import type { IndexManifest } from "./types";
 
 interface AppData {
@@ -163,25 +163,28 @@ export function DataProvider(props: {
   return <AppContext.Provider value={value}>{props.children}</AppContext.Provider>;
 }
 
-/** Índice de pesquisa: carregado só quando é preciso (pode ser maior). */
+/**
+ * Índice de pesquisa: carregado só quando é preciso (é o maior). Vem em partes; cada uma fica
+ * na cache pelo seu SHA-256, por isso depois de uma actualização só se descarregam as que
+ * mudaram.
+ */
 export function useSearchIndex() {
   const { source, manifest } = useApp();
-  const compressedName = "pesquisa.db.gz";
-  const searchName = manifest?.files[compressedName]
-    ? compressedName
-    : manifest?.files["pesquisa.db"]
-      ? "pesquisa.db"
-      : null;
-  const sha = searchName ? manifest?.files[searchName]?.sha256 : undefined;
+  const files = manifest ? searchFiles(manifest.files, manifest.search?.shards) : [];
+  const shas = files.map((name) => manifest?.files[name]?.sha256 ?? "");
   return useQuery({
-    queryKey: ["search-index", sha],
-    enabled: Boolean(sha),
+    queryKey: ["search-index", shas.join(",")],
+    enabled: files.length > 0 && shas.every(Boolean),
     staleTime: Number.POSITIVE_INFINITY,
     queryFn: async () => {
-      if (!searchName || !sha) throw new Error("manifesto sem índice de pesquisa");
-      const bytes = await source.indexFile(searchName, sha);
-      const database = searchName === compressedName ? gunzipSync(bytes) : bytes;
-      return new SearchIndex(await ReadonlyDb.open(database));
+      if (files.length === 0) throw new Error("manifesto sem índice de pesquisa");
+      const shards = await Promise.all(
+        files.map(async (name, i) => {
+          const bytes = await source.indexFile(name, shas[i]!);
+          return ReadonlyDb.open(name.endsWith(".gz") ? gunzipSync(bytes) : bytes);
+        }),
+      );
+      return new SearchIndex(shards);
     },
   });
 }

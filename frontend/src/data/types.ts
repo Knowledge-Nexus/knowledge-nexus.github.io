@@ -256,6 +256,8 @@ export interface IndexManifest {
   scope?: "private" | "public";
   owner?: string;
   documents?: number;
+  /** As partes da pesquisa (esquema de pesquisa 2), por ordem. */
+  search?: { version: number; shards: string[] };
   files: Record<string, { size: number; sha256: string }>;
 }
 

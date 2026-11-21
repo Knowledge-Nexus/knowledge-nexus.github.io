@@ -5,7 +5,7 @@
 ```
 Browser ─ https://knowledge-nexus.github.io (SPA React, código público, CSP estrita, noindex)
   │  token fine-grained (só o repositório de dados; guardado apenas neste browser)
-  ├─ lê  ramo `indices` → meta.db + pesquisa.db.gz → SQLite WASM em memória (cache IndexedDB)
+  ├─ lê  ramo `indices` → meta.db + pesquisa-*.db.gz → SQLite WASM em memória (cache IndexedDB)
   ├─ lê  originais/ e texto/ → pdf.js na página citada; Markdown + KaTeX
   └─ escreve commits (Git Data API): deposito/, documentos/, utilizadores/, catalogo/_importar/
                        │ push

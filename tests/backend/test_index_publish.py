@@ -12,9 +12,15 @@ from typer.testing import CliRunner
 from amostras import gerar
 from nexus.cli import app
 from nexus.datarepo.store import DataRepo
-from nexus.index.builder import META_DB, SEARCH_DB, build_indices
+from nexus.index.builder import META_DB, build_indices
 from nexus.index.schema import SCHEMA_VERSION
-from nexus.index.search import HIGHLIGHT_START, SearchFilters, SqliteFtsSearch, build_match
+from nexus.index.search import (
+    HIGHLIGHT_START,
+    PageRow,
+    SearchFilters,
+    SqliteFtsSearch,
+    build_match,
+)
 from nexus.pipeline.run import Pipeline
 from nexus.publish import process_and_publish
 
@@ -38,7 +44,7 @@ def test_build_match_is_safe() -> None:
 def test_search_accents_spelling_and_filters(catalog_root: Path, tmp_path: Path) -> None:
     _prepare(catalog_root)
     build_indices(DataRepo(catalog_root), tmp_path)
-    search = SqliteFtsSearch(tmp_path / SEARCH_DB)
+    search = SqliteFtsSearch.from_dir(tmp_path)
     hits = search.search("sucessao", OWNER)
     assert hits and hits[0].page == 1 and HIGHLIGHT_START in hits[0].snippet
     assert search.search("Ano Letivo", OWNER), "grafia AO90 encontra texto pré-AO"
@@ -59,9 +65,12 @@ def test_meta_db_contents(catalog_root: Path, tmp_path: Path) -> None:
     assert con.execute("SELECT count(*) FROM vocab_terms WHERE kind='document_types'"
                        ).fetchone()[0] >= 12
     manifest = json.loads((tmp_path / "manifest.json").read_text())
-    assert set(manifest["files"]) == {META_DB, SEARCH_DB}
-    assert not (tmp_path / "pesquisa.db").exists()
-    assert gzip.decompress((tmp_path / SEARCH_DB).read_bytes()).startswith(b"SQLite format 3")
+    shards = manifest["search"]["shards"]
+    assert shards == [f"pesquisa-{i:02x}.db.gz" for i in range(16)]
+    assert set(manifest["files"]) == {META_DB, *shards}
+    assert not (tmp_path / ".pesquisa.db").exists()
+    for name in shards:
+        assert gzip.decompress((tmp_path / name).read_bytes()).startswith(b"SQLite format 3")
 
 
 def test_alembic_baseline_matches_schema(tmp_path: Path) -> None:
@@ -88,7 +97,7 @@ def test_process_and_publish_with_git(git_root: Path) -> None:
     remote = git("remote", "get-url", "origin", cwd=git_root)
     assert git("rev-parse", "main", cwd=Path(remote)) == git("rev-parse", "HEAD", cwd=git_root)
     files = git("ls-tree", "--name-only", "indices", cwd=Path(remote)).split()
-    assert files == ["manifest.json", "meta.db", "pesquisa.db.gz"]
+    assert files == ["manifest.json", "meta.db", *[f"pesquisa-{i:02x}.db.gz" for i in range(16)]]
     assert git("rev-list", "--count", "indices", cwd=Path(remote)) == "1"
     log = git("log", "--format=%s", cwd=git_root).splitlines()
     assert log[0].startswith("nexus: processar depósito (1 novos")
@@ -164,3 +173,54 @@ def test_cli_end_to_end(catalog_root: Path, tmp_path: Path) -> None:
     exported = runner.invoke(app, ["exportar-arvore", str(tmp_path / "arv"), "--repo",
                                    str(catalog_root)])
     assert "1 ficheiros exportados" in exported.output
+
+
+def _row(sha: str, text: str, page: int = 1) -> PageRow:
+    return PageRow(text=text, doc_id=f"doc-{sha[:6]}", sha256=sha, page=page, owner=OWNER,
+                   visibility="private", unit=None, course=None, document_type=None,
+                   academic_year=None, title=f"t{sha[:4]}")
+
+
+def test_search_shards_are_stable_and_split_when_too_big(tmp_path: Path, monkeypatch) -> None:
+    from nexus.index import search as search_module
+    from nexus.index.search import SqliteFtsSearch, shard_of, write_search_shards
+
+    rows = [_row(f"{i:x}" * 64, f"Página sobre o assunto número {i} e a sucessão") for i in
+            range(16)]
+    meta = {"search_schema_version": "2", "scope": "private"}
+    first, second = tmp_path / "a", tmp_path / "b"
+    first.mkdir()
+    second.mkdir()
+    names = write_search_shards(first, rows, meta)
+    # Outra página num documento: só a parte desse documento muda.
+    changed = [*rows, _row(rows[3].sha256, "Mais uma página do mesmo documento", 2)]
+    assert write_search_shards(second, changed, meta) == names
+    differ = [n for n in names if (first / n).read_bytes() != (second / n).read_bytes()]
+    assert differ == [names[shard_of(rows[3].sha256, 16)]]
+
+    # O texto normalizado só está no índice: a tabela das páginas não o guarda.
+    import gzip
+    import sqlite3
+
+    raw = tmp_path / "parte.db"
+    raw.write_bytes(gzip.decompress((first / names[0]).read_bytes()))
+    con = sqlite3.connect(raw)
+    assert con.execute("SELECT count(*) FROM pages WHERE norm <> ''").fetchone()[0] == 0
+    con.close()
+
+    # Uma parte acima do limite dobra o número de partes. Dois documentos que a 16 partes
+    # ficam juntos (0x0000 e 0x0010) separam-se a 32.
+    long_text = " ".join(f"palavra{i} sucessão" for i in range(400))
+    pair = [_row("0000" + "a" * 60, long_text), _row("0010" + "b" * 60, long_text)]
+    alone = tmp_path / "sozinho"
+    alone.mkdir()
+    single = write_search_shards(alone, pair[:1], meta)
+    limit = (alone / single[0]).stat().st_size + 200
+    monkeypatch.setattr(search_module, "MAX_SHARD_BYTES", limit)
+    third = tmp_path / "c"
+    third.mkdir()
+    more = write_search_shards(third, pair, meta)
+    assert len(more) == 32 and all((third / n).stat().st_size <= limit for n in more)
+    (third / "manifest.json").write_text(json.dumps({"search": {"shards": more}}))
+    hits = SqliteFtsSearch.from_dir(third).search("sucessao", OWNER, limit=100)
+    assert sorted(h.doc_id for h in hits) == sorted(r.doc_id for r in pair)

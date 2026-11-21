@@ -26,7 +26,7 @@ anotacoes/<login>/<id>.json          marcas de leitura de cada pessoa (convidado
 gerado/<sha256>/perguntas.yaml       banco de perguntas de um enunciado (tal e qual; só com
                                      `nexus perguntas propor`)
 gerado/<sha256>/…                    (fase 2) material gerado, sempre com proveniência
-ramo indices                         manifest.json, meta.db, pesquisa.db.gz (derivados)
+ramo indices                         manifest.json, meta.db, pesquisa-00…0f.db.gz (derivados)
 ```
 
 ## Exemplos
@@ -99,14 +99,19 @@ institutions:
 proposals: {accept: [unit-teoria-dos-grafos-imaginarios]}
 ```
 
-## Índices (`meta.db`, `pesquisa.db.gz`)
+## Índices (`meta.db`, `pesquisa-*.db.gz`)
 
 - **`meta.db`** tem as tabelas `meta`, `institutions`, `courses`, `units`, `course_units`,
   `unit_editions`, `topics`, `vocab_terms`, `users`, `documents`, `near_duplicates`,
   `proposals` e `extractions`. O esquema está em `backend/nexus/index/schema.py`.
-- **`pesquisa.db.gz`** contém a base SQLite comprimida com gzip. Depois de a descarregar,
-  a interface descomprime-a no browser; a base tem a tabela FTS5 `pages_fts`, o texto
-  indexado (`text`, `norm`) e colunas não indexadas para filtros e visibilidade. A
-  compressão mantém o ficheiro abaixo do limite de 100 MB por blob do GitHub.
-- **`manifest.json`** guarda `built_from` (o commit de `main`), `built_at` e o SHA-256 de
-  cada ficheiro. É com ele que a interface decide se precisa de descarregar de novo.
+- **`pesquisa-00.db.gz` … `pesquisa-0f.db.gz`**: a pesquisa em partes (esquema de pesquisa
+  2). Cada documento vai para a parte dada pelo início do seu SHA-256; cada parte é uma base
+  SQLite comprimida com gzip, com a tabela `pages` (o texto de cada página, uma vez, e as
+  colunas para filtros e visibilidade) e o índice FTS5 `pages_fts` com conteúdo externo
+  (`text` e `norm`, a versão normalizada, que só fica no índice). Sem datas lá dentro: uma
+  parte cujas páginas não mudaram fica igual byte a byte, não volta a ser enviada para o
+  GitHub nem descarregada pelo browser. Se uma parte passar dos 90 MB comprimida, o número
+  de partes dobra (o GitHub recusa ficheiros acima de 100 MB). A interface descarrega as
+  partes, abre-as no browser e junta os resultados como o motor (`merge_hits`).
+- **`manifest.json`** guarda `built_from` (o commit de `main`), `built_at`, `search.shards`
+  (as partes, por ordem) e o SHA-256 de cada ficheiro. É com ele que a interface decide se precisa de descarregar de novo.
