@@ -44,7 +44,8 @@
       "medium": "certeza média",
       "low": "certeza baixa"
     },
-    "close": "Fechar"
+    "close": "Fechar",
+    "branch_busy": "O repositório estava a ser actualizado ao mesmo tempo (o processamento gravou várias vezes seguidas) e esta alteração não chegou a entrar. Nada do que já estava gravado se perdeu: tenta outra vez daqui a um minuto."
   },
   "fields": {
     "unit": "Cadeira",

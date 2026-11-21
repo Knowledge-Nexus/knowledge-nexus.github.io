@@ -273,7 +273,7 @@ export class GitHubDataSource implements DataSource {
   private commit(
     changes: Change[],
     message: string,
-    maxAttempts = 5,
+    maxAttempts?: number,
     onProgress?: (done: number, total: number) => void,
   ): Promise<string> {
     if (this.viewOnly) return Promise.reject(new Error("acesso só para ver e descarregar"));
@@ -428,7 +428,7 @@ export class GitHubDataSource implements DataSource {
       return this.commit(
         changes,
         `depósito: ${entries.length} ficheiro(s) num lote (${batch})`,
-        5,
+        undefined,
         onProgress,
       );
     }
@@ -445,7 +445,7 @@ export class GitHubDataSource implements DataSource {
     return this.commit(
       changes,
       `depósito: ${entries.length} ficheiro(s) (${batch})`,
-      5,
+      undefined,
       onProgress,
     );
   }

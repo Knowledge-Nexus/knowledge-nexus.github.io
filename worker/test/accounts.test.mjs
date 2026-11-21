@@ -370,7 +370,9 @@ test("cada nível só grava o que lhe cabe (o Worker verifica cada commit)", asy
   // Só o ramo principal, sem forçar, logo a seguir ao commit actual.
   await expect([file("documentos/x.yaml")], 403, "pedido_nao_permitido", { force: true });
   await expect([file("documentos/x.yaml")], 403, "pedido_nao_permitido", { branch: "indices" });
-  await expect([file("documentos/x.yaml")], 403, "commit_invalido", { parents: ["b".repeat(40)] });
+  await expect([file("documentos/x.yaml")], 422, "nao_e_fast_forward", {
+    parents: ["b".repeat(40)],
+  });
   await expect([file("documentos/x.yaml")], 403, "commit_invalido", {
     parents: [HEAD, "b".repeat(40)],
   });

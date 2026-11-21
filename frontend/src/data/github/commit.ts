@@ -1,6 +1,9 @@
 // Um commit atómico com vários ficheiros (Git Data API), com novas tentativas quando o
-// ramo avança entretanto (ex.: o pipeline fez push). As alterações "update" são
-// recalculadas sobre a versão mais recente do ficheiro, para nunca sobrepor trabalho alheio.
+// ramo avança entretanto (ex.: o nexus servir gravou, às vezes vários commits seguidos). As
+// alterações "update" são recalculadas sobre a versão mais recente do ficheiro, para nunca
+// sobrepor trabalho alheio. Entre tentativas espera-se cada vez mais: logo a seguir a um push,
+// o GitHub ainda pode devolver o commit anterior, e tentar de imediato falhava sempre
+// («Update is not a fast forward»).
 
 import { type GitHubClient, GitHubError, type TreeEntry } from "./client";
 
@@ -15,6 +18,19 @@ export interface RepoRef {
 }
 
 const encoder = new TextEncoder();
+
+/** Esperas entre tentativas (ms): seis tentativas em cerca de meio minuto. Os testes mudam-nas. */
+export const COMMIT_RETRY = { delaysMs: [1000, 2000, 4000, 8000, 15000] };
+
+/** O ramo mudou em todas as tentativas: as alterações não entraram (e nada se perdeu). */
+export class BranchBusyError extends Error {
+  readonly i18nKey = "common.branch_busy";
+  constructor(readonly cause?: unknown) {
+    super("o ramo avançou em todas as tentativas (Update is not a fast forward)");
+  }
+}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 async function readCurrent(client: GitHubClient, repo: RepoRef, path: string, ref: string) {
   try {
@@ -61,7 +77,7 @@ export async function commitChanges(
   repo: RepoRef,
   changes: Change[],
   message: string,
-  maxAttempts = 5,
+  maxAttempts = COMMIT_RETRY.delaysMs.length + 1,
   onProgress?: (done: number, total: number) => void,
 ): Promise<string> {
   // Blobs de conteúdo fixo: criados uma vez e reaproveitados entre tentativas.
@@ -82,6 +98,10 @@ export async function commitChanges(
   }
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (attempt > 1) {
+      const delays = COMMIT_RETRY.delaysMs;
+      await wait(delays[Math.min(attempt - 2, delays.length - 1)] ?? 0);
+    }
     const head = await client.headSha(repo.owner, repo.name, repo.branch);
     const baseTree = await client.commitTree(repo.owner, repo.name, head);
     const tree: TreeEntry[] = [];
@@ -105,10 +125,14 @@ export async function commitChanges(
       await client.updateRef(repo.owner, repo.name, repo.branch, commit);
       return commit;
     } catch (error) {
-      // 422: não é fast-forward (o ramo avançou). Tenta de novo sobre o novo HEAD.
-      if (!(error instanceof GitHubError) || error.status !== 422) throw error;
+      // 422: não é fast-forward (o ramo avançou). Tenta de novo sobre o novo HEAD. (Pelo
+      // Worker das contas, uma versão antiga respondia 403 «commit_invalido» no mesmo caso.)
+      const moved =
+        error instanceof GitHubError &&
+        (error.status === 422 || (error.status === 403 && error.message === "commit_invalido"));
+      if (!moved) throw error;
       lastError = error;
     }
   }
-  throw lastError ?? new Error("não foi possível gravar as alterações");
+  throw new BranchBusyError(lastError);
 }

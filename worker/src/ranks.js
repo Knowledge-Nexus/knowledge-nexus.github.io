@@ -45,8 +45,10 @@ const MAX_FILES = 300; // a comparação do GitHub lista até 300 ficheiros
  * (3 pedidos, qualquer que seja o tamanho do commit).
  */
 export async function checkCommit({ role, owner, head, commit, compare }) {
-  if (commit.parents?.length !== 1 || commit.parents[0].sha !== head)
-    throw new HttpError(403, "commit_invalido");
+  if (commit.parents?.length !== 1) throw new HttpError(403, "commit_invalido");
+  // O ramo avançou entretanto: a mesma resposta que o GitHub dá (422), para a interface voltar
+  // a aplicar as alterações sobre o commit novo e tentar outra vez.
+  if (commit.parents[0].sha !== head) throw new HttpError(422, "nao_e_fast_forward");
   const files = compare.files ?? [];
   if (files.length >= MAX_FILES) throw new HttpError(403, "demasiados_ficheiros");
   for (const file of files) {

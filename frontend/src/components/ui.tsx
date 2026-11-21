@@ -88,6 +88,17 @@ export function Spinner(props: { label?: string }) {
 
 export function ErrorBox(props: { error: unknown }) {
   const { t } = useTranslation();
+  // Erros com texto próprio na interface (ex.: `BranchBusyError`).
+  const key = (props.error as { i18nKey?: unknown } | null)?.i18nKey;
+  if (typeof key === "string")
+    return (
+      <p
+        role="alert"
+        className="rounded-xl border border-clay/30 bg-clay-soft p-3 text-sm text-clay"
+      >
+        {t(key)}
+      </p>
+    );
   const message = props.error instanceof Error ? props.error.message : String(props.error);
   return (
     <p role="alert" className="rounded-xl border border-clay/30 bg-clay-soft p-3 text-sm text-clay">

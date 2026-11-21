@@ -217,3 +217,51 @@ describe("ficheiros grandes vão em partes", () => {
     ]);
   });
 });
+
+describe("commits enquanto o ramo avança", () => {
+  it("espera e tenta de novo sobre o novo HEAD, mesmo com vários pushes seguidos", async () => {
+    const { COMMIT_RETRY } = await import("./github/commit");
+    const saved = COMMIT_RETRY.delaysMs;
+    COMMIT_RETRY.delaysMs = [0, 0, 0, 0, 0];
+    try {
+      const { fake, source } = setup();
+      // O processamento grava cinco vezes seguidas: as cinco primeiras tentativas falham.
+      let pushes = 0;
+      fake.beforeUpdateRef = () => {
+        if (pushes >= 5) return;
+        pushes += 1;
+        fake.externalPush(REPO, { [`documentos/p${pushes}.yaml`]: "id: p\n" });
+      };
+      await source.patchDocument(
+        "d1",
+        (doc) => {
+          doc.notes = "depois de cinco pushes";
+        },
+        "notas",
+      );
+      expect(YAML.parse(fake.text(REPO, "documentos/d1.yaml")!).notes).toBe(
+        "depois de cinco pushes",
+      );
+      expect(fake.text(REPO, "documentos/p5.yaml")).toBe("id: p\n");
+
+      // Se o ramo avançar em todas, o erro diz o que aconteceu (e nada se perde).
+      fake.beforeUpdateRef = () =>
+        fake.externalPush(REPO, { "documentos/x.yaml": `n: ${Math.random()}\n` });
+      const error = await source
+        .patchDocument(
+          "d1",
+          (doc) => {
+            doc.notes = "nunca entra";
+          },
+          "notas",
+        )
+        .catch((e: unknown) => e);
+      expect((error as { i18nKey?: string }).i18nKey).toBe("common.branch_busy");
+      expect(YAML.parse(fake.text(REPO, "documentos/d1.yaml")!).notes).toBe(
+        "depois de cinco pushes",
+      );
+    } finally {
+      COMMIT_RETRY.delaysMs = saved;
+    }
+  });
+});
