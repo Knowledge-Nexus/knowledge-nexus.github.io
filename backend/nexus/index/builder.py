@@ -314,7 +314,7 @@ def build_indices(repo: DataRepo, out: Path, built_from: str | None = None,
         terms = [{"kind": kind, "slug": t.slug, "label": t.label(), "labels": t.labels,
                   "role": t.role, "is_assessment": t.is_assessment,
                   "is_submission": t.is_submission, "is_syllabus": t.is_syllabus,
-                  "is_fallback": t.is_fallback, "sort": index}
+                  "is_fallback": t.is_fallback, "sort": index, "color": t.color}
                  for kind in VOCAB_KINDS for index, t in enumerate(getattr(vocab, kind))]
         con.execute(insert(schema.vocab_terms), terms)
         if users:

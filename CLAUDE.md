@@ -303,6 +303,21 @@ Dependências de sistema (Ubuntu/WSL2):
     "sem valor" grava `null` como escolha; a instituição muda-se escolhendo uma cadeira de
     outra), no nome da cadeira (`UnitEditor`), no nome e grau de um curso (`CourseRenamer`,
     pedido sem `units`) e no nome da instituição de uma estante (`InstitutionManager initial`).
+  - **«A rever»** (`features/review/ReviewPage.tsx`): separadores com o número de cada um
+    (`?aba=`: Documentos, Perguntas por verificar, Removidos, Em falta no catálogo).
+    Documentos (`DocumentQueue.tsx`): à altura do ecrã, lista (filtros por nome, tipo e motivo;
+    agrupada pelo tipo sugerido, com a cor dele), o documento ao centro e a classificação à
+    direita (`ReviewForm`: motivos em etiquetas, campos dois a dois, «Porquê estas
+    sugestões?» fechado, «Confirmar e arrumar» sempre à vista); teclado ↑/↓, Enter, Del
+    (`isEditing`); depois de confirmar passa ao seguinte e o confirmado sai logo da lista. Um
+    aviso leva a «Em falta no catálogo» (`CatalogTab.tsx`: tabelas por instituições, cursos,
+    cadeiras, com «À espera»: os documentos com `review.unit_proposed`). Em ecrãs médios, a
+    classificação fica por cima do documento; no telemóvel, tudo em coluna.
+  - **Cor dos tipos de documento:** `color` no vocabulário (nome da paleta `--color-type-*`,
+    `@theme static` em `styles.css`; enunciado e resolução no mesmo tom, claro e escuro),
+    `lib/typeColors.ts` (sem cor: uma estável pelo slug). Na lista de «A rever», no campo
+    «Tipo» e na biblioteca (lista dos tipos e cartões da cadeira). Índice: coluna `color` em
+    `vocab_terms` (esquema 6).
   - Depositar (`features/upload/UploadPage.tsx`): as cópias (mesmo SHA-256, qualquer nome)
     são detectadas logo ao escolher os ficheiros, repetidas na selecção ou já na biblioteca
     do utilizador (`ownedSha`), e não são enviadas (opção "Enviar também as cópias" envia só
@@ -346,7 +361,7 @@ Dependências de sistema (Ubuntu/WSL2):
   - regenerar o contrato;
   - criar uma revisão Alembic em `backend/nexus/index/alembic/versions/`;
   - manter `MIN_SCHEMA_VERSION` a ler o esquema anterior (índices ainda por reconstruir),
-    com a cópia desse esquema no contrato (agora `meta-v4.db`, sem o banco de perguntas).
+    com a cópia desse esquema no contrato (agora `meta-v5.db`, sem a cor dos tipos).
 - **Mudar o formato dos ficheiros do repositório de dados:** subir `FORMAT_VERSION`
   (`nexus/__init__.py`) e registar a migração em `nexus/formats`.
 - **Novo tipo de documento, avaliação ou época:** só dados (`config/vocabularios.yaml`),
@@ -435,7 +450,7 @@ Dependências de sistema (Ubuntu/WSL2):
   o material fica igual); cada pergunta mostra o texto tal e qual, «Do enunciado» e «Ver no
   original (p. N)»; quem tem `can.verify` confirma, rejeita, desfaz ou «Confirmar todas» (um
   só commit, `DataSource.reviewQuestions`). Na página de um enunciado, «N perguntas deste
-  enunciado»; em «A rever», «Perguntas por verificar» (fechado). O Organizador não grava
+  enunciado»; em «A rever», o separador «Perguntas por verificar». O Organizador não grava
   `gerado/` (Worker). **Etiqueta de IA:** as perguntas tal e qual não a levam; o que a IA
   escrever no banco de perguntas (fases seguintes: respostas, flashcards) leva sempre, à
   vista, «Gerado por IA: não faz parte dos documentos da cadeira nem foi verificado pelos
@@ -492,6 +507,8 @@ Dependências de sistema (Ubuntu/WSL2):
   alternativos (ex.: "Civil" para que a pasta «Civil» conte para "Direito Civil").
 - **Vocabulário do repositório de dados:** `catalogo/vocabularios.yaml` substitui o da
   aplicação; ao mudar `config/vocabularios.yaml` (suba `version`), copiá-lo também para lá.
+  Excepção só de apresentação: as cores (`color`) que faltam na cópia vêm da aplicação, pelo
+  slug (`DataRepo.vocabularies`).
 - **Mudança relevante na lógica de classificação:** subir `CLASSIFIER_VERSION`. Isso
   reclassifica o que não foi revisto pelo utilizador.
 - **Testes:**

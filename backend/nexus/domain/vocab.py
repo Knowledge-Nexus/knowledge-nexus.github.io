@@ -35,6 +35,9 @@ class Term(Record):
     is_submission: bool = False
     is_syllabus: bool = False
     is_fallback: bool = False
+    # Só apresentação: a cor do tipo na interface (um nome da paleta `--color-type-*` em
+    # frontend/src/styles.css). Sem cor, a interface escolhe uma estável pelo slug.
+    color: str | None = None
     # Só para tipos de documento: formatos que por si só são indício do tipo.
     extensions: list[str] = Field(default_factory=list)
     # Só para tipos de documento: programas que criaram o PDF (creator/producer) e que por

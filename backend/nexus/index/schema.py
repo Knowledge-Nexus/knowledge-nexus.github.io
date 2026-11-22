@@ -23,7 +23,7 @@ from sqlalchemy import (
     Text,
 )
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 metadata = MetaData()
 
@@ -102,6 +102,8 @@ vocab_terms = Table(
     Column("is_syllabus", Boolean, nullable=False),
     Column("is_fallback", Boolean, nullable=False),
     Column("sort", Integer, nullable=False),
+    # Esquema 6: a cor do tipo na interface (nome da paleta; null = escolhida pelo slug).
+    Column("color", String(24), nullable=True),
     PrimaryKeyConstraint("kind", "slug"),
 )
 

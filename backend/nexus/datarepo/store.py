@@ -17,7 +17,7 @@ from nexus.domain.documents import Document
 from nexus.domain.extraction import ExtractionMeta
 from nexus.domain.proposals import CatalogProposal
 from nexus.domain.users import Group, User
-from nexus.domain.vocab import Vocabularies
+from nexus.domain.vocab import VOCAB_KINDS, Vocabularies
 
 SETTINGS_RESERVED_KEYS = {"format_version", "app"}
 
@@ -84,10 +84,20 @@ class DataRepo:
 
     @cached_property
     def vocabularies(self) -> Vocabularies:
+        default = config_dir() / "vocabularios.yaml"
         path = self.layout.vocab_file
         if not path.exists():
-            path = config_dir() / "vocabularios.yaml"
-        return Vocabularies.model_validate(read_yaml(path))
+            return Vocabularies.model_validate(read_yaml(default))
+        vocab = Vocabularies.model_validate(read_yaml(path))
+        # A cópia do repositório de dados pode ser anterior às cores: as que faltam vêm do
+        # vocabulário da aplicação (pelo slug). Só apresentação; nada mais é misturado.
+        app = Vocabularies.model_validate(read_yaml(default))
+        for kind in VOCAB_KINDS:
+            colors = {t.slug: t.color for t in getattr(app, kind) if t.color}
+            for term in getattr(vocab, kind):
+                if term.color is None and term.slug in colors:
+                    term.color = colors[term.slug]
+        return vocab
 
     @cached_property
     def catalog(self) -> Catalog:

@@ -6,8 +6,9 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Badge, Button, ErrorBox } from "../../components/ui";
+import { Badge, Button, Empty, ErrorBox } from "../../components/ui";
 import { useApp } from "../../data/context";
+import type { MetaIndex } from "../../data/sqlite/queries";
 import type { DocumentRow, QuestionRow } from "../../data/types";
 import { useLabels } from "../../lib/labels";
 import { documentDate, documentTitle } from "../../lib/titles";
@@ -209,26 +210,33 @@ export function QuestionBank(props: { docs: DocumentRow[]; focus?: string | null
  * Em «A rever», para quem verifica: os enunciados com perguntas publicadas que ainda ninguém
  * confirmou nem rejeitou (fechado por defeito; leva às perguntas de cada um).
  */
+/** Os enunciados com perguntas por verificar (os de quem vê) e quantas são. */
+export function questionsToVerify(meta: MetaIndex, login: string) {
+  const pending = meta.questionCounts("unreviewed");
+  const docs =
+    pending.size === 0
+      ? []
+      : meta
+          .documents({ owner: login, filedOnly: true })
+          .filter(
+            (d, i, all) =>
+              pending.has(d.sha256) && all.findIndex((o) => o.sha256 === d.sha256) === i,
+          );
+  const total = docs.reduce((n, d) => n + (pending.get(d.sha256) ?? 0), 0);
+  return { docs, pending, total };
+}
+
+/** «A rever» → Perguntas por verificar: os enunciados, cada um com quantas faltam. */
 export function QuestionsToVerify() {
   const { t } = useTranslation();
   const { meta, login, to, can } = useApp();
   const labels = useLabels(meta);
   if (!meta || !can.verify) return null;
-  const pending = meta.questionCounts("unreviewed");
-  if (pending.size === 0) return null;
-  const docs = meta
-    .documents({ owner: login, filedOnly: true })
-    .filter(
-      (d, i, all) => pending.has(d.sha256) && all.findIndex((o) => o.sha256 === d.sha256) === i,
-    );
-  if (docs.length === 0) return null;
-  const total = docs.reduce((n, d) => n + (pending.get(d.sha256) ?? 0), 0);
+  const { docs, pending } = questionsToVerify(meta, login);
+  if (docs.length === 0) return <Empty>{t("questions.to_verify_none")}</Empty>;
   return (
-    <details className="rounded-2xl border border-line bg-sheet/60 p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-ink-soft">
-        {t("questions.to_verify_title", { count: total })}
-      </summary>
-      <p className="mt-2 text-xs text-muted">{t("questions.to_verify_text")}</p>
+    <section className="rounded-2xl border border-line bg-sheet/60 p-4">
+      <p className="text-xs text-muted">{t("questions.to_verify_text")}</p>
       <ul className="mt-3 divide-y divide-line">
         {docs.map((doc) => (
           <li key={doc.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
@@ -247,6 +255,6 @@ export function QuestionsToVerify() {
           </li>
         ))}
       </ul>
-    </details>
+    </section>
   );
 }

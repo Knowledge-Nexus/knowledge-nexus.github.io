@@ -77,16 +77,17 @@ def build(out: Path) -> None:
 
 
 def _previous_schema(out: Path) -> None:
-    """Cópia no esquema 4 (sem o banco de perguntas): a interface tem de continuar a ler os
+    """Cópia no esquema 5 (sem a cor dos tipos): a interface tem de continuar a ler os
     índices antigos até o repositório de dados voltar a ser processado."""
     import shutil
     import sqlite3
 
-    target = out / "meta-v4.db"
+    (out / "meta-v4.db").unlink(missing_ok=True)
+    target = out / "meta-v5.db"
     shutil.copyfile(out / "meta.db", target)
     con = sqlite3.connect(target)
-    con.execute("DROP TABLE questions")
-    con.execute("UPDATE meta SET value = '4' WHERE key = 'schema_version'")
+    con.execute("ALTER TABLE vocab_terms DROP COLUMN color")
+    con.execute("UPDATE meta SET value = '5' WHERE key = 'schema_version'")
     con.commit()
     con.close()
 

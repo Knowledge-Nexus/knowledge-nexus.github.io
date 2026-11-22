@@ -35,14 +35,20 @@ describe.skipIf(!hasIndex)("índice de contrato", () => {
       })
     : null;
 
-  it("continua a ler um índice do esquema anterior (sem o banco de perguntas)", async () => {
-    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta-v4.db"))));
+  it("continua a ler um índice do esquema anterior (sem a cor dos tipos)", async () => {
+    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta-v5.db"))));
     expect(meta.schemaVersion()).toBe(MIN_SCHEMA_VERSION);
     const docs = meta.documents({ includeArchives: true });
     expect(docs.map((d) => d.id).sort()).toEqual(expected!.documents);
     expect(meta.reviewQueue().length).toBeGreaterThan(0);
-    expect(meta.questions(Object.keys(expected!.questions))).toEqual([]);
-    expect(meta.questionCounts().size).toBe(0);
+    expect(meta.vocab("document_types").every((t) => t.color === null)).toBe(true);
+  });
+
+  it("lê a cor de cada tipo de documento", async () => {
+    const meta = new MetaIndex(await ReadonlyDb.open(readFileSync(resolve(dir, "meta.db"))));
+    const colors = Object.fromEntries(meta.vocab("document_types").map((t) => [t.slug, t.color]));
+    expect(colors["fichas-exercicios"]).toBe("green");
+    expect(colors["resolucoes-exercicios"]).toBe("green-dark");
   });
 
   it("lê o banco de perguntas: só as que se mostram, pela ordem do exame", async () => {

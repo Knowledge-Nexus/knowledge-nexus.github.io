@@ -190,10 +190,11 @@ test("biblioteca, documento, pesquisa e revisão", async ({ page }) => {
 
   // A rever: proposta de cadeira em falta e correcção de um documento
   await page.getByRole("link", { name: /A rever/ }).click();
-  await expect(page.getByText(/Cadeira em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
+  // Quem espera por uma cadeira que falta no catálogo é avisado logo no separador.
+  await expect(page.getByText(/espera por uma cadeira que ainda não existe/)).toBeVisible();
   await page.getByRole("button", { name: "grafos_ficha2.pdf" }).click();
   await page.getByLabel("Cadeira", { exact: true }).selectOption("ufe/fg");
-  await page.getByLabel("Tipo").selectOption("fichas-exercicios");
+  await page.getByLabel("Tipo", { exact: true }).selectOption("fichas-exercicios");
   await page.getByRole("button", { name: "Confirmar e arrumar" }).click();
   await expect(page.getByText("Correcção enviada.")).toBeVisible();
 
@@ -428,7 +429,7 @@ test("banco de perguntas: tal e qual do enunciado, ver no original e verificar",
     .getByRole("navigation", { name: "principal" })
     .getByRole("link", { name: /A rever/ })
     .click();
-  await page.getByText("Perguntas por verificar (3)").click();
+  await page.getByRole("tab", { name: /Perguntas por verificar/ }).click();
   await expect(page.getByText("3 por verificar")).toBeVisible();
 });
 
@@ -440,10 +441,18 @@ test("criar de uma vez as cadeiras propostas", async ({ page }) => {
     .getByRole("link", { name: /A rever/ })
     .first()
     .click();
-  await expect(page.getByText(/Cadeira em falta: Teoria dos Grafos Imaginários/)).toBeVisible();
-  await expect(
-    page.getByText(/Criar Universidade Fictícia de Exemplo com as cadeiras/),
-  ).toBeVisible();
+  // O que falta no catálogo está no último separador, numa tabela (instituições, cadeiras).
+  await page.getByRole("button", { name: "Ver o que falta" }).click();
+  await expect(page.getByRole("tab", { name: /Em falta no catálogo/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  const units = page.getByRole("table", { name: /Cadeiras/ });
+  await expect(units.getByRole("textbox", { name: "Nome" })).toHaveValue(
+    "Teoria dos Grafos Imaginários",
+  );
+  await expect(units.getByText("1 documento", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Criar a cadeira em falta em/)).toBeVisible();
   await page.getByRole("button", { name: "Criar tudo" }).click();
   await expect(page.getByText(/Pedido enviado/)).toBeVisible();
   const commit = fake.repos.get(REPO)!.commits.at(-1)!;
@@ -529,7 +538,7 @@ test("caixote do lixo em «A rever»: remover, desfazer e repor", async ({ page 
   expect(fake.repos.get(REPO)!.commits.at(-1)!.paths).toHaveLength(2);
 
   // «Removidos»: o que já tinha ido para o lixo; repõe-se na página do documento.
-  await page.getByText("Removidos (1)").click();
+  await page.getByRole("tab", { name: /Removidos/ }).click();
   await page.getByRole("link", { name: "rascunho_velho.pdf" }).click();
   await expect(page.getByText(/Removeste este ficheiro/)).toBeVisible();
   await expect(page.getByText("Removido", { exact: true })).toBeVisible();
@@ -1540,4 +1549,50 @@ test("o canto mostra o processamento em tempo real e o sino os ficheiros que fal
   const log = "deposito/aluna/_erros/partido.pdf.log";
   expect(fake.text(REPO, log)).toMatch(/\nrepetir: \d{4}-/);
   expect(fake.repos.get(REPO)!.commits.at(-1)!.paths).toEqual([log]);
+});
+
+test("«A rever»: filtros, teclado e passar logo ao documento seguinte", async ({ page }) => {
+  const fake = await withFakeGitHub(page);
+  await login(page, fake);
+  await page
+    .getByRole("navigation", { name: "principal" })
+    .getByRole("link", { name: /A rever/ })
+    .click();
+  const items = page.locator("ul input[type=checkbox]");
+  await expect(items).toHaveCount(3);
+  // Os grupos são os tipos sugeridos, cada um com a sua cor.
+  await expect(
+    page.getByRole("checkbox", { name: /Seleccionar o grupo Fichas de exercícios/ }),
+  ).toBeVisible();
+
+  // Filtros: pelo tipo e pelo nome.
+  await page
+    .getByLabel("Filtrar pelo tipo")
+    .selectOption({ label: "Entregas (relatórios, código) (1)" });
+  await expect(items).toHaveCount(1);
+  await page.getByLabel("Filtrar pelo tipo").selectOption({ index: 0 });
+  await page.getByRole("searchbox", { name: "Procurar pelo nome do ficheiro" }).fill("grafos");
+  await expect(items).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Procurar pelo nome do ficheiro" }).fill("");
+  await expect(items).toHaveCount(3);
+
+  // ↓ passa ao seguinte; «Saltar» também.
+  const title = page.getByRole("heading", { level: 2 }).first();
+  await page.getByRole("button", { name: /grafos_ficha2\.pdf/ }).click();
+  await expect(title).toHaveText("grafos_ficha2.pdf");
+  await page.keyboard.press("ArrowDown");
+  await expect(title).toHaveText(/Trabalho_pratico_1/);
+  await page.getByRole("button", { name: "Saltar" }).click();
+  await expect(title).toHaveText("trabalho-p1");
+
+  // Enter confirma (com a sugestão) e o documento sai logo da lista.
+  await page.getByRole("button", { name: /^trabalho-p1/ }).click();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Correcção enviada\. trabalho-p1/)).toBeVisible();
+  await expect(items).toHaveCount(2);
+  const commit = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(commit.message).toMatch(/^revisão:/);
+  const record = YAML.parse(fake.text(REPO, commit.paths[0]!)!);
+  expect(record.review.status).toBe("resolved");
+  expect(record.classification.unit.method).toBe("user");
 });

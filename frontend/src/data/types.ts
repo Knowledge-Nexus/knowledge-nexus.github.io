@@ -175,6 +175,8 @@ export interface VocabTerm {
   is_syllabus: boolean;
   is_fallback: boolean;
   sort: number;
+  /** Cor do tipo (nome da paleta `--color-type-*`; esquema 6). null: escolhida pelo slug. */
+  color: string | null;
 }
 
 export interface Evidence {

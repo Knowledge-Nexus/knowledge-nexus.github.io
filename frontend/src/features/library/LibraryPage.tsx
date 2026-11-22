@@ -24,6 +24,7 @@ import { downloadZip } from "../../lib/download";
 import { useLabels } from "../../lib/labels";
 import { useRemovals } from "../../lib/removal";
 import { documentDate, documentTitle, originalName } from "../../lib/titles";
+import { typeColor } from "../../lib/typeColors";
 import { useFieldSaver } from "../document/DocumentFields";
 import { QuestionBank } from "../questions/QuestionBank";
 import { CourseCreator } from "./CourseManager";
@@ -621,11 +622,18 @@ function UnitDetail(props: { unitKey: string }) {
                         onClick={() => goTo(type)}
                         className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left text-sm whitespace-nowrap transition hover:border-line-strong hover:bg-sheet ${dropType === type ? "border-gold bg-marker-soft" : "border-transparent"}`}
                       >
-                        <span
-                          className="truncate text-ink"
-                          title={labels.term("document_types", type)}
-                        >
-                          {labels.term("document_types", type)}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            aria-hidden="true"
+                            className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                            style={{ background: typeColor(labels.vocab.document_types, type) }}
+                          />
+                          <span
+                            className="truncate text-ink"
+                            title={labels.term("document_types", type)}
+                          >
+                            {labels.term("document_types", type)}
+                          </span>
                         </span>
                         <span className="rounded-full bg-paper px-2 text-xs text-muted">
                           {list.length}
@@ -651,7 +659,8 @@ function UnitDetail(props: { unitKey: string }) {
                       role="group"
                       aria-label={label}
                       {...dropZone(type)}
-                      className={`scroll-mt-4 rounded-2xl transition ${dropType === type ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
+                      className={`scroll-mt-4 rounded-2xl border-l-4 transition ${dropType === type ? "ring-2 ring-gold ring-offset-4 ring-offset-paper" : ""}`}
+                      style={{ borderLeftColor: typeColor(labels.vocab.document_types, type) }}
                     >
                       <Card
                         title={

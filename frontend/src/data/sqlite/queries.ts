@@ -16,10 +16,10 @@ import type {
 } from "../types";
 import type { ReadonlyDb } from "./db";
 
-export const SUPPORTED_SCHEMA_VERSION = 5;
-/** O esquema 4 só não tem o banco de perguntas (lido como vazio): enquanto o repositório de
+export const SUPPORTED_SCHEMA_VERSION = 6;
+/** O esquema 5 só não tem a cor dos tipos (escolhida pelo slug): enquanto o repositório de
  * dados não voltar a ser processado, a interface continua a funcionar. */
-export const MIN_SCHEMA_VERSION = 4;
+export const MIN_SCHEMA_VERSION = 5;
 /** Primeiro esquema com a tabela `questions`. */
 const QUESTIONS_SCHEMA = 5;
 
@@ -148,6 +148,7 @@ export class MetaIndex {
             is_submission: Boolean(t.is_submission),
             is_syllabus: Boolean(t.is_syllabus),
             is_fallback: Boolean(t.is_fallback),
+            color: typeof t.color === "string" ? t.color : null,
           }) as VocabTerm,
       );
   }

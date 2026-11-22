@@ -17,7 +17,10 @@
 # - O código nunca depende de um slug concreto; só dos atributos (`is_assessment`,
 #   `role`, `is_submission`, `is_syllabus`, `is_fallback`, `extensions`, `producers`,
 #   `excluded_by`).
-version: 3
+# - `color` (só apresentação): a cor do tipo na interface, um nome da paleta (terracotta,
+#   ochre, green, green-dark, brick, brick-dark, teal, teal-dark, blue, violet, slate, umber,
+#   grey). O enunciado e a resolução do mesmo tipo usam o mesmo tom (claro e escuro).
+version: 4
 
 # Termos genéricos do ensino que nunca são o nome de uma cadeira (nem de um curso): não
 # geram propostas de catálogo. Comparados depois de normalizados.
@@ -38,6 +41,7 @@ neutral_folders: [geral, materiais sem tipo de material definido, outros, outros
 document_types:
   - slug: slides
     labels: { pt-PT: "Teóricas / slides", en: "Lectures / slides" }
+    color: terracotta
     role: any
     # Formatos que, por si só, são indício deste tipo.
     extensions: [pptx, ppt, pps, ppsx, odp, key]
@@ -49,12 +53,14 @@ document_types:
     patterns: ['\bcap \d']
   - slug: apontamentos
     labels: { pt-PT: "Apontamentos", en: "Notes" }
+    color: ochre
     role: any
     keywords: [apontamentos, resumo, resumos, sebenta, caderno, notes, summary,
                textos de apoio, texto de apoio, notas de aula, lecture notes,
                material de apoio]
   - slug: fichas-exercicios
     labels: { pt-PT: "Fichas de exercícios", en: "Exercise sheets" }
+    color: green
     role: statement
     keywords: &exercise_keywords [ficha, fichas, ficha de exercícios, folha de exercícios,
                folha, folhas, caderno de exercícios, exercícios, exercício, problemas,
@@ -66,11 +72,13 @@ document_types:
     patterns: &exercise_patterns ['\bft ?\d', '\btpc ?\d*\b']
   - slug: resolucoes-exercicios
     labels: { pt-PT: "Resoluções de exercícios", en: "Exercise solutions" }
+    color: green-dark
     role: solution
     keywords: *exercise_keywords
     patterns: *exercise_patterns
   - slug: enunciados-avaliacao
     labels: { pt-PT: "Enunciados de avaliação", en: "Assessment papers" }
+    color: brick
     role: statement
     is_assessment: true
     keywords: &assessment_keywords [exame, exames, teste, testes, frequência, mini-teste,
@@ -86,6 +94,7 @@ document_types:
                                        admitidos, inscritos, calendário]
   - slug: resolucoes-avaliacao
     labels: { pt-PT: "Resoluções de avaliações", en: "Assessment solutions" }
+    color: brick-dark
     role: solution
     is_assessment: true
     keywords: *assessment_keywords
@@ -93,28 +102,33 @@ document_types:
     excluded_by: *assessment_excluded
   - slug: enunciados-trabalhos
     labels: { pt-PT: "Enunciados de trabalhos / projectos", en: "Assignments / projects" }
+    color: teal
     role: statement
     keywords: [trabalho prático, trabalho de grupo, trabalho individual, projecto,
                enunciado do projecto, enunciado do trabalho, guia de laboratório,
                laboratório, assignment, project, mini-projecto]
   - slug: entregas
     labels: { pt-PT: "Entregas (relatórios, código)", en: "Submissions" }
+    color: teal-dark
     role: any
     is_submission: true
     keywords: [relatório, entrega, submissão, report, submission, código-fonte]
   - slug: bibliografia
     labels: { pt-PT: "Bibliografia", en: "Bibliography" }
+    color: blue
     role: any
     keywords: [livro, book, bibliografia, isbn, edição, edition, publisher, editora, copyright,
                manual, manuais, anotado, código anotado, jurisprudência, acórdão, acórdãos,
                doutrina]
   - slug: formularios
     labels: { pt-PT: "Formulários", en: "Formula sheets" }
+    color: violet
     role: any
     keywords: [formulário, formulários, fórmulas, folha de consulta, cheat sheet,
                cheatsheet, tabela de integrais, tabela de derivadas]
   - slug: programa-uc
     labels: { pt-PT: "Ficha da cadeira / programa", en: "Course syllabus" }
+    color: slate
     role: any
     is_syllabus: true
     keywords: [ficha da unidade curricular, ficha da UC, programa da unidade curricular,
@@ -122,6 +136,7 @@ document_types:
                métodos de avaliação, bibliografia principal, syllabus, ECTS]
   - slug: informacoes
     labels: { pt-PT: "Informações (pautas, horários, avisos)", en: "Notices (grades, timetables)" }
+    color: umber
     role: any
     keywords: [pauta, pautas, classificação, classificações, classif, notas finais, resultados,
                admitidos, em condições de realizar, horário, horários,
@@ -129,6 +144,7 @@ document_types:
                aviso, avisos, planeamento, regulamento, lista de alunos, grades, timetable]
   - slug: outros
     labels: { pt-PT: "Outros", en: "Other" }
+    color: grey
     role: any
     is_fallback: true
     keywords: []

@@ -50,6 +50,21 @@
 /* Marcas de leitura (marcador, sublinhado, caneta). `static`: usam-se em `var()` no SVG e
    não em classes, por isso o Tailwind tem de as emitir sempre. */
 @theme static {
+  /* Cores dos tipos de documento (o nome vem do vocabulário, `color`; lib/typeColors.ts).
+     O enunciado e a resolução do mesmo tipo usam o mesmo tom: claro e escuro. */
+  --color-type-terracotta: #b8693a;
+  --color-type-ochre: #a8842c;
+  --color-type-green: #5f9c6c;
+  --color-type-green-dark: #2e6a44;
+  --color-type-brick: #c45a45;
+  --color-type-brick-dark: #873323;
+  --color-type-teal: #3f8f99;
+  --color-type-teal-dark: #21616a;
+  --color-type-blue: #2f5a9e;
+  --color-type-violet: #7a5ea8;
+  --color-type-slate: #56698a;
+  --color-type-umber: #8b7a58;
+  --color-type-grey: #7a7f8a;
   --color-mark-yellow: #f5c518;
   --color-mark-green: #43b05c;
   --color-mark-blue: #2f7ed8;

@@ -261,3 +261,25 @@ def test_unchanged_search_shards_are_reused_from_the_cache(tmp_path: Path, monke
         os.utime(path, (old, old))
     write_search_shards(outs[1], changed, meta, cache=cache)
     assert len(list(cache.glob("*.db.gz"))) == 16
+
+
+def test_type_colors_come_from_the_vocabulary_even_in_an_older_copy(catalog_root: Path,
+                                                                    tmp_path: Path) -> None:
+    """A cor de cada tipo (só apresentação) vai para o índice; numa cópia do vocabulário
+    anterior às cores, as que faltam vêm do vocabulário da aplicação, pelo slug."""
+    import re
+
+    from nexus.config import config_dir
+
+    vocab = (config_dir() / "vocabularios.yaml").read_text(encoding="utf-8")
+    older = re.sub(r"\n    color: [a-z-]+", "", vocab)
+    assert "color:" not in older.split("document_types:")[1].split("roles:")[0]
+    (catalog_root / "catalogo" / "vocabularios.yaml").write_text(older, encoding="utf-8")
+    build_indices(DataRepo(catalog_root), tmp_path / "idx")
+    con = sqlite3.connect(tmp_path / "idx" / META_DB)
+    colors = dict(con.execute(
+        "SELECT slug, color FROM vocab_terms WHERE kind = 'document_types'").fetchall())
+    con.close()
+    assert colors["fichas-exercicios"] == "green"
+    assert colors["resolucoes-exercicios"] == "green-dark"
+    assert all(colors.values())

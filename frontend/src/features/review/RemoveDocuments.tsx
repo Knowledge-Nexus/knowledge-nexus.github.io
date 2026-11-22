@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { IconTrash } from "../../components/icons";
 import { Modal } from "../../components/Modal";
-import { Button, ErrorBox } from "../../components/ui";
+import { Button, Empty, ErrorBox } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { DocumentRow } from "../../data/types";
 import {
@@ -34,6 +34,8 @@ export function RemoveButton(props: {
   docs: DocumentRow[];
   followers?: DocumentRow[];
   onRemoved: (removal: Removal) => void;
+  /** Só o ícone (o nome do ficheiro precisa do espaço). */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const { meta, source, login, notifyCommit } = useApp();
@@ -69,7 +71,11 @@ export function RemoveButton(props: {
         title={docs.length === 1 ? t("review.remove_one") : undefined}
       >
         <IconTrash size={16} />
-        {docs.length === 1 ? t("review.remove") : t("review.remove_many", { count: docs.length })}
+        {props.compact
+          ? null
+          : docs.length === 1
+            ? t("review.remove")
+            : t("review.remove_many", { count: docs.length })}
       </Button>
     );
 
@@ -229,17 +235,14 @@ export function RestoreButton(props: { doc: DocumentRow }) {
   );
 }
 
-/** Os que removeste, para repor (fechado por defeito, no fim de «A rever»). */
+/** «A rever» → Removidos: os que removeste, para repor. */
 export function RemovedList(props: { docs: DocumentRow[] }) {
   const { t } = useTranslation();
   const { to } = useApp();
-  if (props.docs.length === 0) return null;
+  if (props.docs.length === 0) return <Empty>{t("review.removed_none")}</Empty>;
   return (
-    <details className="rounded-2xl border border-line bg-sheet/60 p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-ink-soft">
-        {t("review.removed_title", { count: props.docs.length })}
-      </summary>
-      <p className="mt-2 text-xs text-muted">{t("review.removed_text")}</p>
+    <section className="rounded-2xl border border-line bg-sheet/60 p-4">
+      <p className="text-xs text-muted">{t("review.removed_text")}</p>
       <ul className="mt-3 divide-y divide-line">
         {props.docs.map((doc) => (
           <li key={doc.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
@@ -254,6 +257,6 @@ export function RemovedList(props: { docs: DocumentRow[] }) {
           </li>
         ))}
       </ul>
-    </details>
+    </section>
   );
 }
