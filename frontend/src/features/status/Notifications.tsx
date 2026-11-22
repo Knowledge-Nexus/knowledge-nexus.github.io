@@ -6,6 +6,7 @@ import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconBell } from "../../components/icons";
 import { Modal } from "../../components/Modal";
+import { Button, ErrorBox } from "../../components/ui";
 import { useApp } from "../../data/context";
 import type { DepositState } from "../../data/types";
 import { formatWhen } from "../../lib/labels";
@@ -40,17 +41,43 @@ function More(props: { count: number }) {
 
 export function NotificationList(props: { deposit: DepositState | undefined }) {
   const { t } = useTranslation();
-  const { login } = useApp();
+  const { login, source, notifyCommit } = useApp();
   const deposit = props.deposit;
+  // Os pedidos «Tentar de novo» já enviados (o item sai da lista com os índices seguintes).
+  const [asked, setAsked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  async function retry(logs: string[]) {
+    setBusy(true);
+    setError(null);
+    try {
+      await source.retryFailed(logs);
+      setAsked((before) => new Set([...before, ...logs]));
+      notifyCommit();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
   if (problemCount(deposit) === 0 || !deposit) {
     return <p className="text-sm text-ink-soft">{t("notifications.none")}</p>;
   }
   const stuck = deposit.waiting.filter((item) => item.kind);
+  const pending = deposit.failed.filter((item) => !asked.has(item.log)).map((item) => item.log);
   const who = (owner: string) => (owner === login ? "" : t("notifications.from", { login: owner }));
   return (
     <div className="space-y-5">
+      {error ? <ErrorBox error={error} /> : null}
       {deposit.failed_total > 0 && (
         <Section title={t("notifications.failed_title")} hint={t("notifications.failed_hint")}>
+          {pending.length > 1 && (
+            <li>
+              <Button variant="secondary" disabled={busy} onClick={() => retry(pending)}>
+                {t("notifications.retry_all")}
+              </Button>
+            </li>
+          )}
           {deposit.failed.map((item) => {
             const at = validDate(item.at);
             return (
@@ -60,6 +87,15 @@ export function NotificationList(props: { deposit: DepositState | undefined }) {
                   {[who(item.login), at ? formatWhen(at) : ""].filter(Boolean).join(" · ")}
                 </p>
                 {item.error && <p className="mt-1 break-words text-xs text-clay">{item.error}</p>}
+                {asked.has(item.log) ? (
+                  <p className="mt-2 text-xs text-sage">✓ {t("notifications.retry_sent")}</p>
+                ) : (
+                  <div className="mt-2">
+                    <Button variant="secondary" disabled={busy} onClick={() => retry([item.log])}>
+                      {t("notifications.retry")}
+                    </Button>
+                  </div>
+                )}
               </li>
             );
           })}

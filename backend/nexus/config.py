@@ -82,6 +82,7 @@ class ArchiveSettings(_Section):
     max_ratio: float = 200
     software_min_entries: int = 20
     software_other_ratio: float = 0.5
+    keep_whole: list[str] = Field(default_factory=lambda: ["rar"])
 
 
 class CodeProjectSettings(_Section):

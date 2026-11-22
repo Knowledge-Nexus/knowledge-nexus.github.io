@@ -319,3 +319,43 @@ describe("estado do processamento (o que os índices ainda não têm)", () => {
     expect([...PIPELINE_PATHS].sort()).toEqual([...fromWorkflow].sort());
   });
 });
+
+describe("ficheiros que deram erro e arquivos .rar", () => {
+  it("«Tentar de novo» acrescenta `repetir:` ao registo (uma vez) num só commit", async () => {
+    const { fake, source } = setup();
+    const log = "deposito/aluna/_erros/20261001T231500Z-abcd/a.rar.log";
+    fake.externalPush(REPO, {
+      [log]: "data: x\nitem: aluna/20261001T231500Z-abcd/a.rar\nerro: NotRarFile\n",
+    });
+    await source.retryFailed([log, "deposito/aluna/_erros/ja-tratado.zip.log"]);
+    const text = fake.text(REPO, log)!;
+    expect(text).toMatch(/\nrepetir: \d{4}-\d{2}-\d{2}T/);
+    expect(fake.text(REPO, "deposito/aluna/_erros/ja-tratado.zip.log")).toBeUndefined();
+    const commits = fake.repos.get(REPO)!.commits.length;
+    await source.retryFailed([log]);
+    expect(fake.text(REPO, log)).toBe(text);
+    expect(fake.repos.get(REPO)!.commits.length).toBe(commits);
+  });
+
+  it("«Extrair os ficheiros dos .rar» vai nas opções do lote", async () => {
+    const { fake, source } = setup();
+    const entry = { relativePath: "a.rar", sha256: "f".repeat(64), bytes: new Uint8Array([1]) };
+    await source.upload([entry], "20261122T100000Z-abcd", undefined, { openArchives: true });
+    expect(fake.text(REPO, "deposito/aluna/20261122T100000Z-abcd/.nexus-opcoes.yaml")).toBe(
+      "open_archives: true\n",
+    );
+    await source.upload([entry], "20261122T100100Z-abcd");
+    expect(
+      fake.text(REPO, "deposito/aluna/20261122T100100Z-abcd/.nexus-opcoes.yaml"),
+    ).toBeUndefined();
+  });
+
+  it("os formatos guardados inteiros são os das predefinições do motor", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { KEEP_WHOLE_EXTS } = await import("../lib/processing");
+    const defaults = YAML.parse(
+      readFileSync(new URL("../../../config/predefinicoes.yaml", import.meta.url), "utf8"),
+    ) as { archives: { keep_whole: string[] } };
+    expect([...KEEP_WHOLE_EXTS]).toEqual(defaults.archives.keep_whole);
+  });
+});

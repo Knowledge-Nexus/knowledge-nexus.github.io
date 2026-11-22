@@ -45,7 +45,8 @@ convenções ou comandos.
   Credenciais `NEXUS_R2_*` só no ambiente (segredos no Actions); o cliente só é criado quando
   é preciso. Sem elas (`BlobStore.unavailable()`), os ficheiros novos esperam no depósito em
   vez de irem para `_erros/` (`StorageUnavailable`), e o que lá foi parar por isso volta ao
-  depósito (`Pipeline._retry_storage_failures`). Migração: `nexus migrar-blobs`.
+  depósito (`Pipeline._retry_failures`, que também devolve os que o dono pede nas
+  notificações). Migração: `nexus migrar-blobs`.
 - **Processamento: Actions ou local.** A quota de minutos do Actions num repositório privado
   esgota-se com OCR de depósitos grandes. `nexus servir` processa no computador do dono e
   marca os seus commits com `[skip ci]`; a variável `NEXUS_PROCESSAMENTO=local` no repositório
@@ -116,6 +117,15 @@ convenções ou comandos.
   ao lado do estado mostra, pelo nome, os ficheiros que não foi possível guardar (`_erros/`),
   os que estão parados no depósito (e porquê) e os pedidos de catálogo recusados, a partir
   do `deposit` do manifest (`nexus/index/deposit.py`; `RunReport.deferred` dá as razões).
+  «Tentar de novo» (`DataSource.retryFailed`) acrescenta `repetir:` ao `.log` e o motor
+  devolve o item ao depósito (`Pipeline._retry_failures`). `components/Modal.tsx` abre-se num
+  portal no `<body>`, para não herdar os estilos de onde é aberto (a barra lateral).
+- **Arquivos:** o formato vem do conteúdo (`archive_format` em `pipeline/unpack.py`). Os de
+  `archives.keep_whole` (o `.rar`, em `config/predefinicoes.yaml` e `KEEP_WHOLE_EXTS` em
+  `lib/processing.ts`, com um teste) guardam-se inteiros, com a listagem; no envio, «Extrair
+  os ficheiros dos .rar» (desmarcado por defeito) grava `.nexus-opcoes.yaml` com
+  `open_archives: true` na pasta do lote (`OPTIONS_FILE`, sai com o lote). Com mais de
+  `max_entries` ficheiros, guarda-se inteiro em vez de dar erro (`TooManyEntries`).
 - **Fonte de verdade: ficheiros YAML/Markdown no repositório de dados.** As bases SQLite
   são derivadas e reconstruídas a cada execução.
 - **Fase 5 (outros utilizadores):** backend próprio. Pontos de troca preparados:

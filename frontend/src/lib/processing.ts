@@ -17,6 +17,18 @@ export const PIPELINE_PATHS = [
   "nexus.yaml",
 ] as const;
 
+/**
+ * Arquivos que o motor guarda inteiros, sem os abrir (`archives.keep_whole` em
+ * `config/predefinicoes.yaml`; um teste confirma que são os mesmos). No envio, «Extrair os
+ * ficheiros» pede para os abrir.
+ */
+export const KEEP_WHOLE_EXTS = ["rar"] as const;
+
+export function keptWhole(path: string): boolean {
+  const ext = path.toLowerCase().split(".").pop() ?? "";
+  return (KEEP_WHOLE_EXTS as readonly string[]).includes(ext);
+}
+
 export function needsProcessing(paths: readonly string[]): boolean {
   return paths.some((path) =>
     PIPELINE_PATHS.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p)),

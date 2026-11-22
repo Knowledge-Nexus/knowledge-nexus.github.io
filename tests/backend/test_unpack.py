@@ -116,3 +116,22 @@ def test_code_bundle_is_deterministic(tmp_path: Path) -> None:
     assert [f.path for f in m1.files] == ["src/a.py"]
     assert m1.ignored[0].path == "node_modules" and m1.ignored[0].files == 1
     assert m1 == m2
+
+
+def test_format_comes_from_the_content_not_the_name(tmp_path: Path) -> None:
+    """Um ".rar" que na verdade é um zip (alguém mudou a extensão) abre-se como zip; um
+    ".rar" que não é arquivo nenhum dá um erro claro."""
+    from nexus.pipeline.unpack import BadArchiveError, archive_format, archive_names
+
+    renamed = _zip(tmp_path / "Diagramas_ER.rar", {"er/modelo.txt": b"entidades"})
+    assert archive_format(renamed, "rar") == "zip"
+    entries = unpack(renamed, "rar", tmp_path / "out", ArchiveSettings())
+    assert [e.path for e in entries] == ["er/modelo.txt"]
+    assert archive_names(renamed, "rar", 10) == ["er/modelo.txt"]
+
+    garbage = tmp_path / "estragado.rar"
+    garbage.write_bytes(b"isto nao e um arquivo" * 10)
+    with pytest.raises(BadArchiveError, match="estragado, incompleto"):
+        unpack(garbage, "rar", tmp_path / "out2", ArchiveSettings())
+    with pytest.raises(BadArchiveError):
+        archive_names(garbage, "rar", 10)

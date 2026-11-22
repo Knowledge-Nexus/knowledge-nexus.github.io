@@ -121,6 +121,14 @@ export interface UploadEntry {
   bytes?: Uint8Array; // ausente = conteúdo já existe no repositório (envia-se só referência)
 }
 
+/** Opções de um envio (`.nexus-opcoes.yaml` na pasta do lote; `pipeline/intake.py`). */
+export interface UploadOptions {
+  /** Abrir os arquivos que se guardariam inteiros (o .rar) e tratar cada ficheiro. */
+  openArchives?: boolean;
+}
+
+export const UPLOAD_OPTIONS_FILE = ".nexus-opcoes.yaml";
+
 export interface DataSource {
   readonly repo: RepoRef;
   readonly login: string;
@@ -140,7 +148,11 @@ export interface DataSource {
     entries: UploadEntry[],
     batch: string,
     onProgress?: (done: number, total: number) => void,
+    options?: UploadOptions,
   ): Promise<string>;
+  /** «Tentar de novo» nas notificações: marca os itens de `_erros/` (pelo `.log`) para o
+   * motor os devolver ao depósito e os processar outra vez. */
+  retryFailed(logs: string[]): Promise<string>;
   patchDocument(
     id: string,
     patch: (doc: Record<string, unknown>) => void,
@@ -435,10 +447,14 @@ export class GitHubDataSource implements DataSource {
     entries: UploadEntry[],
     batch: string,
     onProgress?: (done: number, total: number) => void,
+    options: UploadOptions = {},
   ): Promise<string> {
     const base = `deposito/${this.login}/${batch}`;
+    const extra: Change[] = options.openArchives
+      ? [{ path: `${base}/${UPLOAD_OPTIONS_FILE}`, content: "open_archives: true\n" }]
+      : [];
     if (entries.length >= LOTE_MIN_FILES) {
-      const changes = await buildLotes(entries, base);
+      const changes = [...(await buildLotes(entries, base)), ...extra];
       return this.commit(
         changes,
         `depósito: ${entries.length} ficheiro(s) num lote (${batch})`,
@@ -446,16 +462,19 @@ export class GitHubDataSource implements DataSource {
         onProgress,
       );
     }
-    const changes: Change[] = entries.flatMap((entry): Change[] =>
-      entry.bytes
-        ? splitUpload(`${base}/${entry.relativePath}`, entry)
-        : [
-            {
-              path: `${base}/${entry.relativePath}.ref.yaml`,
-              content: refYaml(entry),
-            },
-          ],
-    );
+    const changes: Change[] = [
+      ...entries.flatMap((entry): Change[] =>
+        entry.bytes
+          ? splitUpload(`${base}/${entry.relativePath}`, entry)
+          : [
+              {
+                path: `${base}/${entry.relativePath}.ref.yaml`,
+                content: refYaml(entry),
+              },
+            ],
+      ),
+      ...extra,
+    ];
     return this.commit(
       changes,
       `depósito: ${entries.length} ficheiro(s) (${batch})`,
@@ -470,6 +489,25 @@ export class GitHubDataSource implements DataSource {
     message: string,
   ): Promise<string> {
     return this.commit([{ path: `documentos/${id}.yaml`, update: yamlUpdate(patch) }], message);
+  }
+
+  retryFailed(logs: string[]): Promise<string> {
+    const at = nowIso();
+    return this.commit(
+      logs.map(
+        (path): Change => ({
+          path,
+          update: (current) => {
+            // Já tratado entretanto (o motor apaga o .log quando o devolve ao depósito).
+            if (current === null) return null;
+            return /^repetir:/m.test(current)
+              ? current
+              : `${current.replace(/\n*$/, "\n")}repetir: ${at}\n`;
+          },
+        }),
+      ),
+      `depósito: tentar de novo ${logs.length} ficheiro(s) que deram erro`,
+    );
   }
 
   patchDocuments(

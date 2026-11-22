@@ -21,8 +21,38 @@ class UnsafeArchiveError(ValueError):
     pass
 
 
+class TooManyEntries(UnsafeArchiveError):
+    """Mais entradas do que `max_entries`: o arquivo guarda-se inteiro, sem o abrir."""
+
+
+class BadArchiveError(ValueError):
+    """Não se consegue abrir: o ficheiro está estragado, incompleto ou não é um arquivo."""
+
+
 class ArchiveToolMissing(RuntimeError):
     pass
+
+
+TAR_EXTS = {"tar", "tgz", "tar.gz", "tbz2", "tar.bz2", "txz", "tar.xz"}
+# Assinaturas dos formatos: o formato vem do conteúdo, não do nome (um ".rar" que na verdade
+# é um zip, porque alguém mudou a extensão, abre-se como zip).
+_SIGNATURES = (
+    (b"PK\x03\x04", "zip"), (b"PK\x05\x06", "zip"), (b"PK\x07\x08", "zip"),
+    (b"Rar!\x1a\x07", "rar"), (b"7z\xbc\xaf\x27\x1c", "7z"),
+    (b"\x1f\x8b", "tar.gz"), (b"BZh", "tar.bz2"), (b"\xfd7zXZ\x00", "tar.xz"),
+)
+
+
+def archive_format(archive: Path, ext: str) -> str:
+    """O formato do arquivo pelo conteúdo; a extensão só quando o conteúdo não diz nada."""
+    with archive.open("rb") as handle:
+        head = handle.read(512)
+    for signature, fmt in _SIGNATURES:
+        if head.startswith(signature):
+            return fmt
+    if head[257:262] == b"ustar":
+        return "tar"
+    return ext
 
 
 @dataclass(frozen=True)
@@ -57,7 +87,7 @@ class _Budget:
     def add_entry(self) -> None:
         self.entries += 1
         if self.entries > self.settings.max_entries:
-            raise UnsafeArchiveError(
+            raise TooManyEntries(
                 f"o arquivo tem mais de {self.settings.max_entries} entradas"
             )
 
@@ -194,24 +224,77 @@ def _collect_staged(staging: Path, dest: Path, budget: _Budget, count_bytes: boo
 
 
 def is_archive_name(name: str) -> bool:
-    return extension_of(name) in {"zip", "rar", "7z", "tar", "tgz", "tar.gz", "tbz2",
-                                  "tar.bz2", "txz", "tar.xz"}
+    return extension_of(name) in {"zip", "rar", "7z", *TAR_EXTS}
+
+
+def _format_errors() -> tuple[type[BaseException], ...]:
+    """Os erros das bibliotecas quando o ficheiro não é do formato (ou está estragado)."""
+    import py7zr.exceptions
+    import rarfile
+
+    # `rarfile.Error` inclui o arquivo cifrado ou o volume que falta; a falta do programa
+    # (`RarCannotExec`) já foi trocada por `ArchiveToolMissing` antes de chegar aqui.
+    return (zipfile.BadZipFile, tarfile.TarError, EOFError, py7zr.exceptions.ArchiveError,
+            py7zr.exceptions.PasswordRequired, rarfile.Error)
+
+
+def _bad(ext: str, fmt: str, exc: BaseException) -> BadArchiveError:
+    what = f".{ext}" if fmt == ext else f".{ext} (conteúdo {fmt})"
+    return BadArchiveError(
+        f"não foi possível abrir o arquivo {what}: pode estar estragado, incompleto ou não ser "
+        f"um arquivo ({type(exc).__name__}: {exc})")
+
+
+def archive_names(archive: Path, ext: str, limit: int) -> list[str]:
+    """Os nomes dos ficheiros de um arquivo, sem o extrair (no máximo `limit`)."""
+    fmt = archive_format(archive, ext)
+    names: list[str] = []
+    try:
+        if fmt == "zip":
+            with zipfile.ZipFile(archive) as zf:
+                names = [i.filename for i in zf.infolist() if not i.is_dir()][:limit]
+        elif fmt in TAR_EXTS:
+            with tarfile.open(archive) as tf:
+                for member in tf:
+                    if member.isfile():
+                        names.append(member.name)
+                        if len(names) >= limit:
+                            break
+        elif fmt == "7z":
+            import py7zr
+
+            with py7zr.SevenZipFile(archive) as sz:
+                names = [i.filename for i in sz.list() if not i.is_directory][:limit]
+        elif fmt == "rar":
+            import rarfile
+
+            with rarfile.RarFile(archive) as rf:
+                names = [i.filename for i in rf.infolist() if not i.is_dir()][:limit]
+    except _format_errors() as exc:
+        raise _bad(ext, fmt, exc) from exc
+    return names
 
 
 def unpack(archive: Path, ext: str, dest: Path, settings: ArchiveSettings) -> list[Entry]:
-    """Extrai `archive` para `dest` e devolve as entradas (sem lixo de SO), ordenadas."""
+    """Extrai `archive` para `dest` e devolve as entradas (sem lixo de SO), ordenadas. O
+    formato vem do conteúdo (`archive_format`); `TooManyEntries` se tiver entradas a mais,
+    `BadArchiveError` se não se conseguir abrir."""
     dest.mkdir(parents=True, exist_ok=True)
     budget = _Budget(settings, archive.stat().st_size)
-    if ext == "zip":
-        entries = _unpack_zip(archive, dest, budget)
-    elif ext in {"tar", "tgz", "tar.gz", "tbz2", "tar.bz2", "txz", "tar.xz"}:
-        entries = _unpack_tar(archive, dest, budget)
-    elif ext == "7z":
-        entries = _unpack_7z(archive, dest, budget)
-    elif ext == "rar":
-        entries = _unpack_rar(archive, dest, budget)
-    else:
-        raise ValueError(f"formato de arquivo não suportado: {ext}")
+    fmt = archive_format(archive, ext)
+    try:
+        if fmt == "zip":
+            entries = _unpack_zip(archive, dest, budget)
+        elif fmt in TAR_EXTS:
+            entries = _unpack_tar(archive, dest, budget)
+        elif fmt == "7z":
+            entries = _unpack_7z(archive, dest, budget)
+        elif fmt == "rar":
+            entries = _unpack_rar(archive, dest, budget)
+        else:
+            raise ValueError(f"formato de arquivo não suportado: {ext}")
+    except _format_errors() as exc:
+        raise _bad(ext, fmt, exc) from exc
     kept = [e for e in entries if not is_junk(PurePosixPath(e.path).name)
             and "__MACOSX" not in PurePosixPath(e.path).parts]
     return sorted(kept, key=lambda e: e.path)

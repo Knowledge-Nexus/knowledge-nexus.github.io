@@ -7,6 +7,9 @@ from pathlib import Path
 
 ERRORS_DIR = "_erros"
 REF_SUFFIX = ".ref.yaml"
+# Opções de um envio da interface, na pasta do lote (ex.: `open_archives: true` para abrir os
+# arquivos que se guardariam inteiros). Não é um item do depósito; sai com o lote.
+OPTIONS_FILE = ".nexus-opcoes.yaml"
 # Ficheiros grandes enviados pelo browser chegam em partes (a API do GitHub recusa blobs
 # grandes): `<nome>.nexus-parts.yaml` + `<nome>.nexus-part-0001`, `-0002`…
 PARTS_SUFFIX = ".nexus-parts.yaml"

@@ -11,8 +11,10 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
+
 from nexus.config import CodeProjectSettings
-from nexus.datarepo.layout import ERRORS_DIR, PART_MARK, PARTS_SUFFIX, REF_SUFFIX
+from nexus.datarepo.layout import ERRORS_DIR, OPTIONS_FILE, PART_MARK, PARTS_SUFFIX, REF_SUFFIX
 from nexus.pipeline import codeproject
 from nexus.pipeline.filetypes import is_junk
 
@@ -26,6 +28,8 @@ class DepositItem:
     kind: str = "file"  # file | code_project | ref | parts
     # code_project: ficheiros do projecto; parts: manifesto + partes (relativos a base)
     files: list[str] = field(default_factory=list)
+    # O envio pediu para abrir os arquivos que se guardariam inteiros (`archives.keep_whole`).
+    open_archives: bool = False
 
     @property
     def path(self) -> Path:
@@ -59,8 +63,29 @@ def _files_under(folder: Path) -> list[str]:
     )
 
 
+def _batch_options(base: Path, files: list[str]) -> tuple[list[str], dict[str, object]]:
+    """Tira as opções do envio (`OPTIONS_FILE`) da lista de ficheiros do lote."""
+    if OPTIONS_FILE not in files:
+        return files, {}
+    try:
+        data = yaml.safe_load((base / OPTIONS_FILE).read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        data = {}
+    return [f for f in files if f != OPTIONS_FILE], data if isinstance(data, dict) else {}
+
+
 def _batch_items(login: str, batch: str | None, base: Path, files: list[str],
                  settings: CodeProjectSettings, junk: list[Path]) -> list[DepositItem]:
+    files, options = _batch_options(base, files)
+    items = _items_of(login, batch, base, files, settings, junk)
+    if options.get("open_archives") is True:
+        for item in items:
+            item.open_archives = True
+    return items
+
+
+def _items_of(login: str, batch: str | None, base: Path, files: list[str],
+              settings: CodeProjectSettings, junk: list[Path]) -> list[DepositItem]:
     kept: list[str] = []
     for rel in files:
         name = rel.rsplit("/", 1)[-1]

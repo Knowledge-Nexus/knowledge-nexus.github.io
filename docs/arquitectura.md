@@ -49,8 +49,13 @@ Porque é assim:
 2. **Recepção:** para cada item do depósito (ficheiro, projecto de código ou referência):
    - calcula o SHA-256 e deduplica: com o mesmo dono e o mesmo conteúdo, só acrescenta
      uma origem; com outro dono, cria uma cópia lógica nova;
-   - **desempacota** zip/tar/7z/rar com limites de segurança. Os projectos de código
-     ficam como uma unidade, num zip determinístico com manifesto;
+   - **desempacota** zip/tar/7z com limites de segurança, pelo formato do conteúdo (um `.rar`
+     que é um zip abre-se como zip). Os projectos de código ficam como uma unidade, num zip
+     determinístico com manifesto. Os formatos de `archives.keep_whole` (o `.rar`) guardam-se
+     inteiros, só com a listagem dos nomes, a menos que o envio peça para os abrir
+     («Extrair os ficheiros dos .rar», `.nexus-opcoes.yaml` com `open_archives: true` na pasta
+     do lote). Um arquivo com mais de `archives.max_entries` ficheiros também se guarda
+     inteiro, em vez de dar erro;
    - **extrai** o texto por conteúdo, com cache, e grava-o em `texto/<sha>/`;
    - só no fim, e se tudo correu bem, move o original para `originais/`. Se falhar, vai
      para `deposito/<login>/_erros/` com um `.log`. Se faltar uma ferramenta, fica no

@@ -1,7 +1,10 @@
 // Janela por cima da página (popup), com o <dialog> do browser: Esc e clicar fora fecham-na,
-// e o foco fica lá dentro enquanto está aberta.
+// e o foco fica lá dentro enquanto está aberta. Vai directamente para o <body> (portal): aberta
+// dentro de uma zona com estilos próprios (ex.: a barra lateral, com o texto em branco), não
+// os herda.
 
 import { type ReactNode, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { IconClose } from "./icons";
 
@@ -26,7 +29,7 @@ export function Modal(props: {
     };
   }, []);
 
-  return (
+  return createPortal(
     // biome-ignore lint/a11y/useKeyWithClickEvents: no teclado, o Esc fecha (onCancel); o clique é só no fundo
     <dialog
       ref={ref}
@@ -58,6 +61,7 @@ export function Modal(props: {
         </header>
         {props.children}
       </div>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }

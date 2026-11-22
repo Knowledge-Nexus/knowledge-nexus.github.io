@@ -18,6 +18,7 @@ import functools
 import hashlib
 import logging
 import os
+import re
 import shutil
 import tempfile
 import traceback
@@ -27,7 +28,7 @@ from pathlib import Path
 
 from nexus import clock
 from nexus.datarepo.catalog_io import import_bundle, remove_course, remove_unit
-from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX, PARTS_SUFFIX
+from nexus.datarepo.layout import ERRORS_DIR, LOG_SUFFIX, OPTIONS_FILE, PARTS_SUFFIX
 from nexus.datarepo.store import DataRepo
 from nexus.datarepo.yamlio import read_yaml, write_text_if_changed, write_yaml_if_changed
 from nexus.domain.common import uuid7
@@ -84,13 +85,22 @@ from nexus.pipeline.filing import filed_name, unique_name
 from nexus.pipeline.hashing import sha256_file
 from nexus.pipeline.intake import DepositItem, scan_deposit
 from nexus.pipeline.lotes import expand_lotes
-from nexus.pipeline.unpack import ArchiveToolMissing, is_archive_name, unpack
+from nexus.pipeline.unpack import (
+    ArchiveToolMissing,
+    BadArchiveError,
+    TooManyEntries,
+    archive_names,
+    is_archive_name,
+    unpack,
+)
 from nexus.review import set_proposal_status
 from nexus.storage.r2 import StorageUnavailable, open_blob_store
 
 log = logging.getLogger("nexus.pipeline")
 
 EXTRACTION_FAILED = "review.extraction_failed"
+# Linha que a interface acrescenta ao `.log` de um item em `_erros/` para o tentar de novo.
+RETRY_LINE = re.compile(r"^repetir:", re.MULTILINE)
 TYPE_TO_CONFIRM = "type.to_confirm"
 MAX_EVIDENCE = 10
 
@@ -194,7 +204,7 @@ class Pipeline:
 
     def run(self) -> RunReport:
         self.repo.check_format()
-        self._retry_storage_failures()
+        self._retry_failures()
         with tempfile.TemporaryDirectory(prefix="nexus-") as tmp:
             self.workdir = Path(tmp)
             lotes = expand_lotes(self.layout.deposit_root, self.workdir,
@@ -400,7 +410,8 @@ class Pipeline:
                              DocumentKind.ARCHIVE if archive else DocumentKind.FILE,
                              None, path, move=True)
         if archive:
-            self._expand_archive(staging, doc, path, ext, 1, item.rel, item.batch)
+            self._store_archive(staging, doc, path, ext, 1, item.rel, item.batch,
+                                item.open_archives)
         else:
             self._ensure_text(staging, sha, ext, "file", lambda: extract_file(
                 path, ext, self.settings, self.workdir / f"x-{sha[:16]}"))
@@ -500,15 +511,52 @@ class Pipeline:
         other = sum(1 for f in files if category_of(extension_of(f), code) is Category.OTHER)
         return other / len(files) >= settings.software_other_ratio
 
+    def _store_archive(self, staging: _Staging, archive_doc: Document, path: Path, ext: str,
+                       depth: int, label: str, batch: str | None, open_all: bool) -> None:
+        """Um arquivo: os formatos de `archives.keep_whole` (o .rar) guardam-se inteiros,
+        sem os abrir (quem os envia assim fá-lo de propósito), a menos que o envio peça para
+        os abrir; os outros abrem-se e cada ficheiro é tratado à parte."""
+        if ext in self.settings.archives.keep_whole and not open_all:
+            staging.warnings.append(f"{label}: .{ext} guardado inteiro, sem o abrir")
+            self._keep_whole(staging, archive_doc, path, ext)
+            return
+        self._expand_archive(staging, archive_doc, path, ext, depth, label, batch, open_all)
+
+    def _keep_whole(self, staging: _Staging, archive_doc: Document, path: Path,
+                    ext: str) -> None:
+        """Guarda o arquivo como um só documento. A listagem dos nomes (para a pesquisa) é só
+        uma ajuda: se não se conseguir ler, o arquivo guarda-se na mesma."""
+        try:
+            names = archive_names(path, ext, self.settings.archives.max_entries)
+        except BadArchiveError as exc:
+            log.info("sem listagem de %s: %s", path.name, exc)
+            names = []
+        self._ensure_text(staging, archive_doc.blob.sha256, ext, "file",
+                          lambda: archive_listing(names))
+
     def _expand_archive(self, staging: _Staging, archive_doc: Document, path: Path, ext: str,
-                        depth: int, label: str, batch: str | None) -> None:
+                        depth: int, label: str, batch: str | None,
+                        open_all: bool = False) -> None:
         sha = archive_doc.blob.sha256
         if depth > self.settings.archives.max_depth:
             self.report.warnings.append(f"{label}: arquivo demasiado aninhado, não aberto")
             self._ensure_text(staging, sha, ext, "file", lambda: archive_listing([]))
             return
         dest = self.workdir / f"unpack-{sha[:16]}-{depth}"
-        entries = unpack(path, ext, dest, self.settings.archives)
+        # Com ficheiros a mais (programas, bibliotecas), guarda-se inteiro, com a listagem: é
+        # o mesmo que um arquivo de software, não um erro.
+        limit = self.settings.archives.max_entries
+        names = archive_names(path, ext, limit + 1)
+        try:
+            if len(names) > limit:
+                raise TooManyEntries(limit)
+            entries = unpack(path, ext, dest, self.settings.archives)
+        except TooManyEntries:
+            staging.warnings.append(
+                f"{label}: arquivo com mais de {limit} ficheiros; guardado inteiro, sem abrir "
+                "as entradas")
+            self._ensure_text(staging, sha, ext, "file", lambda: archive_listing(names[:limit]))
+            return
         files = [e.path for e in entries]
         self._ensure_text(staging, sha, ext, "file", lambda: archive_listing(files))
         if self._is_software_bundle(files):
@@ -541,8 +589,8 @@ class Pipeline:
                 source, DocumentKind.ARCHIVE if nested else DocumentKind.FILE, archive_doc.id,
                 entry.local, move=False)
             if nested:
-                self._expand_archive(staging, child, entry.local, child_ext, depth + 1,
-                                     f"{label}!/{entry.path}", batch)
+                self._store_archive(staging, child, entry.local, child_ext, depth + 1,
+                                    f"{label}!/{entry.path}", batch, open_all)
                 continue
             try:
                 self._ensure_text(staging, child_sha, child_ext, "file", functools.partial(
@@ -625,15 +673,19 @@ class Pipeline:
         write_text_if_changed(errors / log_name, text)
         self.report.errors.append((item.label, str(exc)))
 
-    def _retry_storage_failures(self) -> None:
-        """Devolve ao depósito o que foi para `_erros/` só por faltarem as credenciais do R2
-        (versões anteriores do motor davam erro em vez de esperar): é processado de novo."""
+    def _retry_failures(self) -> None:
+        """Devolve ao depósito, para ser processado de novo, o que está em `_erros/`:
+        - porque faltavam as credenciais do R2 (versões anteriores do motor davam erro em vez
+          de esperar);
+        - porque o dono pediu «Tentar de novo» nas notificações (a interface acrescenta a
+          linha `repetir:` ao `.log`)."""
         root = self.layout.deposit_root
         if not root.is_dir():
             return
         for log_file in sorted(root.glob(f"*/{ERRORS_DIR}/**/*{LOG_SUFFIX}")):
             text = log_file.read_text(encoding="utf-8", errors="replace")
-            if "Faltam NEXUS_R2" not in text and "StorageUnavailable" not in text:
+            asked = RETRY_LINE.search(text) is not None
+            if not asked and "Faltam NEXUS_R2" not in text and "StorageUnavailable" not in text:
                 continue
             label = next((line[len("item: "):] for line in text.splitlines()
                           if line.startswith("item: ")), "")
@@ -655,8 +707,8 @@ class Pipeline:
                     moved = True
             log_file.unlink()
             if moved:
-                self.report.warnings.append(
-                    f"de volta ao depósito (faltavam as credenciais do R2): {rel}")
+                why = "pedido nas notificações" if asked else "faltavam as credenciais do R2"
+                self.report.warnings.append(f"de volta ao depósito ({why}): {rel}")
 
     def _remove_empty_dirs(self) -> None:
         root = self.layout.deposit_root
@@ -665,6 +717,10 @@ class Pipeline:
         for folder in sorted((p for p in root.rglob("*") if p.is_dir()), reverse=True):
             if folder.name == ERRORS_DIR:
                 continue
+            # As opções do envio saem com o lote (quando já não há mais nada nele).
+            options = folder / OPTIONS_FILE
+            if options.is_file() and [p.name for p in folder.iterdir()] == [OPTIONS_FILE]:
+                options.unlink()
             with contextlib.suppress(OSError):
                 folder.rmdir()
 

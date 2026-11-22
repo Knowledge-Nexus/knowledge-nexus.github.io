@@ -931,3 +931,74 @@ def test_manifest_lists_what_stayed_in_the_deposit(catalog_root: Path, tmp_path:
     build_indices(DataRepo(catalog_root), tmp_path / "pub", public=True)
     assert "deposit" not in json.loads((tmp_path / "pub" / "manifest.json").read_text())
     assert publish_index_branch(catalog_root, push=False) is None  # sem git: só constrói
+
+
+def test_archive_with_too_many_entries_is_kept_whole(catalog_root: Path) -> None:
+    """Um arquivo com mais ficheiros do que o limite (programas, bibliotecas) guarda-se
+    inteiro, com a listagem, em vez de ir para `_erros/`."""
+    import zipfile
+
+    nexus_yaml = catalog_root / "nexus.yaml"
+    nexus_yaml.write_text(nexus_yaml.read_text() + "\narchives:\n  max_entries: 5\n")
+    with zipfile.ZipFile(deposit(catalog_root, "biblioteca-2.9.0.zip"), "w") as zf:
+        for i in range(8):
+            zf.writestr(f"src/f{i}.txt", f"ficheiro {i}")
+    report = run(catalog_root).report
+    assert not report.errors
+    assert any("guardado inteiro" in w for w in report.warnings)
+    [doc] = docs(catalog_root)
+    assert doc["kind"] == "archive"
+    assert not (catalog_root / "deposito" / OWNER / "_erros").exists()
+
+
+def test_retry_requested_in_the_notifications(catalog_root: Path) -> None:
+    """«Tentar de novo» nas notificações acrescenta `repetir:` ao `.log`: o item volta ao
+    depósito e é processado outra vez (aqui, um .rar que antes falhou: agora guarda-se
+    inteiro)."""
+    import zipfile
+
+    batch = "20251001T100000Z-abcd"
+    errors = catalog_root / "deposito" / OWNER / "_erros" / batch
+    errors.mkdir(parents=True)
+    with zipfile.ZipFile(errors / "Diagramas_ER.rar", "w") as zf:
+        zf.writestr("modelo.txt", "Modelo entidade associação da base de dados")
+    log = errors / "Diagramas_ER.rar.log"
+    log.write_text(f"data: x\nitem: {OWNER}/{batch}/Diagramas_ER.rar\ntipo: file\n"
+                   "erro: NotRarFile: Not a RAR file\n\nTraceback...\n")
+    run(catalog_root)
+    assert log.exists(), "sem o pedido, fica onde está"
+
+    log.write_text(log.read_text() + "repetir: 2026-11-22T10:00:00Z\n")
+    report = run(catalog_root).report
+    assert not log.exists() and not report.errors
+    assert any("pedido nas notificações" in w for w in report.warnings)
+    assert [d["kind"] for d in docs(catalog_root)] == ["archive"]
+
+
+def test_rar_is_kept_whole_unless_the_upload_asks_to_open_it(catalog_root: Path) -> None:
+    """Um .rar guarda-se inteiro (quem o envia assim fá-lo de propósito), mesmo estragado; com
+    «Extrair os ficheiros dos .rar» no envio (`.nexus-opcoes.yaml`), abre-se (pelo conteúdo:
+    este .rar é um zip) e cada ficheiro é tratado à parte. As opções saem com o lote."""
+    import zipfile
+
+    from nexus.datarepo.layout import OPTIONS_FILE
+
+    with zipfile.ZipFile(deposit(catalog_root, "AM1/Exames_AM1_2023-24.rar"), "w") as zf:
+        zf.writestr("exame.txt", "Análise Matemática I exame época normal")
+    deposit(catalog_root, "estragado.rar").write_bytes(b"nao e um rar" * 20)
+    report = run(catalog_root).report
+    assert not report.errors
+    assert sorted(d["kind"] for d in docs(catalog_root)) == ["archive", "archive"]
+    filed = [d for d in docs(catalog_root) if d.get("filed_name")]
+    assert filed and filed[0]["filed_name"].endswith(".rar")
+
+    batch = "20251001T110000Z-wxyz"
+    with zipfile.ZipFile(deposit(catalog_root, "Fichas_ALGA.rar", batch=batch), "w") as zf:
+        zf.writestr("ficha1.txt", "Álgebra Linear ficha 1 matrizes")
+        zf.writestr("ficha2.txt", "Álgebra Linear ficha 2 determinantes")
+    options = catalog_root / "deposito" / OWNER / batch / OPTIONS_FILE
+    options.write_text("open_archives: true\n")
+    report = run(catalog_root).report
+    assert not report.errors
+    assert sorted(d["kind"] for d in docs(catalog_root)) == ["archive"] * 3 + ["file"] * 2
+    assert not options.exists() and not options.parent.exists()

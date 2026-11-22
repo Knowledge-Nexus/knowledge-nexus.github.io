@@ -226,6 +226,25 @@ test("depositar ficheiros cria um único commit no depósito", async ({ page }) 
   const commit = fake.repos.get(REPO)!.commits.at(-1)!;
   expect(commit.paths).toHaveLength(1);
   expect(commit.paths[0]).toMatch(/^deposito\/aluna\/\d{8}T\d{6}Z-[a-z0-9]{4}\/resumo_fg\.txt$/);
+
+  // Um .rar fica guardado inteiro, a menos que se peça para o abrir (desmarcado por defeito).
+  const extract = page.getByRole("checkbox", { name: /Extrair os ficheiros do \.rar/ });
+  await expect(extract).toHaveCount(0);
+  await page
+    .getByTestId("pick-files")
+    .setInputFiles([
+      { name: "Diagramas_ER.rar", mimeType: "application/x-rar", buffer: Buffer.from("Rar!x") },
+    ]);
+  await expect(extract).toBeVisible();
+  await expect(extract).not.toBeChecked();
+  await extract.check();
+  await page.getByRole("button", { name: "Enviar 1 ficheiro(s)" }).click();
+  await expect(page.getByText(/Enviado\./)).toBeVisible();
+  const withOptions = fake.repos.get(REPO)!.commits.at(-1)!;
+  expect(withOptions.paths.map((p) => p.split("/").at(-1)).sort()).toEqual([
+    ".nexus-opcoes.yaml",
+    "Diagramas_ER.rar",
+  ]);
 });
 
 test("escolher a visibilidade de uma cadeira e de um documento", async ({ page }) => {
@@ -1510,4 +1529,15 @@ test("o canto mostra o processamento em tempo real e o sino os ficheiros que fal
   await expect(dialog.getByRole("heading", { name: "Não foi possível guardar" })).toBeVisible();
   await expect(dialog).toContainText("partido.pdf");
   await expect(dialog).toContainText("PDF ilegível");
+  // A janela não herda o texto branco da barra lateral (abre-se no <body>).
+  const name = dialog.getByText("partido.pdf", { exact: true });
+  const color = await name.evaluate((el) => getComputedStyle(el).color);
+  expect(color).not.toMatch(/rgba?\(255, 255, 255/);
+
+  // «Tentar de novo»: o registo do erro leva `repetir:` e o motor devolve-o ao depósito.
+  await dialog.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(dialog).toContainText("Pedido enviado");
+  const log = "deposito/aluna/_erros/partido.pdf.log";
+  expect(fake.text(REPO, log)).toMatch(/\nrepetir: \d{4}-/);
+  expect(fake.repos.get(REPO)!.commits.at(-1)!.paths).toEqual([log]);
 });

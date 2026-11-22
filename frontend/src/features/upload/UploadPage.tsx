@@ -24,6 +24,7 @@ import {
   safeRelativePath,
   sha256Hex,
 } from "../../lib/files";
+import { keptWhole } from "../../lib/processing";
 
 type State =
   | "new"
@@ -115,6 +116,8 @@ export function UploadPage() {
   const [error, setError] = useState<unknown>(null);
   const [over, setOver] = useState(false);
   const [includeCopies, setIncludeCopies] = useState(false);
+  // Por defeito, cada .rar fica guardado inteiro; isto pede para o abrir.
+  const [openArchives, setOpenArchives] = useState(false);
   const folderInput = useRef<HTMLInputElement>(null);
 
   async function add(files: PickedFile[]) {
@@ -155,12 +158,15 @@ export function UploadPage() {
   const entries = rows.flatMap((r) =>
     r.entry ? [r.entry] : includeCopies && r.copyEntry ? [r.copyEntry] : [],
   );
+  const archives = entries.filter((e) => keptWhole(e.relativePath)).length;
 
   async function send() {
     setSending(true);
     setError(null);
     try {
-      await source.upload(entries, newBatchId(), (done, total) => setProgress({ done, total }));
+      await source.upload(entries, newBatchId(), (done, total) => setProgress({ done, total }), {
+        openArchives: archives > 0 && openArchives,
+      });
       setRows([]);
       setSent(true);
       notifyCommit();
@@ -234,6 +240,22 @@ export function UploadPage() {
             {t("upload.include_copies")}
           </label>
         </div>
+      )}
+      {archives > 0 && (
+        <label className="flex items-start gap-2 rounded-2xl border border-line bg-sheet p-4 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={openArchives}
+            onChange={(e) => setOpenArchives(e.target.checked)}
+          />
+          <span>
+            <span className="font-medium text-ink">
+              {t("upload.open_archives", { count: archives })}
+            </span>{" "}
+            {t("upload.open_archives_hint")}
+          </span>
+        </label>
       )}
       {rows.length > 0 && (
         <Card
