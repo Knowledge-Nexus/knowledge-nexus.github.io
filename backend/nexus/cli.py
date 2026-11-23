@@ -174,7 +174,7 @@ def servir(
     uma_vez: Annotated[bool, typer.Option(help="Um só ciclo e sai.")] = False,
 ) -> None:
     """Vigia o repositório de dados e processa os depósitos novos (sem GitHub Actions)."""
-    from nexus.serve import UPDATE_EXIT, serve
+    from nexus.serve import BROKEN_EXIT, UPDATE_EXIT, EnvironmentBroken, serve
 
     # Uma versão nova da aplicação pode trazer um formato novo: o servir actualiza-o antes de
     # processar (como o Actions corria `nexus migrar`), por isso não o recusa aqui.
@@ -201,6 +201,9 @@ def servir(
     except KeyboardInterrupt:
         typer.echo("parado")
         return
+    except EnvironmentBroken:
+        # O `vigiar-deposito.bat` vê este código, reinicia o WSL e volta a arrancar.
+        raise typer.Exit(BROKEN_EXIT) from None
     if updated:
         # O `vigiar-deposito.bat` vê este código, actualiza (git pull) e volta a arrancar.
         raise typer.Exit(UPDATE_EXIT)

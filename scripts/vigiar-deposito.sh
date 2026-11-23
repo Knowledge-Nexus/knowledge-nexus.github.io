@@ -93,7 +93,8 @@ if ! getent hosts github.com >/dev/null 2>&1; then
 fi
 
 # Quando sai uma versão nova da aplicação, o nexus servir termina com o código 75: actualiza
-# e volta a arrancar.
+# e volta a arrancar. Com 76 (este Linux deixou de ler o disco), sai para o .bat reiniciar o
+# WSL.
 while true; do
   git_app pull -q --ff-only ||
     echo "Aviso: não consegui actualizar a aplicação; continua com esta versão."

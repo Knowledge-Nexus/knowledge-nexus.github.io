@@ -6,6 +6,7 @@ alterações locais), corre o pipeline e publica os índices, como o workflow fa
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import logging
 import os
@@ -207,11 +208,29 @@ def is_offline(exc: GitError) -> bool:
     return any(mark in str(exc) for mark in _OFFLINE_MARKS)
 
 
+# O Linux deixou de conseguir ler o próprio disco (`OSError` EIO, «Input/output error», ao
+# arrancar o git ou ao ler um ficheiro): no WSL, depois de o Windows suspender ou hibernar, ou
+# com o disco C: cheio. Por dentro não se resolve: o servir sai com `BROKEN_EXIT` e o
+# `vigiar-deposito.bat` reinicia o WSL (`wsl --shutdown`) e volta a arrancá-lo.
+BROKEN_EXIT = 76
+# Ciclos seguidos com o erro antes de desistir (um soluço isolado não reinicia nada).
+BROKEN_AFTER = 3
+
+
+class EnvironmentBroken(RuntimeError):
+    """O sistema onde o servir corre já não lê o disco: é preciso reiniciá-lo."""
+
+
+def is_broken(exc: BaseException) -> bool:
+    return isinstance(exc, OSError) and exc.errno == errno.EIO
+
+
 def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
           sleep: Callable[[float], None] = time.sleep,
           has_update: Callable[[], bool] | None = None) -> bool:
     """Corre até ser interrompido. Processa logo no arranque (apanha o que ficou por fazer).
-    Devolve True quando pára porque a aplicação tem uma versão nova (`UPDATE_EXIT`)."""
+    Devolve True quando pára porque a aplicação tem uma versão nova (`UPDATE_EXIT`); levanta
+    `EnvironmentBroken` quando o sistema deixa de ler o disco (`BROKEN_EXIT`)."""
     if has_update is None:
         checkout = app_checkout()
         has_update = (lambda: app_has_update(checkout)) if checkout else (lambda: False)
@@ -220,11 +239,16 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
     force = True
     cycle = 0
     offline = 0
+    broken = 0
+    # O mesmo erro inesperado em todos os ciclos: o detalhe (traceback) só da primeira vez.
+    repeated: tuple[str, int] = ("", 0)
     public = PublicState()
     while True:
         try:
             serve_once(root, force=force, sleep=sleep)
             force = False
+            broken = 0
+            repeated = ("", 0)
             if offline:
                 log.info("ligação ao GitHub de volta")
                 offline = 0
@@ -244,8 +268,27 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
                 log.warning("ainda sem ligação ao GitHub (%d tentativas)", offline + 1)
             if is_offline(exc):
                 offline += 1
-        except Exception:
-            log.exception("erro inesperado, tenta de novo no próximo ciclo")
+        except Exception as exc:
+            if is_broken(exc):
+                broken += 1
+                if broken >= BROKEN_AFTER:
+                    log.error(
+                        "este sistema deixou de conseguir ler o disco (Input/output error) e "
+                        "por dentro não se resolve. No WSL acontece depois de o Windows "
+                        "suspender ou hibernar, ou com o disco C: cheio: o .bat reinicia o WSL "
+                        "e volta a vigiar. Se voltar a acontecer, vê o espaço livre no C: "
+                        "(docs/configuracao.md, 4.1).")
+                    raise EnvironmentBroken(str(exc)) from exc
+                log.warning("erro ao ler o disco (%s); tenta de novo daqui a %d s", exc,
+                            interval)
+            else:
+                key = f"{type(exc).__name__}: {exc}"
+                count = repeated[1] + 1 if repeated[0] == key else 1
+                repeated = (key, count)
+                if count == 1:
+                    log.exception("erro inesperado, tenta de novo no próximo ciclo")
+                elif count % remind == 0:
+                    log.error("o mesmo erro outra vez (%d vezes seguidas): %s", count, key)
         if once:
             return False
         cycle += 1

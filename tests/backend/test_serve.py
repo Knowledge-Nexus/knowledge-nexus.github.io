@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from nexus.datarepo.git import Git
 from nexus.serve import (
     BATCH_ITEMS,
@@ -331,3 +333,47 @@ def test_servir_starts_on_an_older_format_and_migrates_it(git_root: Path) -> Non
     refused = CliRunner().invoke(app, ["servir", "--repo", str(git_root), "--uma-vez"])
     assert refused.exit_code == 1
     assert "Actualiza o nexus" in refused.output
+
+
+def test_a_broken_disk_exits_for_the_bat_to_restart_wsl(tmp_path: Path, monkeypatch,
+                                                        caplog) -> None:
+    """«Input/output error» ao arrancar o git (o disco do WSL deixou de responder): ao fim de
+    BROKEN_AFTER ciclos seguidos o servir sai (código 76) para o .bat reiniciar o WSL; um
+    soluço isolado não; e um erro inesperado repetido só mostra o traceback uma vez."""
+    import errno
+    import logging
+
+    from nexus import serve as serve_module
+
+    monkeypatch.setattr(serve_module, "publish_public_if_due", lambda *a, **k: None)
+    outcomes = iter([OSError(errno.EIO, "Input/output error", "git"), None,
+                     *[OSError(errno.EIO, "Input/output error", "git")] * 3])
+
+    def flaky(*args, **kwargs):
+        outcome = next(outcomes)
+        if outcome:
+            raise outcome
+
+    monkeypatch.setattr(serve_module, "serve_once", flaky)
+    with caplog.at_level(logging.INFO, logger="nexus.serve"), \
+            pytest.raises(serve_module.EnvironmentBroken):
+        serve(tmp_path, interval=10, sleep=lambda s: None, has_update=lambda: False)
+    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(errors) == 1 and "Input/output error" in errors[0].message
+    assert not any(r.exc_info for r in caplog.records)
+
+    caplog.clear()
+    calls = {"n": 0}
+
+    def failing(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] > 12:
+            raise KeyboardInterrupt
+        raise RuntimeError("sempre o mesmo")
+
+    monkeypatch.setattr(serve_module, "serve_once", failing)
+    with caplog.at_level(logging.INFO, logger="nexus.serve"), pytest.raises(KeyboardInterrupt):
+        serve(tmp_path, interval=600, sleep=lambda s: None, has_update=lambda: False)
+    assert len([r for r in caplog.records if r.exc_info]) == 1
+    assert any("o mesmo erro outra vez (10 vezes seguidas)" in r.message
+               for r in caplog.records)

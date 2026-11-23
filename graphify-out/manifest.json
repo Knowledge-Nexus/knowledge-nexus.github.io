@@ -24,9 +24,9 @@
     "semantic_hash": "39b9549f97fc3fb68653523f6b71d5a0"
   },
   "backend/nexus/cli.py": {
-    "mtime": 1795299244.6933541,
-    "seen": 1795299312.6518967,
-    "ast_hash": "f08df1c55197298a7d496839026be227",
+    "mtime": 1795429674.5463376,
+    "seen": 1795429801.1708567,
+    "ast_hash": "8245243f577429e785deb4c670c8233a",
     "semantic_hash": ""
   },
   "backend/nexus/clock.py": {
@@ -432,9 +432,9 @@
     "semantic_hash": "20b644a52fa77045746a5eaf4c6c6003"
   },
   "backend/nexus/serve.py": {
-    "mtime": 1795299244.6929803,
-    "seen": 1795299312.6520805,
-    "ast_hash": "808b2154df1a3ee2395cd778daafc92c",
+    "mtime": 1795429674.5456655,
+    "seen": 1795429801.1709971,
+    "ast_hash": "a22e7a5e450c1b59a3fc66e140791a10",
     "semantic_hash": ""
   },
   "backend/nexus/sharing.py": {
@@ -1110,9 +1110,9 @@
     "semantic_hash": ""
   },
   "scripts/vigiar-deposito.sh": {
-    "mtime": 1795299244.6935816,
-    "seen": 1795299312.6523838,
-    "ast_hash": "78220be4ec5b4b69da4e7cb30512b154",
+    "mtime": 1795429674.5465717,
+    "seen": 1795429801.1712067,
+    "ast_hash": "0bb0185c857cc370e620f77e6acdeb5c",
     "semantic_hash": ""
   },
   "tests/amostras/__init__.py": {
@@ -1182,9 +1182,9 @@
     "semantic_hash": "4697f889881af98d69981db85dd1b909"
   },
   "tests/backend/test_serve.py": {
-    "mtime": 1793894018.966912,
-    "seen": 1793894118.7736192,
-    "ast_hash": "723cc3aa769544688e9a294e4c0e765e",
+    "mtime": 1795429719.4397748,
+    "seen": 1795429801.171229,
+    "ast_hash": "84b19f610779b86d8a06d91cf38df053",
     "semantic_hash": ""
   },
   "tests/backend/test_unpack.py": {
@@ -1296,9 +1296,9 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1795353534.7376692,
-    "seen": 1795353740.3694453,
-    "ast_hash": "5da5424a5e6070e780125972d1bcc60a",
+    "mtime": 1795429694.8276205,
+    "seen": 1795429801.171294,
+    "ast_hash": "017096f88780111358c18aa3d73dd185",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1350,9 +1350,9 @@
     "semantic_hash": ""
   },
   "docs/configuracao.md": {
-    "mtime": 1795299244.6944466,
-    "seen": 1795299312.6524892,
-    "ast_hash": "1fc085ce88d4caaa7be87440a6d3e0f5",
+    "mtime": 1795429694.8265586,
+    "seen": 1795429801.1713145,
+    "ast_hash": "2a2729814fe13290c466c82b0ae862a9",
     "semantic_hash": ""
   },
   "docs/decisoes.md": {
