@@ -432,9 +432,9 @@
     "semantic_hash": "20b644a52fa77045746a5eaf4c6c6003"
   },
   "backend/nexus/serve.py": {
-    "mtime": 1795429674.5456655,
-    "seen": 1795429801.1709971,
-    "ast_hash": "a22e7a5e450c1b59a3fc66e140791a10",
+    "mtime": 1795437599.9627433,
+    "seen": 1795437695.312506,
+    "ast_hash": "b8780e2f262b9ed9052aed722dec6f08",
     "semantic_hash": ""
   },
   "backend/nexus/sharing.py": {
@@ -1182,9 +1182,9 @@
     "semantic_hash": "4697f889881af98d69981db85dd1b909"
   },
   "tests/backend/test_serve.py": {
-    "mtime": 1795429719.4397748,
-    "seen": 1795429801.171229,
-    "ast_hash": "84b19f610779b86d8a06d91cf38df053",
+    "mtime": 1795437599.9667432,
+    "seen": 1795437695.3126614,
+    "ast_hash": "0ff088e8b3968dc6111dd37559173465",
     "semantic_hash": ""
   },
   "tests/backend/test_unpack.py": {
@@ -1350,9 +1350,9 @@
     "semantic_hash": ""
   },
   "docs/configuracao.md": {
-    "mtime": 1795429694.8265586,
-    "seen": 1795429801.1713145,
-    "ast_hash": "2a2729814fe13290c466c82b0ae862a9",
+    "mtime": 1795437599.9659128,
+    "seen": 1795437695.3126912,
+    "ast_hash": "fd5a1f34a3338ca20ea13b4b0bb4850a",
     "semantic_hash": ""
   },
   "docs/decisoes.md": {

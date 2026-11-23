@@ -55,7 +55,8 @@ convenções ou comandos.
   novos, o `nexus servir` sai com o código 75 (`UPDATE_EXIT`) e o `vigiar-deposito.bat` faz
   `git pull` e volta a arrancá-lo. Se o Linux deixar de ler o disco (`OSError` EIO 3 ciclos
   seguidos, `is_broken`), sai com 76 (`BROKEN_EXIT`) e o `.bat` faz `wsl --shutdown` e volta a
-  arrancar; um erro inesperado repetido só mostra o traceback da primeira vez. O `.bat` corre `scripts/vigiar-deposito.sh` a partir da sua
+  arrancar (também com 135, «Bus error», o mesmo problema; até 4 vezes seguidas); um erro
+  inesperado repetido só mostra o traceback da primeira vez. O `.bat` corre `scripts/vigiar-deposito.sh` a partir da sua
   própria pasta (`wsl --cd … --exec`: sem `--exec`, a shell por defeito do WSL expandia os `$`
   do comando antes do tempo) (qualquer PC e pasta; uma cópia solta usa `~/nexus`): dados em `NEXUS_DADOS`,
   `~/dados` ou `../estudo-dados` (senão oferece clonar), ambiente uv em

@@ -127,9 +127,10 @@ increased").
   (Numa rede de empresa com nomes internos, usa os servidores de DNS dessa rede em vez destes.)
 - **«OSError: [Errno 5] Input/output error: 'git'»:** o Ubuntu do WSL deixou de conseguir ler
   o próprio disco (acontece depois de o Windows suspender ou hibernar, ou com o disco C: cheio,
-  onde fica o disco virtual do Ubuntu). Não se resolve por dentro: ao fim de 3 tentativas
-  seguidas, o `nexus servir` sai com o código 76 e o `.bat` corre `wsl --shutdown` e volta a
-  vigiar sozinho. Se acontecer muitas vezes, vê o espaço livre no C: e, no Ubuntu,
+  onde fica o disco virtual do Ubuntu; às vezes o processo morre com «Bus error»). Não se
+  resolve por dentro: ao fim de 3 tentativas seguidas, o `nexus servir` sai com o código 76
+  (ou morre com o 135) e o `.bat` corre `wsl --shutdown` e volta a vigiar sozinho (até 4
+  vezes; depois pára e pede para veres o disco). Se acontecer muitas vezes, vê o espaço livre no C: e, no Ubuntu,
   `sudo dmesg | grep -i -E "ext4|I/O error"` (erros do disco virtual).
 - **Desligar o Actions:** cria a variável `NEXUS_PROCESSAMENTO` com o valor `local` em
   *Settings → Secrets and variables → Actions → Variables* do repositório de dados. O

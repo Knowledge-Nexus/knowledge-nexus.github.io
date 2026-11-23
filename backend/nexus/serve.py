@@ -299,4 +299,12 @@ def serve(root: Path, interval: int = DEFAULT_INTERVAL, once: bool = False,
                     return True
             except GitError as exc:
                 log.warning("não deu para ver se há uma versão nova: %s", exc)
+            except OSError as exc:
+                # O mesmo disco que deixou de responder, aqui fora do ciclo (o processo
+                # morria com «Bus error» antes de o .bat poder reiniciar o WSL).
+                if not is_broken(exc):
+                    raise
+                log.error("este sistema deixou de conseguir ler o disco (Input/output "
+                          "error): o .bat reinicia o WSL e volta a vigiar.")
+                raise EnvironmentBroken(str(exc)) from exc
         sleep(interval)

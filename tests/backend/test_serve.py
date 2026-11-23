@@ -377,3 +377,20 @@ def test_a_broken_disk_exits_for_the_bat_to_restart_wsl(tmp_path: Path, monkeypa
     assert len([r for r in caplog.records if r.exc_info]) == 1
     assert any("o mesmo erro outra vez (10 vezes seguidas)" in r.message
                for r in caplog.records)
+
+
+def test_a_broken_disk_in_the_update_check_also_exits(tmp_path: Path, monkeypatch) -> None:
+    """O disco pode falhar também ao ver se há uma versão nova (fora do ciclo): antes, o
+    processo morria com «Bus error»; agora sai como os outros, para o .bat reiniciar o WSL."""
+    import errno
+
+    from nexus import serve as serve_module
+
+    monkeypatch.setattr(serve_module, "serve_once", lambda *a, **k: None)
+    monkeypatch.setattr(serve_module, "publish_public_if_due", lambda *a, **k: None)
+
+    def broken() -> bool:
+        raise OSError(errno.EIO, "Input/output error", "git")
+
+    with pytest.raises(serve_module.EnvironmentBroken):
+        serve(tmp_path, interval=600, sleep=lambda s: None, has_update=broken)
