@@ -714,10 +714,10 @@
     "semantic_hash": "58c88b15ed0db1db6201a0e0823c349a"
   },
   "frontend/src/features/document/DocumentFields.tsx": {
-    "mtime": 1793813779.9397404,
-    "seen": 1793819413.8466828,
-    "ast_hash": "cce75b59288ea3e786c60893dea76715",
-    "semantic_hash": "cce75b59288ea3e786c60893dea76715"
+    "mtime": 1795522043.5130582,
+    "seen": 1795522268.891,
+    "ast_hash": "c52543c56c9f705a70916364f54bc9d6",
+    "semantic_hash": ""
   },
   "frontend/src/features/document/DocumentPage.tsx": {
     "mtime": 1793824082.4857523,
@@ -1062,9 +1062,9 @@
     "semantic_hash": "3709e3aa95abf0544678f0f2d9b46702"
   },
   "frontend/tests/e2e/app.spec.ts": {
-    "mtime": 1795353509.9892886,
-    "seen": 1795353740.369391,
-    "ast_hash": "3584915e554fdb6f80363e0f26429d7d",
+    "mtime": 1795522066.7963104,
+    "seen": 1795522268.8910701,
+    "ast_hash": "8c9b8d89a6139cdec5921d1c2cccd153",
     "semantic_hash": ""
   },
   "frontend/tests/e2e/screenshots.spec.ts": {
@@ -1296,9 +1296,9 @@
     "semantic_hash": "a736d1f60d8471e61e0b39185eb10e13"
   },
   "CLAUDE.md": {
-    "mtime": 1795429694.8276205,
-    "seen": 1795429801.171294,
-    "ast_hash": "017096f88780111358c18aa3d73dd185",
+    "mtime": 1795522260.332322,
+    "seen": 1795522268.8911343,
+    "ast_hash": "ae174897e8a771cdcdb31c2ec53d0d9b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1464,9 +1464,9 @@
     "semantic_hash": ""
   },
   "frontend/src/features/review/DocumentQueue.tsx": {
-    "mtime": 1795353478.1687872,
-    "seen": 1795353740.3693328,
-    "ast_hash": "eed8bfb8cd5f6d503f993201087d04fa",
+    "mtime": 1795522048.5803094,
+    "seen": 1795522268.8910232,
+    "ast_hash": "511911de581d6106bdb79bfa87849c9e",
     "semantic_hash": ""
   },
   "frontend/src/lib/typeColors.test.ts": {

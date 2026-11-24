@@ -1585,6 +1585,23 @@ test("«A rever»: filtros, teclado e passar logo ao documento seguinte", async 
   await page.getByRole("button", { name: "Saltar" }).click();
   await expect(title).toHaveText("trabalho-p1");
 
+  // O nome muda-se ali mesmo (o lápis ao lado do título); Enter no campo grava o nome, não
+  // confirma o documento.
+  await page.getByRole("button", { name: "Mudar o nome", exact: true }).click();
+  await page
+    .getByRole("form", { name: "Mudar o nome" })
+    .getByLabel("Nome")
+    .fill("Relatório do projecto P1");
+  await page.keyboard.press("Enter");
+  await expect(title).toHaveText("Relatório do projecto P1");
+  const renamed = fake.repos.get(REPO)!.commits.at(-1)!;
+  const named = YAML.parse(fake.text(REPO, renamed.paths[0]!)!);
+  expect(named.classification.title).toMatchObject({
+    value: "Relatório do projecto P1",
+    method: "user",
+  });
+  expect(named.review.status).not.toBe("resolved");
+
   // Enter confirma (com a sugestão) e o documento sai logo da lista.
   await page.getByRole("button", { name: /^trabalho-p1/ }).click();
   await page.keyboard.press("Enter");

@@ -16,6 +16,7 @@ import type { Labels } from "../../lib/labels";
 import { normalize } from "../../lib/normalize";
 import { originalName } from "../../lib/titles";
 import { typeColor } from "../../lib/typeColors";
+import { TitleEditor } from "../document/DocumentFields";
 import { BulkReview } from "./BulkReview";
 import { type Removal, RemoveButton } from "./RemoveDocuments";
 import { isEditing, ReviewForm } from "./ReviewForm";
@@ -27,6 +28,12 @@ export const UNIT_PROPOSED = "review.unit_proposed";
 /** Um motivo como filtro: o código e o campo («falta: cadeira» ≠ «falta: tipo»). */
 const reasonKey = (r: Reason) =>
   `${r.code}:${typeof r.params?.field === "string" ? r.params.field : ""}`;
+
+/** O nome que o dono deu ao documento (`classification.title`), se lho deu. */
+const userTitle = (doc: DocumentRow) => {
+  const value = doc.classification.title?.value;
+  return typeof value === "string" && value.trim() ? value : null;
+};
 
 /** A proposta de cadeira de que o documento está à espera, se houver. */
 export function proposalOf(doc: DocumentRow): string | null {
@@ -44,7 +51,7 @@ export function DocumentQueue(props: {
   onCatalog: () => void;
 }) {
   const { t } = useTranslation();
-  const { meta } = useApp();
+  const { meta, can } = useApp();
   const { labels, followers } = props;
   const [params, setParams] = useSearchParams();
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -308,7 +315,7 @@ export function DocumentQueue(props: {
                             className="min-w-0 flex-1 text-left"
                           >
                             <span className="block truncate text-sm font-medium">
-                              {originalName(doc)}
+                              {userTitle(doc) ?? originalName(doc)}
                             </span>
                             <span
                               className={`flex items-center gap-1.5 text-xs ${active ? "text-white/80" : "text-muted"}`}
@@ -365,12 +372,13 @@ export function DocumentQueue(props: {
             <section className="flex flex-col rounded-2xl border border-line bg-sheet max-xl:order-last xl:min-h-0 xl:overflow-hidden">
               <header className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
                 <FileBadge ext={selected.ext} kind={selected.kind} />
-                <h2
-                  className="min-w-0 flex-1 truncate font-serif text-lg font-semibold"
-                  title={selected.source_path ?? selected.display_name}
-                >
-                  {originalName(selected)}
-                </h2>
+                <TitleEditor
+                  key={selected.id}
+                  doc={selected}
+                  title={userTitle(selected) ?? originalName(selected)}
+                  canEdit={can.organize}
+                  compact
+                />
                 <Link
                   className="rounded-full border border-line-strong px-3 py-1 text-xs font-medium hover:bg-paper"
                   to={`/documento/${selected.id}`}

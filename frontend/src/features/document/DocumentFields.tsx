@@ -76,12 +76,14 @@ export function useFieldSaver(doc: DocumentRow) {
   return { save, busy, error };
 }
 
-/** O nome do documento, com lápis para lhe dar outro (ou voltar ao automático). */
+/** O nome do documento, com lápis para lhe dar outro (ou voltar ao automático). `compact`:
+ * numa linha, para cabeçalhos pequenos (o documento em «A rever»). */
 export function TitleEditor(props: {
   doc: DocumentRow;
   title: string;
   canEdit: boolean;
   children?: ReactNode;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const { doc } = props;
@@ -90,6 +92,67 @@ export function TitleEditor(props: {
   const [value, setValue] = useState(userTitle ?? props.title);
   const [shown, setShown] = useState<string | null>(null);
   const { save, busy, error } = useFieldSaver(doc);
+  const startEditing = () => {
+    setValue(shown ?? userTitle ?? props.title);
+    setEditing(true);
+  };
+  const submit = () =>
+    void save("title", value).then((ok) => {
+      if (!ok) return;
+      setShown(value.trim() || null);
+      setEditing(false);
+    });
+  const reset = () =>
+    void save("title", null).then((ok) => {
+      if (!ok) return;
+      setShown(null);
+      setEditing(false);
+    });
+
+  if (props.compact)
+    return editing ? (
+      <form
+        className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
+        aria-label={t("edit.title")}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <input
+          className={`${input} min-w-0 flex-1 font-serif`}
+          aria-label={t("fields.title")}
+          value={value}
+          autoFocus
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+        <Button type="submit" disabled={busy || !value.trim()}>
+          {busy ? t("common.saving") : t("common.save")}
+        </Button>
+        {userTitle && (
+          <Button variant="secondary" disabled={busy} onClick={reset}>
+            {t("edit.title_reset")}
+          </Button>
+        )}
+        <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
+          {t("common.cancel")}
+        </Button>
+        {error ? <ErrorBox error={error} /> : null}
+      </form>
+    ) : (
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        <h2
+          className="min-w-0 truncate font-serif text-lg font-semibold"
+          title={shown ?? props.title}
+        >
+          {shown ?? props.title}
+        </h2>
+        {props.canEdit && <EditButton label={t("edit.title")} onClick={startEditing} />}
+      </div>
+    );
 
   if (!editing)
     return (
@@ -98,14 +161,7 @@ export function TitleEditor(props: {
           {shown ?? props.title}
         </h1>
         {props.canEdit && (
-          <EditButton
-            className="mt-1"
-            label={t("edit.title")}
-            onClick={() => {
-              setValue(shown ?? userTitle ?? props.title);
-              setEditing(true);
-            }}
-          />
+          <EditButton className="mt-1" label={t("edit.title")} onClick={startEditing} />
         )}
         {props.children}
       </div>
@@ -117,11 +173,7 @@ export function TitleEditor(props: {
       aria-label={t("edit.title")}
       onSubmit={(e) => {
         e.preventDefault();
-        void save("title", value).then((ok) => {
-          if (!ok) return;
-          setShown(value.trim() || null);
-          setEditing(false);
-        });
+        submit();
       }}
     >
       <label className="block text-xs text-muted" htmlFor="document-title">
@@ -139,17 +191,7 @@ export function TitleEditor(props: {
           {busy ? t("common.saving") : t("common.save")}
         </Button>
         {userTitle && (
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() =>
-              void save("title", null).then((ok) => {
-                if (!ok) return;
-                setShown(null);
-                setEditing(false);
-              })
-            }
-          >
+          <Button variant="secondary" disabled={busy} onClick={reset}>
             {t("edit.title_reset")}
           </Button>
         )}
